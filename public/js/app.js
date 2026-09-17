@@ -121,6 +121,17 @@ const elements = {
 
 // Initialize Application
 function init() {
+  // Auto-dismiss splash screen smoothly after intro animation
+  const splash = document.getElementById('splash-screen');
+  if (splash) {
+    const dismissSplash = () => {
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.remove(), 450);
+    };
+    setTimeout(dismissSplash, 1100);
+    splash.addEventListener('click', dismissSplash);
+  }
+
   loadMembers();
   setupEventListeners();
   fetchPresets();
