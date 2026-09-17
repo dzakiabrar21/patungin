@@ -48,7 +48,7 @@
           </div>
         </div>
         <div class="header-right">
-          <button id="btn-circle-settings" class="btn-header-action" title="Kelola Anggota">
+          <button id="btn-circle-settings" class="btn-header-action" title="Kelola Anggota Master">
             <span>Anggota</span>
           </button>
           <button id="btn-api-key" class="btn-header-action" title="Konfigurasi AI Key">
@@ -85,13 +85,13 @@
     <main class="main-content">
       <div class="content-container">
 
-        <!-- STEP 1: Upload Struk (Clean & Empty by default) -->
+        <!-- STEP 1: Upload Struk (Clean, Simple, Focus on Receipt) -->
         <section id="step-1-view" class="step-view active">
           
           <div class="hero-card">
             <div class="hero-tag">Split Bill Instan</div>
             <h2 class="hero-heading">Bagi Tagihan Tanpa Ribet</h2>
-            <p class="hero-desc">Foto struk pembayaran atau upload dari galeri, sistem akan menghitung porsi pesanan dan pajak secara proporsional.</p>
+            <p class="hero-desc">Unggah foto struk belanja Anda atau gunakan contoh struk bawaan untuk membaca menu dan harga secara otomatis.</p>
           </div>
 
           <!-- Upload Dropzone Card -->
@@ -123,33 +123,9 @@
             </div>
           </div>
 
-          <!-- Member Setup Card -->
-          <div class="card card-padded">
-            <div class="card-header-clean">
-              <div>
-                <h4 class="card-title-clean">Daftar Anggota</h4>
-                <p class="card-desc-clean">Tentukan siapa yang menanggung tagihan</p>
-              </div>
-              <button type="button" class="btn-link-action" id="btn-edit-circle-inline">Kelola Anggota</button>
-            </div>
-
-            <!-- Member Chips -->
-            <div class="member-chips-scroll" id="circle-chips-summary">
-              <!-- Injected via JS -->
-            </div>
-
-            <!-- Payer Selection -->
-            <div class="form-group-stacked">
-              <label for="payer-select" class="form-label-bold">Penanggung Pembayaran (Payer):</label>
-              <select id="payer-select" class="select-clean">
-                <!-- Injected via JS -->
-              </select>
-            </div>
-          </div>
-
-          <!-- Presets Helper -->
+          <!-- Presets Helper (Contoh Struk Cepat) -->
           <div class="preset-helper-card">
-            <span class="preset-label-heading">Uji coba dengan contoh struk:</span>
+            <span class="preset-label-heading">Atau uji coba langsung dengan contoh struk:</span>
             <div class="preset-pills-list" id="preset-buttons-container">
               <!-- Injected via JS -->
             </div>
@@ -157,13 +133,13 @@
 
         </section>
 
-        <!-- STEP 2: Cek Tagihan Struk -->
+        <!-- STEP 2: Cek Detail Pesanan (Muncul Setelah Struk Masuk) -->
         <section id="step-2-view" class="step-view hidden">
           
           <div class="step-guide-banner">
             <span class="step-badge-mini">Langkah 2 dari 4</span>
-            <h3 class="step-guide-title">Konfirmasi Rincian Tagihan</h3>
-            <p class="step-guide-desc">Periksa menu, kuantiti, dan nominal harga dari struk.</p>
+            <h3 class="step-guide-title">Detail Pesanan & Total Tagihan</h3>
+            <p class="step-guide-desc">Periksa menu, kuantiti, dan nominal harga yang terbaca dari struk.</p>
           </div>
 
           <div class="card card-padded">
@@ -173,12 +149,12 @@
                 <h3 class="merchant-title" id="receipt-merchant-name">Nama Tempat</h3>
                 <span class="receipt-date" id="receipt-date-text">Tanggal</span>
               </div>
-              <button id="btn-add-item-step2" class="btn-outline-sm">
-                <span>+ Menu</span>
+              <button id="btn-add-item-step2" class="btn-outline-sm" type="button">
+                <span>+ Menu Manual</span>
               </button>
             </div>
 
-            <!-- Items Table -->
+            <!-- Items Review Table -->
             <div class="receipt-items-list" id="receipt-items-review-list">
               <!-- Injected via JS -->
             </div>
@@ -192,21 +168,21 @@
               <div class="charge-line">
                 <div class="charge-edit-trigger">
                   <span>Pajak Resto (PB1)</span>
-                  <button class="btn-edit-link" id="btn-edit-tax">Ubah</button>
+                  <button class="btn-edit-link" id="btn-edit-tax" type="button">Ubah</button>
                 </div>
                 <strong id="display-tax">Rp 0</strong>
               </div>
               <div class="charge-line">
                 <div class="charge-edit-trigger">
                   <span>Service Charge</span>
-                  <button class="btn-edit-link" id="btn-edit-service">Ubah</button>
+                  <button class="btn-edit-link" id="btn-edit-service" type="button">Ubah</button>
                 </div>
                 <strong id="display-service">Rp 0</strong>
               </div>
               <div class="charge-line">
                 <div class="charge-edit-trigger">
                   <span>Diskon Promo</span>
-                  <button class="btn-edit-link" id="btn-edit-discount">Ubah</button>
+                  <button class="btn-edit-link" id="btn-edit-discount" type="button">Ubah</button>
                 </div>
                 <strong id="display-discount" class="text-green">- Rp 0</strong>
               </div>
@@ -218,29 +194,75 @@
           </div>
 
           <div class="step-actions-footer">
-            <button type="button" class="btn-outline" id="btn-back-to-1">← Kembali</button>
+            <button type="button" class="btn-outline" id="btn-back-to-1">← Upload Ulang</button>
             <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-3">
-              <span>Lanjut Bagi Tagihan →</span>
+              <span>Lanjut Pilih Orang & Bagi →</span>
             </button>
           </div>
 
         </section>
 
-        <!-- STEP 3: Bagi Anggota -->
+        <!-- STEP 3: Pilih Siapa yang Ikut & Bagi Pesanan -->
         <section id="step-3-view" class="step-view hidden">
           
           <div class="step-guide-banner">
             <span class="step-badge-mini">Langkah 3 dari 4</span>
-            <h3 class="step-guide-title">Tentukan Penikmat Menu</h3>
-            <p class="step-guide-desc">Tap anggota yang memesan. Menu patungan dapat dibagi bersama.</p>
+            <h3 class="step-guide-title">Pilih Orang & Bagi Tagihan</h3>
+            <p class="step-guide-desc">Tentukan siapa saja yang ikut di struk ini, lalu pilih penikmat tiap menu.</p>
           </div>
 
-          <!-- Splitting Rules Card -->
+          <!-- CARD 1: Siapa Saja yang Ikut Patungan? -->
+          <div class="card card-padded">
+            <div class="card-header-clean">
+              <div>
+                <h4 class="card-title-clean">1. Siapa Saja yang Ikut Patungan?</h4>
+                <p class="card-desc-clean">Centang teman yang ikut serta di tagihan ini</p>
+              </div>
+            </div>
+
+            <!-- Participant Selection Chips -->
+            <div class="participants-selection-grid" id="participants-toggle-list">
+              <!-- Injected via JS -->
+            </div>
+
+            <!-- Quick Add Friend Form -->
+            <div class="quick-add-member-row">
+              <input type="text" id="input-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
+              <button type="button" id="btn-quick-add" class="btn-primary-sm">+ Tambah</button>
+            </div>
+
+            <!-- Payer Selection (Who paid the bill) -->
+            <div class="payer-selection-box">
+              <label for="step3-payer-select" class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+              <select id="step3-payer-select" class="select-clean">
+                <!-- Injected via JS with active participants -->
+              </select>
+            </div>
+          </div>
+
+          <!-- CARD 2: Tentukan Siapa yang Pesan Tiap Menu -->
+          <div class="card card-padded">
+            <div class="card-header-clean">
+              <div>
+                <h4 class="card-title-clean">2. Tentukan Pesanan Masing-Masing</h4>
+                <p class="card-desc-clean">Tap nama untuk memilih siapa yang memesan menu tersebut</p>
+              </div>
+              <div id="unclaimed-warning-pill" class="badge-warning hidden">
+                Ada menu belum dipilih
+              </div>
+            </div>
+
+            <div class="assignment-items-list" id="items-container">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+
+          <!-- CARD 3: Pengaturan Pembagian (Pajak & Pembulatan) -->
           <div class="card card-padded options-card">
             <div class="option-row">
               <label class="option-label" for="tax-split-mode">Metode Pajak:</label>
               <select id="tax-split-mode" class="select-clean-sm">
-                <option value="proportional" selected>Proporsional (Adil)</option>
+                <option value="proportional" selected>Proporsional (Sesuai Porsi Menu)</option>
                 <option value="equal">Bagi Rata</option>
               </select>
             </div>
@@ -254,21 +276,7 @@
             </div>
           </div>
 
-          <!-- Items Assignment List -->
-          <div class="card card-padded">
-            <div class="card-header-clean">
-              <h4 class="card-title-clean">Daftar Menu Struk</h4>
-              <div id="unclaimed-warning-pill" class="badge-warning hidden">
-                Ada menu belum dipilih
-              </div>
-            </div>
-
-            <div class="assignment-items-list" id="items-container">
-              <!-- Injected via JS -->
-            </div>
-          </div>
-
-          <!-- Real-time Preview Shares -->
+          <!-- CARD 4: Estimasi Patungan Sementara (Real-time) -->
           <div class="card card-padded">
             <h4 class="card-title-clean">Estimasi Sementara</h4>
             <div class="shares-grid-responsive" id="preview-shares-grid">
@@ -279,7 +287,7 @@
           <div class="step-actions-footer">
             <button type="button" class="btn-outline" id="btn-back-to-2">← Cek Struk</button>
             <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-4">
-              <span>Buat Split Bill ✨</span>
+              <span>Buat Rincian Tagihan ✨</span>
             </button>
           </div>
 
@@ -352,13 +360,13 @@
 
   <!-- MODALS -->
 
-  <!-- Modal Anggota -->
+  <!-- Modal Anggota Master -->
   <div id="modal-circle-settings" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">Pengaturan Anggota</h3>
-          <p class="modal-desc">Ubah nama dan nomor rekening/e-wallet tiap anggota</p>
+          <h3 class="modal-title">Kelola Master Anggota</h3>
+          <p class="modal-desc">Atur nama dan nomor rekening/e-wallet untuk info transfer</p>
         </div>
         <button class="btn-close-modal" id="btn-close-circle-modal" aria-label="Tutup">✕</button>
       </div>
@@ -366,8 +374,8 @@
         <!-- Injected via JS -->
       </div>
       <div class="modal-footer">
-        <button id="btn-reset-default-circle" class="btn-outline-sm">Reset Default</button>
-        <button id="btn-save-circle" class="btn-primary-sm">Simpan Perubahan</button>
+        <button id="btn-reset-default-circle" class="btn-outline-sm" type="button">Reset Default</button>
+        <button id="btn-save-circle" class="btn-primary-sm" type="button">Simpan</button>
       </div>
     </div>
   </div>
@@ -378,13 +386,13 @@
       <div class="modal-header">
         <div>
           <h3 class="modal-title">Gemini AI Key</h3>
-          <p class="modal-desc">Konfigurasi API key untuk memindai struk fisik</p>
+          <p class="modal-desc">Konfigurasi API key untuk memindai struk fisik secara live</p>
         </div>
         <button class="btn-close-modal" id="btn-close-api-modal" aria-label="Tutup">✕</button>
       </div>
       <div class="modal-body">
         <p class="modal-helper-text">
-          Jika dikosongkan, aplikasi dapat diuji menggunakan <strong>Mode Simulasi</strong> struk bawaan.
+          Jika dikosongkan, aplikasi menggunakan <strong>Mode Simulasi</strong> struk bawaan.
         </p>
         <div class="form-group">
           <label for="input-gemini-key" class="form-label">API Key Gemini:</label>
@@ -395,8 +403,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-clear-api-key" class="btn-outline-sm">Hapus Key</button>
-        <button id="btn-save-api-key" class="btn-primary-sm">Simpan Key</button>
+        <button id="btn-clear-api-key" class="btn-outline-sm" type="button">Hapus Key</button>
+        <button id="btn-save-api-key" class="btn-primary-sm" type="button">Simpan Key</button>
       </div>
     </div>
   </div>
@@ -425,8 +433,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-cancel-item-modal" class="btn-outline-sm">Batal</button>
-        <button id="btn-save-item-modal" class="btn-primary-sm">Tambahkan</button>
+        <button id="btn-cancel-item-modal" class="btn-outline-sm" type="button">Batal</button>
+        <button id="btn-save-item-modal" class="btn-primary-sm" type="button">Tambahkan</button>
       </div>
     </div>
   </div>

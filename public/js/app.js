@@ -5,17 +5,16 @@
  */
 
 const DEFAULT_MEMBERS = [
-  { id: 'm1', name: 'Anggota 1', initial: 'A', paymentInfo: 'BCA 1234567890 a.n Anggota 1' },
-  { id: 'm2', name: 'Anggota 2', initial: 'B', paymentInfo: 'Mandiri 0987654321 a.n Anggota 2' },
-  { id: 'm3', name: 'Anggota 3', initial: 'C', paymentInfo: 'GoPay 08123456789' },
-  { id: 'm4', name: 'Anggota 4', initial: 'D', paymentInfo: 'DANA 08571234567' },
-  { id: 'm5', name: 'Anggota 5', initial: 'E', paymentInfo: 'BCA 5432167890 a.n Anggota 5' },
-  { id: 'm6', name: 'Anggota 6', initial: 'F', paymentInfo: 'Bank Jago 100200300 a.n Anggota 6' }
+  { id: 'm1', name: 'Saya', initial: 'S', paymentInfo: 'BCA 1234567890 a.n Saya' },
+  { id: 'm2', name: 'Andi', initial: 'A', paymentInfo: 'Mandiri 0987654321 a.n Andi' },
+  { id: 'm3', name: 'Budi', initial: 'B', paymentInfo: 'GoPay 08123456789' },
+  { id: 'm4', name: 'Citra', initial: 'C', paymentInfo: 'DANA 08571234567' }
 ];
 
 const state = {
   currentStep: 1,
-  members: [],
+  allMembers: [], // Master friends pool
+  participatingMemberIds: [], // IDs of members active in this specific bill
   payerId: 'm1',
   receipt: {
     merchant: '',
@@ -53,12 +52,9 @@ const elements = {
   btnBrowse: document.getElementById('btn-browse-file'),
   spinnerOverlay: document.getElementById('upload-loading-spinner'),
   spinnerStatus: document.getElementById('spinner-status-text'),
-  circleChipsSummary: document.getElementById('circle-chips-summary'),
-  payerSelect: document.getElementById('payer-select'),
-  btnEditCircleInline: document.getElementById('btn-edit-circle-inline'),
   presetButtonsContainer: document.getElementById('preset-buttons-container'),
 
-  // Step 2
+  // Step 2 (Review)
   receiptMerchantName: document.getElementById('receipt-merchant-name'),
   receiptDateText: document.getElementById('receipt-date-text'),
   receiptItemsReviewList: document.getElementById('receipt-items-review-list'),
@@ -74,7 +70,11 @@ const elements = {
   btnBackTo1: document.getElementById('btn-back-to-1'),
   btnProceedTo3: document.getElementById('btn-proceed-to-3'),
 
-  // Step 3
+  // Step 3 (Select Participants & Assign Items)
+  participantsToggleList: document.getElementById('participants-toggle-list'),
+  inputQuickName: document.getElementById('input-quick-name'),
+  btnQuickAdd: document.getElementById('btn-quick-add'),
+  step3PayerSelect: document.getElementById('step3-payer-select'),
   taxSplitMode: document.getElementById('tax-split-mode'),
   roundingMode: document.getElementById('rounding-mode'),
   unclaimedWarningPill: document.getElementById('unclaimed-warning-pill'),
@@ -83,7 +83,7 @@ const elements = {
   btnBackTo2: document.getElementById('btn-back-to-2'),
   btnProceedTo4: document.getElementById('btn-proceed-to-4'),
 
-  // Step 4
+  // Step 4 (Final Settlement)
   finalMerchantName: document.getElementById('final-merchant-name'),
   finalTotalAmount: document.getElementById('final-total-amount'),
   finalPayerInfo: document.getElementById('final-payer-info'),
@@ -133,55 +133,48 @@ function init() {
   }
 
   loadMembers();
+  loadPresets();
   setupEventListeners();
-  fetchPresets();
   goToStep(1);
 }
 
+// Members Management
 function loadMembers() {
-  const saved = localStorage.getItem('circle_members');
+  const saved = localStorage.getItem('patungin_members');
   if (saved) {
     try {
-      state.members = JSON.parse(saved);
-    } catch (e) {
-      state.members = [...DEFAULT_MEMBERS];
+      state.allMembers = JSON.parse(saved);
+    } catch {
+      state.allMembers = [...DEFAULT_MEMBERS];
     }
   } else {
-    state.members = [...DEFAULT_MEMBERS];
+    state.allMembers = [...DEFAULT_MEMBERS];
   }
 
-  if (state.members.length < 6) {
-    state.members = [...DEFAULT_MEMBERS];
-  }
-
-  // Ensure initial letter exists
-  state.members.forEach((m, idx) => {
-    if (!m.initial) {
-      m.initial = (m.name && m.name.charAt(0)) || String(idx + 1);
-    }
-  });
-
-  renderStep1CircleChips();
-  renderPayerSelect();
+  // By default, everyone is participating
+  state.participatingMemberIds = state.allMembers.map(m => m.id);
+  state.payerId = state.participatingMemberIds[0] || 'm1';
 }
 
 function saveMembers() {
-  localStorage.setItem('circle_members', JSON.stringify(state.members));
-  renderStep1CircleChips();
-  renderPayerSelect();
-  if (state.currentStep === 3) renderAssignmentItems();
-  if (state.currentStep === 4) calculateAndRenderFinal();
-  showToast('Pengaturan anggota berhasil disimpan', 'success');
+  localStorage.setItem('patungin_members', JSON.stringify(state.allMembers));
 }
 
-// Stepper Navigation
+function getActiveParticipants() {
+  return state.allMembers.filter(m => state.participatingMemberIds.includes(m.id));
+}
+
+// Stepper Navigation with guaranteed visibility toggling
 function goToStep(step) {
   state.currentStep = step;
 
-  elements.step1View.classList.toggle('hidden', step !== 1);
-  elements.step2View.classList.toggle('hidden', step !== 2);
-  elements.step3View.classList.toggle('hidden', step !== 3);
-  elements.step4View.classList.toggle('hidden', step !== 4);
+  const views = [elements.step1View, elements.step2View, elements.step3View, elements.step4View];
+  views.forEach((view, idx) => {
+    if (!view) return;
+    const isCurrent = (idx + 1) === step;
+    view.classList.toggle('active', isCurrent);
+    view.classList.toggle('hidden', !isCurrent);
+  });
 
   elements.btnHeaderBack.classList.toggle('hidden', step === 1);
 
@@ -203,9 +196,9 @@ function goToStep(step) {
     elements.pageSubtitle.textContent = state.receipt.merchant || 'Konfirmasi rincian menu';
     renderStep2Review();
   } else if (step === 3) {
-    elements.pageTitle.textContent = 'Bagi Tagihan';
-    elements.pageSubtitle.textContent = 'Pilih penikmat menu';
-    renderAssignmentItems();
+    elements.pageTitle.textContent = 'Pilih & Bagi';
+    elements.pageSubtitle.textContent = 'Pilih yang ikut & penikmat menu';
+    renderStep3();
   } else if (step === 4) {
     elements.pageTitle.textContent = 'Selesai';
     elements.pageSubtitle.textContent = 'Rekap tagihan siap dikirim';
@@ -220,124 +213,135 @@ function setupEventListeners() {
   elements.btnHeaderBack.addEventListener('click', () => {
     if (state.currentStep > 1) goToStep(state.currentStep - 1);
   });
+
   elements.btnBackTo1.addEventListener('click', () => goToStep(1));
+
   elements.btnProceedTo3.addEventListener('click', () => {
     if (state.receipt.items.length === 0) {
-      showToast('Belum ada item dalam daftar tagihan', 'error');
+      showToast('Belum ada menu dalam daftar tagihan', 'error');
       return;
     }
     goToStep(3);
   });
+
   elements.btnBackTo2.addEventListener('click', () => goToStep(2));
-  elements.btnProceedTo4.addEventListener('click', () => goToStep(4));
+
+  elements.btnProceedTo4.addEventListener('click', () => {
+    const active = getActiveParticipants();
+    if (active.length === 0) {
+      showToast('Pilih minimal 1 orang yang ikut patungan!', 'error');
+      return;
+    }
+    goToStep(4);
+  });
+
   elements.btnResetNewBill.addEventListener('click', resetAllToStart);
 
-  elements.payerSelect.addEventListener('change', (e) => {
+  // Quick Add Member in Step 3
+  elements.btnQuickAdd.addEventListener('click', handleQuickAddMember);
+  elements.inputQuickName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleQuickAddMember();
+    }
+  });
+
+  // Step 3 Payer change
+  elements.step3PayerSelect.addEventListener('change', (e) => {
     state.payerId = e.target.value;
-    renderStep1CircleChips();
-    if (state.currentStep === 3) renderAssignmentItems();
-    if (state.currentStep === 4) calculateAndRenderFinal();
+    renderStep3LiveShares();
   });
 
   elements.taxSplitMode.addEventListener('change', (e) => {
     state.taxSplitMode = e.target.value;
-    renderSharesPreview();
+    renderStep3LiveShares();
   });
+
   elements.roundingMode.addEventListener('change', (e) => {
     state.roundingMode = e.target.value;
-    renderSharesPreview();
+    renderStep3LiveShares();
   });
 
+  // File Upload Handlers
   elements.btnBrowse.addEventListener('click', () => elements.fileInput.click());
-  elements.dropzone.addEventListener('click', (e) => {
-    if (e.target !== elements.btnBrowse && !e.target.closest('button')) {
-      elements.fileInput.click();
-    }
-  });
   elements.fileInput.addEventListener('change', handleFileUpload);
-
-  ['dragenter', 'dragover'].forEach(evt => {
-    elements.dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      elements.dropzone.style.borderColor = 'var(--color-primary)';
-    });
+  elements.dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    elements.dropzone.classList.add('dragover');
   });
-  ['dragleave', 'drop'].forEach(evt => {
-    elements.dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      elements.dropzone.style.borderColor = 'var(--color-border)';
-    });
-  });
+  elements.dropzone.addEventListener('dragleave', () => elements.dropzone.classList.remove('dragover'));
   elements.dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    elements.dropzone.classList.remove('dragover');
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       uploadFile(e.dataTransfer.files[0]);
     }
   });
 
-  elements.btnCopyWa.addEventListener('click', copyWhatsAppRecap);
-  elements.btnOpenWa.addEventListener('click', openWhatsAppDirect);
+  // WhatsApp Actions
+  elements.btnCopyWa.addEventListener('click', copyWaMessage);
+  elements.btnOpenWa.addEventListener('click', openWaDirect);
 
+  // Custom Item Modal
+  elements.btnAddItemStep2.addEventListener('click', () => openItemModal());
+  elements.btnCloseItemModal.addEventListener('click', closeItemModal);
+  elements.btnCancelItemModal.addEventListener('click', closeItemModal);
+  elements.btnSaveItemModal.addEventListener('click', saveCustomItem);
+
+  // Editable Tax/Service/Discount
+  elements.btnEditTax.addEventListener('click', () => promptEditCharge('tax', 'Pajak Resto (PB1)'));
+  elements.btnEditService.addEventListener('click', () => promptEditCharge('service', 'Service Charge'));
+  elements.btnEditDiscount.addEventListener('click', () => promptEditCharge('discount', 'Diskon Promo'));
+
+  // Modals Header
   elements.btnCircleSettings.addEventListener('click', openCircleModal);
-  elements.btnEditCircleInline.addEventListener('click', openCircleModal);
-  elements.btnCloseCircleModal.addEventListener('click', () => elements.modalCircle.classList.add('hidden'));
-  elements.btnSaveCircle.addEventListener('click', handleSaveCircleFromModal);
-  elements.btnResetDefaultCircle.addEventListener('click', () => {
-    state.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
-    renderCircleModalInputs();
-  });
+  elements.btnCloseCircleModal.addEventListener('click', closeCircleModal);
+  elements.btnSaveCircle.addEventListener('click', saveCircleModalChanges);
+  elements.btnResetDefaultCircle.addEventListener('click', resetDefaultCircle);
 
   elements.btnApiKey.addEventListener('click', openApiKeyModal);
-  elements.btnCloseApiModal.addEventListener('click', () => elements.modalApiKey.classList.add('hidden'));
-  elements.btnSaveApiKey.addEventListener('click', handleSaveApiKey);
-  elements.btnClearApiKey.addEventListener('click', handleClearApiKey);
-
-  elements.btnAddItemStep2.addEventListener('click', openAddItemModal);
-  elements.btnCloseItemModal.addEventListener('click', () => elements.modalCustomItem.classList.add('hidden'));
-  elements.btnCancelItemModal.addEventListener('click', () => elements.modalCustomItem.classList.add('hidden'));
-  elements.btnSaveItemModal.addEventListener('click', handleSaveCustomItem);
-
-  elements.btnEditTax.addEventListener('click', () => editCharge('tax', 'Pajak'));
-  elements.btnEditService.addEventListener('click', () => editCharge('service', 'Service Charge'));
-  elements.btnEditDiscount.addEventListener('click', () => editCharge('discount', 'Potongan Harga / Diskon'));
+  elements.btnCloseApiModal.addEventListener('click', closeApiKeyModal);
+  elements.btnSaveApiKey.addEventListener('click', saveApiKey);
+  elements.btnClearApiKey.addEventListener('click', clearApiKey);
 }
 
-// Step 1: Member Chips & Presets
-function renderStep1CircleChips() {
-  elements.circleChipsSummary.innerHTML = '';
-  state.members.forEach(m => {
-    const isPayer = m.id === state.payerId;
-    const chip = document.createElement('div');
-    chip.className = `member-chip-pill ${isPayer ? 'is-payer' : ''}`;
-    chip.innerHTML = `
-      <span class="avatar-initial">${m.initial || m.name.charAt(0)}</span>
-      <span class="member-chip-name">${m.name}</span>
-      ${isPayer ? '<span class="payer-badge-mini">Payer</span>' : ''}
-    `;
-    elements.circleChipsSummary.appendChild(chip);
-  });
+// Quick Add Member in Step 3
+function handleQuickAddMember() {
+  const name = elements.inputQuickName.value.trim();
+  if (!name) {
+    showToast('Masukkan nama teman terlebih dahulu', 'error');
+    return;
+  }
+
+  const newId = 'm_' + Date.now();
+  const initial = name.charAt(0).toUpperCase();
+  const newMember = {
+    id: newId,
+    name: name,
+    initial: initial,
+    paymentInfo: 'Transfer ke ' + name
+  };
+
+  state.allMembers.push(newMember);
+  state.participatingMemberIds.push(newId);
+  saveMembers();
+
+  elements.inputQuickName.value = '';
+  showToast(`${name} ditambahkan ke daftar patungan`, 'success');
+  renderStep3();
 }
 
-function renderPayerSelect() {
-  elements.payerSelect.innerHTML = '';
-  state.members.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m.id;
-    opt.textContent = `${m.name} (${m.paymentInfo || 'Belum diatur'})`;
-    if (m.id === state.payerId) opt.selected = true;
-    elements.payerSelect.appendChild(opt);
-  });
-}
-
-async function fetchPresets() {
+// Load Presets
+async function loadPresets() {
   try {
     const res = await fetch('/api/presets');
     const data = await res.json();
-    if (data.success && data.presets) {
+    if (data.success && Array.isArray(data.presets)) {
       state.presets = data.presets;
       renderPresetButtons();
     }
   } catch (err) {
-    console.error('Failed to load presets:', err);
+    console.error('Failed loading presets', err);
   }
 }
 
@@ -346,7 +350,7 @@ function renderPresetButtons() {
   state.presets.forEach(p => {
     const btn = document.createElement('button');
     btn.className = 'btn-preset-pill';
-    btn.textContent = p.name.replace(/[^\w\s&]/gi, '').trim(); // Remove any emojis
+    btn.textContent = p.name.replace(/[^\w\s&]/gi, '').trim();
     btn.addEventListener('click', () => loadPresetAndProceed(p.id));
     elements.presetButtonsContainer.appendChild(btn);
   });
@@ -357,13 +361,15 @@ function loadPresetAndProceed(presetId) {
   if (!found) return;
 
   const data = JSON.parse(JSON.stringify(found));
+  const active = getActiveParticipants();
+  const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
 
   data.items.forEach((item, idx) => {
     const n = item.name.toLowerCase();
     if (n.includes('shared') || n.includes('platter') || n.includes('nasi') || n.includes('pitcher')) {
-      item.assignedTo = state.members.map(m => m.id);
+      item.assignedTo = [...activeIds];
     } else {
-      item.assignedTo = [state.members[idx % state.members.length].id];
+      item.assignedTo = [activeIds[idx % activeIds.length]];
     }
   });
 
@@ -407,9 +413,12 @@ async function uploadFile(file) {
 
     if (result.success && result.receipt) {
       const r = result.receipt;
+      const active = getActiveParticipants();
+      const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
+
       if (Array.isArray(r.items)) {
         r.items.forEach((item, idx) => {
-          item.assignedTo = [state.members[idx % state.members.length].id];
+          item.assignedTo = [activeIds[idx % activeIds.length]];
         });
       }
 
@@ -422,22 +431,30 @@ async function uploadFile(file) {
 
       goToStep(2);
     } else {
-      showToast(result.error || 'Gagal memproses struk', 'error');
+      showToast(result.error || 'Gagal memindai struk', 'error');
     }
   } catch (err) {
     elements.spinnerOverlay.classList.add('hidden');
-    console.error(err);
     showToast('Terjadi kesalahan koneksi server', 'error');
+    console.error(err);
   }
 }
 
-// Step 2: Cek Tagihan
+// Step 2: Cek Detail Pesanan
 function renderStep2Review() {
   const r = state.receipt;
   elements.receiptMerchantName.textContent = r.merchant || 'Struk Belanja';
   elements.receiptDateText.textContent = `${r.date || 'Hari ini'} • ${r.items.length} Item`;
 
   elements.receiptItemsReviewList.innerHTML = '';
+
+  if (r.items.length === 0) {
+    elements.receiptItemsReviewList.innerHTML = `
+      <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.85rem;">
+        Belum ada menu yang terbaca. Klik <strong>+ Menu Manual</strong> untuk menambah.
+      </div>
+    `;
+  }
 
   r.items.forEach(item => {
     const row = document.createElement('div');
@@ -482,286 +499,354 @@ function recalculateTotals() {
   elements.displayTotal.textContent = `Rp ${formatRupiah(total)}`;
 }
 
-// Step 3: Bagi Anggota
+// Step 3: Render All Components (Participant selection + Menu assignment)
+function renderStep3() {
+  renderParticipantSelection();
+  renderStep3PayerDropdown();
+  renderAssignmentItems();
+  renderStep3LiveShares();
+}
+
+// Step 3: Participant Selection Toggles
+function renderParticipantSelection() {
+  elements.participantsToggleList.innerHTML = '';
+
+  state.allMembers.forEach(member => {
+    const isParticipating = state.participatingMemberIds.includes(member.id);
+    const chip = document.createElement('div');
+    chip.className = 'participant-select-chip' + (isParticipating ? ' active' : '');
+    chip.innerHTML = `
+      <div class="participant-avatar-badge">${escapeHtml(member.initial)}</div>
+      <div class="participant-chip-info">
+        <span class="participant-chip-name">${escapeHtml(member.name)}</span>
+        <span class="participant-chip-status">${isParticipating ? 'Ikut Patungan' : 'Tidak Ikut'}</span>
+      </div>
+      <span class="participant-check-icon">${isParticipating ? '✓' : ''}</span>
+    `;
+
+    chip.addEventListener('click', () => {
+      toggleMemberParticipation(member.id);
+    });
+
+    elements.participantsToggleList.appendChild(chip);
+  });
+}
+
+function toggleMemberParticipation(memberId) {
+  const idx = state.participatingMemberIds.indexOf(memberId);
+  if (idx > -1) {
+    if (state.participatingMemberIds.length <= 1) {
+      showToast('Minimal harus ada 1 orang yang ikut patungan', 'error');
+      return;
+    }
+    state.participatingMemberIds.splice(idx, 1);
+
+    // Remove from assigned items
+    state.receipt.items.forEach(it => {
+      if (it.assignedTo) {
+        it.assignedTo = it.assignedTo.filter(id => id !== memberId);
+      }
+    });
+
+    // If payer was unselected, assign to another participant
+    if (state.payerId === memberId) {
+      state.payerId = state.participatingMemberIds[0] || '';
+    }
+  } else {
+    state.participatingMemberIds.push(memberId);
+  }
+
+  renderStep3();
+}
+
+function renderStep3PayerDropdown() {
+  const active = getActiveParticipants();
+  elements.step3PayerSelect.innerHTML = '';
+
+  active.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = `${m.name} (${m.paymentInfo || 'Belum ada rek'})`;
+    if (m.id === state.payerId) opt.selected = true;
+    elements.step3PayerSelect.appendChild(opt);
+  });
+
+  // Ensure payerId is valid
+  if (!state.participatingMemberIds.includes(state.payerId) && active.length > 0) {
+    state.payerId = active[0].id;
+    elements.step3PayerSelect.value = state.payerId;
+  }
+}
+
+// Step 3: Assignment Items List
 function renderAssignmentItems() {
   elements.itemsContainer.innerHTML = '';
+  const active = getActiveParticipants();
+
+  let hasUnclaimed = false;
 
   state.receipt.items.forEach(item => {
+    if (!item.assignedTo) item.assignedTo = [];
+
+    // Clean up members who are no longer participating
+    item.assignedTo = item.assignedTo.filter(id => state.participatingMemberIds.includes(id));
+
+    if (item.assignedTo.length === 0) {
+      hasUnclaimed = true;
+    }
+
     const card = document.createElement('div');
     card.className = 'assignment-card';
 
-    const isAllClaimed = item.assignedTo && item.assignedTo.length === state.members.length;
+    const isAllClaimed = active.length > 0 && item.assignedTo.length === active.length;
     let splitNote = '';
-    if (item.assignedTo && item.assignedTo.length > 1) {
+    if (item.assignedTo.length > 1) {
       const perPerson = Math.round(item.total / item.assignedTo.length);
-      splitNote = `<span class="split-portion-note">(@ Rp ${formatRupiah(perPerson)})</span>`;
+      splitNote = `<span class="split-portion-note">(@ Rp ${formatRupiah(perPerson)} / org)</span>`;
     }
 
     card.innerHTML = `
-      <div class="assignment-card-header">
-        <span class="assignment-item-name">${item.qty}x ${escapeHtml(item.name)}</span>
-        <div class="assignment-price-group">
+      <div class="assignment-head">
+        <div>
+          <span class="qty-badge">${item.qty}x</span>
+          <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
           ${splitNote}
-          <span class="assignment-item-price">Rp ${formatRupiah(item.total)}</span>
         </div>
+        <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
       </div>
-      <div class="assignment-card-actions">
-        <div class="member-selector-chips">
-          ${state.members.map(m => {
-            const isClaimed = item.assignedTo && item.assignedTo.includes(m.id);
-            return `
-              <button type="button" 
-                class="btn-member-chip ${isClaimed ? 'active' : ''}" 
-                data-item-id="${item.id}" 
-                data-member-id="${m.id}">
-                <span class="chip-avatar-mini">${m.initial || m.name.charAt(0)}</span>
-                <span>${m.name}</span>
-                ${isClaimed ? '<span class="check-icon">✓</span>' : ''}
-              </button>
-            `;
-          }).join('')}
-        </div>
-        <button type="button" class="btn-toggle-all" data-item-id="${item.id}">
-          ${isAllClaimed ? 'Batalkan' : 'Bagi ke Semua'}
+      <div class="assignment-chips-row" id="chips-${item.id}"></div>
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-toggle-all" id="all-${item.id}">
+          ${isAllClaimed ? 'Batalkan Semua' : 'Bagi Rata ke Semua'}
         </button>
       </div>
     `;
 
-    card.querySelectorAll('.btn-member-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        toggleClaim(btn.dataset.itemId, btn.dataset.memberId);
+    const chipsRow = card.querySelector(`#chips-${item.id}`);
+    active.forEach(member => {
+      const isAssigned = item.assignedTo.includes(member.id);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn-member-chip' + (isAssigned ? ' active' : '');
+      chip.innerHTML = `
+        <span class="chip-avatar-mini">${escapeHtml(member.initial)}</span>
+        <span>${escapeHtml(member.name)}</span>
+        ${isAssigned ? '<span class="check-icon">✓</span>' : ''}
+      `;
+
+      chip.addEventListener('click', () => {
+        if (isAssigned) {
+          item.assignedTo = item.assignedTo.filter(id => id !== member.id);
+        } else {
+          item.assignedTo.push(member.id);
+        }
+        renderAssignmentItems();
+        renderStep3LiveShares();
       });
+
+      chipsRow.appendChild(chip);
     });
 
-    const btnToggleAll = card.querySelector('.btn-toggle-all');
-    btnToggleAll.addEventListener('click', () => {
-      toggleAllMembers(btnToggleAll.dataset.itemId);
+    // Toggle all button
+    const btnAll = card.querySelector(`#all-${item.id}`);
+    btnAll.addEventListener('click', () => {
+      if (isAllClaimed) {
+        item.assignedTo = [];
+      } else {
+        item.assignedTo = active.map(m => m.id);
+      }
+      renderAssignmentItems();
+      renderStep3LiveShares();
     });
 
     elements.itemsContainer.appendChild(card);
   });
 
-  renderSharesPreview();
+  elements.unclaimedWarningPill.classList.toggle('hidden', !hasUnclaimed);
 }
 
-function toggleClaim(itemId, memberId) {
-  const item = state.receipt.items.find(i => i.id === itemId);
-  if (!item) return;
-
-  if (!item.assignedTo) item.assignedTo = [];
-  const idx = item.assignedTo.indexOf(memberId);
-  if (idx > -1) {
-    item.assignedTo.splice(idx, 1);
-  } else {
-    item.assignedTo.push(memberId);
-  }
-
-  renderAssignmentItems();
-}
-
-function toggleAllMembers(itemId) {
-  const item = state.receipt.items.find(i => i.id === itemId);
-  if (!item) return;
-
-  if (item.assignedTo && item.assignedTo.length === state.members.length) {
-    item.assignedTo = [];
-  } else {
-    item.assignedTo = state.members.map(m => m.id);
-  }
-
-  renderAssignmentItems();
-}
-
-function renderSharesPreview() {
-  const breakdowns = calculateBreakdowns();
+// Step 3: Real-time Live Share Preview
+function renderStep3LiveShares() {
+  const shares = calculateSplits();
   elements.previewSharesGrid.innerHTML = '';
 
-  state.members.forEach(m => {
-    const bd = breakdowns[m.id];
+  const active = getActiveParticipants();
+  active.forEach(m => {
+    const s = shares[m.id] || { total: 0 };
     const isPayer = m.id === state.payerId;
 
-    const pill = document.createElement('div');
-    pill.className = `share-preview-item ${isPayer ? 'is-payer' : ''}`;
-    pill.innerHTML = `
+    const div = document.createElement('div');
+    div.className = 'share-preview-item' + (isPayer ? ' is-payer' : '');
+    div.innerHTML = `
       <div class="share-preview-header">
-        <span class="avatar-initial-sm">${m.initial || m.name.charAt(0)}</span>
-        <span class="share-preview-name">${m.name} ${isPayer ? '(Payer)' : ''}</span>
+        <div class="avatar-initial-sm">${escapeHtml(m.initial)}</div>
+        <span class="share-preview-name">${escapeHtml(m.name)} ${isPayer ? '⭐ (Payer)' : ''}</span>
       </div>
-      <strong class="share-preview-amount">Rp ${formatRupiah(bd.grandTotal)}</strong>
+      <strong class="share-preview-amount">Rp ${formatRupiah(s.total)}</strong>
     `;
-    elements.previewSharesGrid.appendChild(pill);
+    elements.previewSharesGrid.appendChild(div);
   });
 }
 
-// Calculation Logic (Proportional Fair Split)
-function calculateBreakdowns() {
-  const { items, tax = 0, service = 0, discount = 0 } = state.receipt;
-
-  const breakdowns = {};
-  state.members.forEach(m => {
-    breakdowns[m.id] = {
+// Splitting Math Engine
+function calculateSplits() {
+  const active = getActiveParticipants();
+  const shares = {};
+  active.forEach(m => {
+    shares[m.id] = {
       member: m,
       items: [],
-      rawSubtotal: 0,
-      taxShare: 0,
-      serviceShare: 0,
-      discountShare: 0,
-      grandTotal: 0
+      itemsSubtotal: 0,
+      taxPortion: 0,
+      servicePortion: 0,
+      discountPortion: 0,
+      total: 0
     };
   });
 
-  let totalClaimed = 0;
-  let hasUnclaimed = false;
-
-  items.forEach(item => {
-    const claimants = item.assignedTo || [];
-    if (claimants.length === 0) {
-      hasUnclaimed = true;
-      return;
-    }
-
-    const share = item.total / claimants.length;
-    claimants.forEach(mId => {
-      if (breakdowns[mId]) {
-        breakdowns[mId].rawSubtotal += share;
-        breakdowns[mId].items.push({
+  // 1. Base Item Allocation
+  state.receipt.items.forEach(item => {
+    const assigned = (item.assignedTo || []).filter(id => shares[id]);
+    if (assigned.length > 0) {
+      const portion = item.total / assigned.length;
+      assigned.forEach(id => {
+        shares[id].items.push({
           name: item.name,
-          portion: claimants.length === 1 ? '1x' : `1/${claimants.length}`,
-          amount: share
+          qty: item.qty,
+          price: portion,
+          isShared: assigned.length > 1
         });
-      }
-    });
-    totalClaimed += item.total;
+        shares[id].itemsSubtotal += portion;
+      });
+    }
   });
 
-  elements.unclaimedWarningPill.classList.toggle('hidden', !hasUnclaimed);
+  const grandSubtotal = Object.values(shares).reduce((sum, s) => sum + s.itemsSubtotal, 0);
+  const tax = Number(state.receipt.tax) || 0;
+  const service = Number(state.receipt.service) || 0;
+  const discount = Number(state.receipt.discount) || 0;
+  const count = active.length || 1;
 
-  const isProportional = state.taxSplitMode === 'proportional';
-
-  state.members.forEach(m => {
-    const bd = breakdowns[m.id];
-    if (isProportional) {
-      const ratio = totalClaimed > 0 ? (bd.rawSubtotal / totalClaimed) : 0;
-      bd.taxShare = ratio * tax;
-      bd.serviceShare = ratio * service;
-      bd.discountShare = ratio * discount;
-    } else {
-      bd.taxShare = tax / state.members.length;
-      bd.serviceShare = service / state.members.length;
-      bd.discountShare = discount / state.members.length;
+  // 2. Tax, Service & Discount Allocation
+  active.forEach(m => {
+    const s = shares[m.id];
+    let ratio = 1 / count;
+    if (state.taxSplitMode === 'proportional' && grandSubtotal > 0) {
+      ratio = s.itemsSubtotal / grandSubtotal;
     }
 
-    let rawTotal = bd.rawSubtotal + bd.taxShare + bd.serviceShare - bd.discountShare;
-    if (rawTotal < 0) rawTotal = 0;
+    s.taxPortion = Math.round(tax * ratio);
+    s.servicePortion = Math.round(service * ratio);
+    s.discountPortion = Math.round(discount * ratio);
 
+    let finalAmount = Math.max(0, s.itemsSubtotal + s.taxPortion + s.servicePortion - s.discountPortion);
+
+    // Rounding
     if (state.roundingMode === '500') {
-      bd.grandTotal = Math.round(rawTotal / 500) * 500;
+      finalAmount = Math.round(finalAmount / 500) * 500;
     } else if (state.roundingMode === '1000') {
-      bd.grandTotal = Math.round(rawTotal / 1000) * 1000;
-    } else {
-      bd.grandTotal = Math.round(rawTotal);
+      finalAmount = Math.round(finalAmount / 1000) * 1000;
     }
+
+    s.total = Math.round(finalAmount);
   });
 
-  return breakdowns;
+  return shares;
 }
 
-// Step 4: Selesai & Format WhatsApp
+// Step 4: Final Breakdown & WhatsApp Message Generator
 function calculateAndRenderFinal() {
-  const breakdowns = calculateBreakdowns();
-  const payer = state.members.find(m => m.id === state.payerId) || state.members[0];
+  const shares = calculateSplits();
+  const active = getActiveParticipants();
+  const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
 
   elements.finalMerchantName.textContent = state.receipt.merchant || 'Struk Belanja';
   elements.finalTotalAmount.textContent = `Total: Rp ${formatRupiah(state.receipt.total)}`;
-  elements.finalPayerInfo.textContent = `Penanggung: ${payer.name}`;
+  elements.finalPayerInfo.textContent = `Penanggung: ${payer ? payer.name : '-'}`;
 
   elements.finalMembersContainer.innerHTML = '';
 
-  state.members.forEach(m => {
-    const bd = breakdowns[m.id];
+  active.forEach(m => {
+    const s = shares[m.id];
     const isPayer = m.id === state.payerId;
 
     const row = document.createElement('div');
-    row.className = `final-member-row ${isPayer ? 'is-payer' : ''}`;
-
-    const statusText = isPayer
-      ? 'Penanggung Tagihan (Payer)'
-      : `Transfer ke ${payer.name}`;
-
+    row.className = 'final-member-row' + (isPayer ? ' is-payer' : '');
     row.innerHTML = `
       <div class="final-row-left">
-        <span class="avatar-initial">${m.initial || m.name.charAt(0)}</span>
+        <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
         <div>
-          <div class="final-row-name">${m.name}</div>
-          <div class="final-row-sub">${statusText}</div>
+          <span class="final-row-name">${escapeHtml(m.name)} ${isPayer ? '⭐ (Penalangi)' : ''}</span>
+          <div class="final-row-sub">${s.items.length} Menu dipesan</div>
         </div>
       </div>
-      <div class="final-row-amount">
-        Rp ${formatRupiah(bd.grandTotal)}
-      </div>
+      <strong class="final-row-amount">Rp ${formatRupiah(s.total)}</strong>
     `;
-
     elements.finalMembersContainer.appendChild(row);
   });
 
-  generateWhatsAppRecap(breakdowns, state.receipt.total);
+  // Generate WhatsApp Message
+  const waText = formatWhatsAppText(shares, payer);
+  elements.waPreview.textContent = waText;
 }
 
-function generateWhatsAppRecap(breakdowns, totalBill) {
-  const payer = state.members.find(m => m.id === state.payerId) || state.members[0];
-  const merchant = state.receipt.merchant || 'Merchant';
-  const dateStr = state.receipt.date || new Date().toLocaleDateString('id-ID');
+function formatWhatsAppText(shares, payer) {
+  const r = state.receipt;
+  const active = getActiveParticipants();
+  let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*
+`;
+  text += `📅 Tanggal: ${r.date || 'Hari ini'}
+`;
+  text += `💰 Total Tagihan: Rp ${formatRupiah(r.total)}
+`;
+  text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*
+`;
+  text += `------------------------------------
 
-  let msg = `*RINCIAN SPLIT BILL: ${merchant.toUpperCase()}*\n`;
-  msg += `Tanggal: ${dateStr}\n`;
-  msg += `Total Tagihan: *Rp ${formatRupiah(totalBill)}*\n`;
-  msg += `Penanggung Pembayaran: *${payer.name}*\n`;
-  msg += `----------------------------------------\n`;
-  msg += `*PEMBAGIAN PER ANGGOTA:*\n\n`;
+`;
 
-  let counter = 1;
-  state.members.forEach(m => {
-    const bd = breakdowns[m.id];
+  active.forEach(m => {
+    const s = shares[m.id];
     const isPayer = m.id === state.payerId;
+    text += `👤 *${m.name}* ${isPayer ? '(Penalangi)' : ''}
+`;
+    s.items.forEach(it => {
+      text += `  • ${it.name} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}
+`;
+    });
+    if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}
+`;
+    if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}
+`;
+    if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}
+`;
+    text += `  👉 *Total: Rp ${formatRupiah(s.total)}*
 
-    msg += `${counter}. *${m.name}*`;
-    if (isPayer) {
-      msg += ` *(Penanggung Pembayaran)*\n`;
-      msg += `   • Porsi Sendiri: Rp ${formatRupiah(bd.grandTotal)}\n`;
-    } else {
-      msg += `\n`;
-      msg += `   • *Nominal Transfer: Rp ${formatRupiah(bd.grandTotal)}*\n`;
-    }
-
-    if (bd.items.length > 0) {
-      const itemsList = bd.items.map(i => `${i.name} (${i.portion})`).join(', ');
-      msg += `   • Menu: ${itemsList}\n`;
-    } else {
-      msg += `   • Menu: -\n`;
-    }
-    msg += `\n`;
-    counter++;
+`;
   });
 
-  msg += `----------------------------------------\n`;
-  msg += `*REKENING PEMBAYARAN (${payer.name.toUpperCase()}):*\n`;
-  msg += `${payer.paymentInfo || 'Hubungi penanggung pembayaran untuk nomor rekening'}\n\n`;
-  msg += `_Catatan: Mohon konfirmasi atau kirim bukti transfer jika pembayaran telah dilakukan. Terima kasih._`;
+  text += `------------------------------------
+`;
+  text += `📲 *Info Transfer ke ${payer ? payer.name : 'Penalangi'}:*
+`;
+  text += `${payer && payer.paymentInfo ? payer.paymentInfo : 'Hubungi penalangi untuk nomor rekening/e-wallet'}
 
-  elements.waPreview.textContent = msg;
-  return msg;
+`;
+  text += `_Dihitung otomatis dengan PatungIn_`;
+
+  return text;
 }
 
-function copyWhatsAppRecap() {
+function copyWaMessage() {
   const text = elements.waPreview.textContent;
   navigator.clipboard.writeText(text).then(() => {
-    showToast('Format rincian berhasil disalin ke clipboard', 'success');
+    showToast('Pesan WhatsApp berhasil disalin ke clipboard! 📋', 'success');
   }).catch(() => {
-    showToast('Gagal menyalin otomatis', 'error');
+    showToast('Gagal menyalin teks', 'error');
   });
 }
 
-function openWhatsAppDirect() {
+function openWaDirect() {
   const text = encodeURIComponent(elements.waPreview.textContent);
   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
 }
@@ -777,119 +862,149 @@ function resetAllToStart() {
     discount: 0,
     total: 0
   };
+  state.participatingMemberIds = state.allMembers.map(m => m.id);
   goToStep(1);
-  showToast('Sesi split bill telah direset', 'info');
+  showToast('Siap membuat split bill baru', 'info');
 }
 
-// Modals
-function openCircleModal() {
-  renderCircleModalInputs();
-  elements.modalCircle.classList.remove('hidden');
-}
-
-function renderCircleModalInputs() {
-  elements.circleSettingsForm.innerHTML = '';
-  state.members.forEach((m, idx) => {
-    const row = document.createElement('div');
-    row.className = 'form-member-row';
-    row.innerHTML = `
-      <div class="avatar-initial-badge">${m.initial || m.name.charAt(0)}</div>
-      <input type="text" class="input-text" value="${escapeHtml(m.name)}" data-idx="${idx}" data-field="name" placeholder="Nama Anggota">
-      <input type="text" class="input-text" value="${escapeHtml(m.paymentInfo || '')}" data-idx="${idx}" data-field="paymentInfo" placeholder="Rekening / E-Wallet">
-    `;
-    elements.circleSettingsForm.appendChild(row);
-  });
-}
-
-function handleSaveCircleFromModal() {
-  const rows = elements.circleSettingsForm.querySelectorAll('.form-member-row');
-  rows.forEach((row, idx) => {
-    const nameInput = row.querySelector('[data-field="name"]');
-    const paymentInput = row.querySelector('[data-field="paymentInfo"]');
-
-    if (state.members[idx]) {
-      const name = nameInput.value.trim() || `Anggota ${idx + 1}`;
-      state.members[idx].name = name;
-      state.members[idx].initial = name.charAt(0).toUpperCase();
-      state.members[idx].paymentInfo = paymentInput.value.trim();
-    }
-  });
-
-  saveMembers();
-  elements.modalCircle.classList.add('hidden');
-}
-
-function openApiKeyModal() {
-  elements.inputGeminiKey.value = state.apiKey;
-  elements.modalApiKey.classList.remove('hidden');
-}
-
-function handleSaveApiKey() {
-  const key = elements.inputGeminiKey.value.trim();
-  state.apiKey = key;
-  localStorage.setItem('gemini_api_key', key);
-  elements.modalApiKey.classList.add('hidden');
-  showToast('Gemini API Key tersimpan', 'success');
-}
-
-function handleClearApiKey() {
-  state.apiKey = '';
-  localStorage.removeItem('gemini_api_key');
-  elements.inputGeminiKey.value = '';
-  elements.modalApiKey.classList.add('hidden');
-  showToast('API Key telah dihapus', 'info');
-}
-
-function openAddItemModal() {
+// Custom Item Modal
+function openItemModal() {
   elements.inputItemName.value = '';
   elements.inputItemQty.value = '1';
   elements.inputItemPrice.value = '';
   elements.modalCustomItem.classList.remove('hidden');
+  elements.inputItemName.focus();
 }
 
-function handleSaveCustomItem() {
+function closeItemModal() {
+  elements.modalCustomItem.classList.add('hidden');
+}
+
+function saveCustomItem() {
   const name = elements.inputItemName.value.trim();
   const qty = Number(elements.inputItemQty.value) || 1;
   const price = Number(elements.inputItemPrice.value) || 0;
 
-  if (!name || price <= 0) {
-    showToast('Masukkan nama dan harga yang valid', 'error');
+  if (!name) {
+    showToast('Nama menu tidak boleh kosong', 'error');
+    return;
+  }
+  if (price <= 0) {
+    showToast('Nominal harga harus lebih dari 0', 'error');
     return;
   }
 
+  const active = getActiveParticipants();
+  const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
+
   const newItem = {
-    id: `custom-${Date.now()}`,
-    name,
-    qty,
+    id: 'custom_' + Date.now(),
+    name: name,
+    qty: qty,
     price: Math.round(price / qty),
     total: price,
-    assignedTo: [state.members[0].id]
+    assignedTo: [activeIds[0] || 'm1']
   };
 
   state.receipt.items.push(newItem);
+  closeItemModal();
   recalculateTotals();
   renderStep2Review();
-  elements.modalCustomItem.classList.add('hidden');
-  showToast(`Item "${name}" berhasil ditambahkan`, 'success');
+  showToast(`Menu "${name}" berhasil ditambahkan`, 'success');
 }
 
-function editCharge(field, label) {
-  const currentVal = state.receipt[field] || 0;
-  const newVal = prompt(`Ubah nilai ${label} (Rp):`, currentVal);
-  if (newVal !== null) {
-    const num = Number(newVal);
-    if (!isNaN(num) && num >= 0) {
-      state.receipt[field] = num;
-      recalculateTotals();
-      showToast(`${label} diperbarui menjadi Rp ${formatRupiah(num)}`, 'success');
-    }
+function promptEditCharge(field, label) {
+  const current = state.receipt[field] || 0;
+  const val = prompt(`Masukkan nominal baru untuk ${label} (Rp):`, current);
+  if (val !== null) {
+    const num = Number(val.replace(/[^0-9]/g, '')) || 0;
+    state.receipt[field] = num;
+    recalculateTotals();
+    showToast(`${label} diperbarui menjadi Rp ${formatRupiah(num)}`, 'success');
   }
 }
 
-// Utility Functions
+// Master Member Circle Modal
+function openCircleModal() {
+  elements.circleSettingsForm.innerHTML = '';
+  state.allMembers.forEach((m, idx) => {
+    const row = document.createElement('div');
+    row.className = 'form-member-row';
+    row.innerHTML = `
+      <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
+      <input type="text" class="input-text" data-idx="${idx}" data-field="name" value="${escapeHtml(m.name)}" placeholder="Nama">
+      <input type="text" class="input-text" data-idx="${idx}" data-field="paymentInfo" value="${escapeHtml(m.paymentInfo || '')}" placeholder="BCA / Mandiri / GoPay...">
+    `;
+    elements.circleSettingsForm.appendChild(row);
+  });
+  elements.modalCircle.classList.remove('hidden');
+}
+
+function closeCircleModal() {
+  elements.modalCircle.classList.add('hidden');
+}
+
+function saveCircleModalChanges() {
+  const inputs = elements.circleSettingsForm.querySelectorAll('input');
+  inputs.forEach(inp => {
+    const idx = Number(inp.dataset.idx);
+    const field = inp.dataset.field;
+    if (state.allMembers[idx]) {
+      state.allMembers[idx][field] = inp.value.trim();
+      if (field === 'name') {
+        state.allMembers[idx].initial = inp.value.trim().charAt(0).toUpperCase() || '?';
+      }
+    }
+  });
+
+  saveMembers();
+  closeCircleModal();
+  if (state.currentStep === 3) renderStep3();
+  showToast('Pengaturan anggota master disimpan', 'success');
+}
+
+function resetDefaultCircle() {
+  state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+  state.participatingMemberIds = state.allMembers.map(m => m.id);
+  saveMembers();
+  openCircleModal();
+  showToast('Master anggota dikembalikan ke default', 'info');
+}
+
+// API Key Modal
+function openApiKeyModal() {
+  elements.inputGeminiKey.value = state.apiKey || '';
+  elements.modalApiKey.classList.remove('hidden');
+}
+
+function closeApiKeyModal() {
+  elements.modalApiKey.classList.add('hidden');
+}
+
+function saveApiKey() {
+  const val = elements.inputGeminiKey.value.trim();
+  state.apiKey = val;
+  if (val) {
+    localStorage.setItem('gemini_api_key', val);
+    showToast('Gemini API Key disimpan!', 'success');
+  } else {
+    localStorage.removeItem('gemini_api_key');
+    showToast('Mode simulasi aktif (Key dikosongkan)', 'info');
+  }
+  closeApiKeyModal();
+}
+
+function clearApiKey() {
+  state.apiKey = '';
+  localStorage.removeItem('gemini_api_key');
+  elements.inputGeminiKey.value = '';
+  closeApiKeyModal();
+  showToast('API Key dihapus. Mode simulasi aktif.', 'info');
+}
+
+// Utilities
 function formatRupiah(num) {
-  if (isNaN(num)) return '0';
-  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (Math.round(num) || 0).toLocaleString('id-ID');
 }
 
 function escapeHtml(str) {
@@ -902,17 +1017,16 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-function showToast(message, type = 'info') {
+function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
+  toast.className = 'toast toast-' + type;
+  toast.textContent = msg;
   elements.toastContainer.appendChild(toast);
-
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
     setTimeout(() => toast.remove(), 250);
   }, 2800);
 }
 
+// Run init on DOM ready
 document.addEventListener('DOMContentLoaded', init);
