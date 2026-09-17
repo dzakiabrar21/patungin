@@ -2,18 +2,20 @@
 
 > **Smart Receipt OCR & Proportional Split Bill Web Application**
 
-PatungIn is a modern web application designed to simplify bill splitting from receipt photos. Powered by Google Gemini Vision AI, it automatically extracts line items, applies proportional tax and service charges (fair split), and generates formatted breakdown messages ready for messaging platforms like WhatsApp.
+PatungIn is a modern, mobile-first web application designed to simplify bill splitting from receipt photos. Powered by Google Gemini Vision AI, it automatically extracts line items, applies proportional tax and service charges (fair split), and generates formatted breakdown messages ready for messaging platforms like WhatsApp.
 
 ---
 
 ## Features
 
 - **Automated Receipt Scanning**: Uses Google Gemini Vision API to extract merchant name, individual menu items, quantity, unit price, tax, and service charges.
-- **GoPay-Inspired 4-Step Flow**:
-  1. **Upload**: Select or drop a receipt photo.
-  2. **Review**: Confirm or adjust line items and taxes.
-  3. **Assign**: Assign personal and shared items to members with proportional fair-split math.
-  4. **Settlement**: Export clean, itemized WhatsApp payment request messages.
+- **Mobile-First Responsive Design**: Tailored specifically for smartphones (360px - 430px) with touch-friendly controls, bottom-sheet modals, and native-like app shell.
+- **Smooth Entrance Splash Animation**: Polished branding intro with auto-dismiss and tap-to-skip.
+- **Intuitive Receipt-First 4-Step Flow**:
+  1. **Upload**: Select or drop a receipt photo, or test immediately with built-in presets (Kopi Kenangan, Bebek Kaleyo, Solaria).
+  2. **Review Detail Pesanan**: Confirm line items, prices, PB1 restaurant tax, service charge, and discounts.
+  3. **Pilih Teman & Bagi**: Dynamically select which friends participate in this bill, add new friends with quick inline input, choose the payer (who covered the bill), and assign items to diners.
+  4. **Settlement & WhatsApp Export**: Review final per-person shares and copy or launch formatted payment breakdown messages directly to WhatsApp.
 - **Proportional Fair Split**: Distributes restaurant tax (PB1) and service charges proportionally according to each member's consumption rather than equal flat splits.
 - **Offline Simulation Mode**: Includes built-in sample receipts for development and testing without an active API key.
 
@@ -29,7 +31,7 @@ PatungIn is a modern web application designed to simplify bill splitting from re
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/patungin.git
+   git clone https://github.com/dzakiabrar21/patungin.git
    cd patungin
    ```
 
@@ -57,7 +59,7 @@ PatungIn is a modern web application designed to simplify bill splitting from re
    npm run dev
    ```
 
-5. Open your browser at `http://localhost:3000`.
+5. Open your browser at `http://localhost:3000` (or `http://localhost:3001`).
 
 ---
 
@@ -66,11 +68,11 @@ PatungIn is a modern web application designed to simplify bill splitting from re
 ```
 patungin/
 ├── public/
-│   ├── index.html         # Application markup
+│   ├── index.html         # Application markup & mobile app shell
 │   ├── css/
-│   │   └── style.css      # Design system & stylesheet
+│   │   └── style.css      # Mobile-first fintech design system & animations
 │   └── js/
-│       └── app.js         # Client-side state management & calculation engine
+│       └── app.js         # Client-side state, participant manager & calculation engine
 ├── services/
 │   └── geminiService.js   # Multimodal Gemini OCR service & fallback presets
 ├── server.js              # Express API server
