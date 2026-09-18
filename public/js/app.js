@@ -7,27 +7,39 @@
 const DEFAULT_MEMBERS = [
   { 
     id: 'm1', 
-    name: 'Saya', 
-    initial: 'S', 
-    paymentInfo: 'BCA: 1234567890 a.n Saya\nBSI: 7123456789 a.n Saya\nGoPay: 08123456789' 
+    name: 'jeki', 
+    initial: 'J', 
+    paymentInfo: 'Transfer ke jeki' 
   },
   { 
     id: 'm2', 
-    name: 'Andi', 
-    initial: 'A', 
-    paymentInfo: 'Mandiri: 0987654321 a.n Andi\nShopeePay: 08129876543' 
+    name: 'nabiluy', 
+    initial: 'N', 
+    paymentInfo: 'Transfer ke nabiluy' 
   },
   { 
     id: 'm3', 
-    name: 'Budi', 
-    initial: 'B', 
-    paymentInfo: 'BCA: 5432167890 a.n Budi\nGoPay: 08123456789' 
+    name: 'alysuy', 
+    initial: 'A', 
+    paymentInfo: 'Transfer ke alysuy' 
   },
   { 
     id: 'm4', 
-    name: 'Citra', 
-    initial: 'C', 
-    paymentInfo: 'BSI: 8901234567 a.n Citra\nDANA: 08571234567' 
+    name: 'gifaruy', 
+    initial: 'G', 
+    paymentInfo: 'Transfer ke gifaruy' 
+  },
+  { 
+    id: 'm5', 
+    name: 'salwuy', 
+    initial: 'S', 
+    paymentInfo: 'Transfer ke salwuy' 
+  },
+  { 
+    id: 'm6', 
+    name: 'sosuy', 
+    initial: 'S', 
+    paymentInfo: 'DANA: a.n sosuy' 
   }
 ];
 
@@ -189,12 +201,20 @@ function loadMembers() {
   const saved = localStorage.getItem('patungin_members');
   if (saved) {
     try {
-      state.allMembers = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Auto-migrate if device still holds the old default ["Saya", "Andi", "Budi", "Citra"]
+      const isOldDefault = Array.isArray(parsed) && parsed.length === 4 && parsed.some(m => m.name === 'Saya' || m.name === 'Andi');
+      if (isOldDefault) {
+        state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+        saveMembers();
+      } else {
+        state.allMembers = parsed;
+      }
     } catch {
-      state.allMembers = [...DEFAULT_MEMBERS];
+      state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
     }
   } else {
-    state.allMembers = [...DEFAULT_MEMBERS];
+    state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
   }
 
   // By default, everyone is participating
