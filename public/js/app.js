@@ -179,7 +179,6 @@ function init() {
   }
 
   loadMembers();
-  loadPresets();
   setupEventListeners();
   goToStep(1);
 }
@@ -415,6 +414,7 @@ async function loadPresets() {
 }
 
 function renderPresetButtons() {
+  if (!elements.presetButtonsContainer) return;
   elements.presetButtonsContainer.innerHTML = '';
   state.presets.forEach(p => {
     const btn = document.createElement('button');
