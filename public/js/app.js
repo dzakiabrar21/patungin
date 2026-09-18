@@ -368,7 +368,7 @@ function setupEventListeners() {
   elements.btnCancelPayment.addEventListener('click', closePaymentModal);
   elements.btnSavePayment.addEventListener('click', savePaymentModalChanges);
 
-  elements.btnApiKey.addEventListener('click', openApiKeyModal);
+  if (elements.btnApiKey) elements.btnApiKey.addEventListener('click', openApiKeyModal);
   elements.btnCloseApiModal.addEventListener('click', closeApiKeyModal);
   elements.btnSaveApiKey.addEventListener('click', saveApiKey);
   elements.btnClearApiKey.addEventListener('click', clearApiKey);
@@ -637,14 +637,8 @@ function renderStep3PayerDropdown() {
   active.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.id;
-    // Extract first account or summary for dropdown label
-    let accountSummary = 'Belum ada rek';
-    if (m.paymentInfo && m.paymentInfo.trim()) {
-      const firstLine = m.paymentInfo.split('\n')[0].trim();
-      const accountsCount = m.paymentInfo.split('\n').filter(Boolean).length;
-      accountSummary = accountsCount > 1 ? `${firstLine} (+ ${accountsCount - 1} rek lainnya)` : firstLine;
-    }
-    opt.textContent = `${m.name} (${accountSummary})`;
+    // Clean label: nama (Transfer ke nama)
+    opt.textContent = `${m.name} (Transfer ke ${m.name})`;
     if (m.id === state.payerId) opt.selected = true;
     elements.step3PayerSelect.appendChild(opt);
   });

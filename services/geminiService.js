@@ -122,8 +122,6 @@ Return STRICTLY a JSON object matching this schema:
 Do not include markdown backticks or commentary. Only raw JSON.
 `;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-
     const requestBody = {
       contents: [
         {
@@ -144,15 +142,49 @@ Do not include markdown backticks or commentary. Only raw JSON.
       }
     };
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    // Resilient Model Calling: try gemini-3.6-flash, on 503/429 retry and fallback to gemini-flash-latest
+    const CANDIDATE_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
+    let lastError = null;
+    let response = null;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API returned ${response.status}: ${errText}`);
+    for (const modelName of CANDIDATE_MODELS) {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (response.status === 503 || response.status === 429) {
+            console.warn(`[GeminiService] Model ${modelName} returned ${response.status} (High Demand, attempt ${attempt + 1}). Retrying...`);
+            await new Promise(r => setTimeout(r, 800));
+            continue;
+          }
+
+          if (response.ok) {
+            break;
+          } else {
+            const errText = await response.text();
+            lastError = new Error(`Gemini API (${modelName}) returned ${response.status}: ${errText}`);
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          console.warn(`[GeminiService] Call to ${modelName} failed:`, err.message);
+          break;
+        }
+      }
+
+      if (response && response.ok) {
+        break;
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw lastError || new Error('Gagal memproses struk dengan Gemini API.');
     }
 
     const data = await response.json();
