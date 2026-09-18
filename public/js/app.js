@@ -37,7 +37,8 @@ const state = {
   participatingMemberIds: [], // IDs of members active in this specific bill
   payerMode: 'single', // 'single' | 'multi'
   payerId: 'm1',
-  payerAmounts: {}, // { [memberId]: number } for multi-payer mode
+  payerAmounts: {},
+  primaryPayerId: 'm1', // { [memberId]: number } for multi-payer mode
   receipt: {
     merchant: '',
     date: '',
@@ -787,11 +788,15 @@ function initializeMultiPayerAmounts() {
   const active = getActiveParticipants();
   const total = state.receipt.total || 0;
 
+  if (!state.primaryPayerId || !active.some(m => m.id === state.primaryPayerId)) {
+    state.primaryPayerId = state.payerId || active[0]?.id;
+  }
+
   // If empty or payerAmounts don't match active members
   if (Object.keys(state.payerAmounts).length === 0) {
     state.payerAmounts = {};
     active.forEach(m => {
-      state.payerAmounts[m.id] = (m.id === state.payerId) ? total : 0;
+      state.payerAmounts[m.id] = (m.id === state.primaryPayerId) ? total : 0;
     });
   }
 }
@@ -801,19 +806,25 @@ function renderMultiPayerInputs() {
   elements.multiPayerInputsList.innerHTML = '';
   const total = state.receipt.total || 0;
 
+  if (!state.primaryPayerId || !active.some(m => m.id === state.primaryPayerId)) {
+    state.primaryPayerId = state.payerId || active[0]?.id;
+  }
+
   active.forEach(m => {
     const currentPaid = state.payerAmounts[m.id] || 0;
+    const isPrimary = (m.id === state.primaryPayerId);
     const row = document.createElement('div');
-    row.className = 'multi-payer-row';
+    row.className = 'multi-payer-row' + (isPrimary ? ' is-primary-payer' : '');
     row.innerHTML = `
       <div class="multi-payer-row-left">
         <div class="avatar-initial-sm">${escapeHtml(m.initial)}</div>
         <span class="multi-payer-name">${escapeHtml(m.name)}</span>
+        ${isPrimary ? '<span class="primary-payer-tag">Utama</span>' : ''}
       </div>
       <div class="multi-payer-row-right">
         <span>Rp</span>
         <input type="number" class="input-payer-amount" data-id="${m.id}" value="${currentPaid}" step="1000" min="0">
-        <button type="button" class="btn-all-pay" data-id="${m.id}" title="Orang ini bayar penuh">Full</button>
+        <button type="button" class="btn-all-pay ${isPrimary ? 'active' : ''}" data-id="${m.id}" title="${isPrimary ? 'Penampung sisa tagihan utama' : 'Jadikan pembayar utama (Full)'}">Full</button>
       </div>
     `;
 
@@ -821,17 +832,40 @@ function renderMultiPayerInputs() {
     input.addEventListener('input', (e) => {
       const val = Math.max(0, Number(e.target.value) || 0);
       state.payerAmounts[m.id] = val;
+
+      // AUTO-BALANCE LOGIC:
+      // If editing someone other than the primary payer,
+      // automatically adjust the primary payer's amount so total stays equal to total receipt!
+      if (state.primaryPayerId && m.id !== state.primaryPayerId) {
+        const othersSum = active
+          .filter(item => item.id !== state.primaryPayerId)
+          .reduce((sum, item) => sum + (state.payerAmounts[item.id] || 0), 0);
+
+        const remainder = Math.max(0, total - othersSum);
+        state.payerAmounts[state.primaryPayerId] = remainder;
+
+        const primaryInput = elements.multiPayerInputsList.querySelector(`.input-payer-amount[data-id="${state.primaryPayerId}"]`);
+        if (primaryInput) {
+          primaryInput.value = remainder;
+        }
+      }
+
       updateMultiPayerStatus();
       renderStep3LiveShares();
     });
 
     const btnAll = row.querySelector('.btn-all-pay');
     btnAll.addEventListener('click', () => {
+      // Set this member as primary payer
+      state.primaryPayerId = m.id;
+      
+      // Give them full total and reset others to 0
       active.forEach(item => {
         state.payerAmounts[item.id] = (item.id === m.id) ? total : 0;
       });
       renderMultiPayerInputs();
       renderStep3LiveShares();
+      showToast(`${m.name} dijadikan pembayar utama (Full)`, 'info');
     });
 
     elements.multiPayerInputsList.appendChild(row);

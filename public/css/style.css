@@ -1948,3 +1948,24 @@ html, body {
   font-weight: 800;
   color: #047857;
 }
+
+.multi-payer-row.is-primary-payer {
+  border-color: var(--color-primary);
+  background: #f0f9ff;
+}
+
+.primary-payer-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid rgba(0, 129, 167, 0.2);
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.btn-all-pay.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+}
