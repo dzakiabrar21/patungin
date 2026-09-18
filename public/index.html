@@ -48,8 +48,11 @@
           </div>
         </div>
         <div class="header-right">
-          <button id="btn-circle-settings" class="btn-header-action" title="Kelola Anggota Master">
-            <span>Anggota</span>
+          <button id="btn-circle-settings" class="btn-header-action" title="Pilih Siapa yang Ikut Patungan">
+            <span>👥 Anggota</span>
+          </button>
+          <button id="btn-payment-settings" class="btn-header-action" title="Pengaturan Nomor Rekening & E-Wallet">
+            <span>💳 Rekening</span>
           </button>
           <button id="btn-api-key" class="btn-header-action" title="Konfigurasi AI Key">
             <span>AI Key</span>
@@ -233,7 +236,10 @@
 
             <!-- Payer Selection (Who paid the bill) -->
             <div class="payer-selection-box">
-              <label for="step3-payer-select" class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <label for="step3-payer-select" class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+                <button type="button" id="btn-open-rek-inline" class="btn-link-action" style="font-size: 0.72rem;">Atur No. Rekening ⚙️</button>
+              </div>
               <select id="step3-payer-select" class="select-clean">
                 <!-- Injected via JS with active participants -->
               </select>
@@ -360,27 +366,69 @@
 
   <!-- MODALS -->
 
-  <!-- Modal Anggota Master -->
+  <!-- MODAL 1: Pilih Anggota yang Ikut Patungan -->
   <div id="modal-circle-settings" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">Kelola Anggota & Rekening</h3>
-          <p class="modal-desc">Atur nama anggota dan simpan nomor rekening / e-wallet (BCA, BSI, GoPay, dll)</p>
+          <h3 class="modal-title">Pilih Anggota yang Ikut</h3>
+          <p class="modal-desc">Centang siapa saja yang ikut patungan di tagihan ini</p>
         </div>
         <button class="btn-close-modal" id="btn-close-circle-modal" aria-label="Tutup">✕</button>
       </div>
       <div class="modal-body">
-        <div id="circle-settings-form-container" class="member-manage-list">
+        
+        <!-- Member Selection List with Checkboxes -->
+        <div id="circle-pick-list-container" class="member-pick-list">
           <!-- Injected via JS -->
         </div>
-        <button type="button" id="btn-modal-add-member" class="btn-outline btn-block" style="margin-top: 0.85rem;">
-          <span>+ Tambah Anggota Baru</span>
-        </button>
+
+        <!-- Quick Add Member Row -->
+        <div class="modal-add-member-section">
+          <div class="quick-add-member-row" style="margin-top: 0.85rem; margin-bottom: 0;">
+            <input type="text" id="input-modal-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
+            <button type="button" id="btn-modal-quick-add" class="btn-primary-sm">+ Tambah</button>
+          </div>
+        </div>
+
+        <!-- Shortcut banner to Payment Settings -->
+        <div class="modal-shortcut-banner">
+          <span>Mau atur nomor rekening / e-wallet transfer?</span>
+          <button type="button" id="btn-switch-to-payment" class="btn-link-action">Buka Pengaturan Rekening →</button>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button id="btn-reset-default-circle" class="btn-outline-sm" type="button">Reset Default</button>
-        <button id="btn-save-circle" class="btn-primary-sm" type="button">Simpan</button>
+        <button id="btn-save-circle" class="btn-primary-sm" type="button">Terapkan Anggota</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Pengaturan Nomor Rekening & E-Wallet (BCA, BSI, GoPay, dll) -->
+  <div id="modal-payment-settings" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Pengaturan Rekening & E-Wallet</h3>
+          <p class="modal-desc">Simpan nomor rekening tiap orang untuk info transfer penalangi</p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-payment-modal" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <p class="payment-modal-intro">
+          Tiap anggota bisa menyimpan beberapa rekening sekaligus (misal: <strong>BCA, BSI, Mandiri, GoPay, DANA</strong>).
+        </p>
+
+        <div id="payment-settings-form-container" class="payment-cards-list">
+          <!-- Injected via JS -->
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-payment" class="btn-outline-sm" type="button">Tutup</button>
+        <button id="btn-save-payment" class="btn-primary-sm" type="button">Simpan Rekening</button>
       </div>
     </div>
   </div>

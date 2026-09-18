@@ -114,13 +114,25 @@ const elements = {
   btnResetNewBill: document.getElementById('btn-reset-new-bill'),
 
   // Modals
+  // Modal 1: Anggota
   btnCircleSettings: document.getElementById('btn-circle-settings'),
   modalCircle: document.getElementById('modal-circle-settings'),
   btnCloseCircleModal: document.getElementById('btn-close-circle-modal'),
-  circleSettingsForm: document.getElementById('circle-settings-form-container'),
-  btnModalAddMember: document.getElementById('btn-modal-add-member'),
+  circlePickListContainer: document.getElementById('circle-pick-list-container'),
+  inputModalQuickName: document.getElementById('input-modal-quick-name'),
+  btnModalQuickAdd: document.getElementById('btn-modal-quick-add'),
+  btnSwitchToPayment: document.getElementById('btn-switch-to-payment'),
   btnSaveCircle: document.getElementById('btn-save-circle'),
   btnResetDefaultCircle: document.getElementById('btn-reset-default-circle'),
+
+  // Modal 2: Rekening
+  btnPaymentSettings: document.getElementById('btn-payment-settings'),
+  btnOpenRekInline: document.getElementById('btn-open-rek-inline'),
+  modalPayment: document.getElementById('modal-payment-settings'),
+  btnClosePaymentModal: document.getElementById('btn-close-payment-modal'),
+  btnCancelPayment: document.getElementById('btn-cancel-payment'),
+  paymentSettingsForm: document.getElementById('payment-settings-form-container'),
+  btnSavePayment: document.getElementById('btn-save-payment'),
 
   btnApiKey: document.getElementById('btn-api-key'),
   modalApiKey: document.getElementById('modal-api-key'),
@@ -314,12 +326,29 @@ function setupEventListeners() {
   elements.btnEditService.addEventListener('click', () => promptEditCharge('service', 'Service Charge'));
   elements.btnEditDiscount.addEventListener('click', () => promptEditCharge('discount', 'Diskon Promo'));
 
-  // Modals Header
+  // Modal 1: Anggota
   elements.btnCircleSettings.addEventListener('click', openCircleModal);
   elements.btnCloseCircleModal.addEventListener('click', closeCircleModal);
   elements.btnSaveCircle.addEventListener('click', saveCircleModalChanges);
-  if (elements.btnModalAddMember) elements.btnModalAddMember.addEventListener('click', handleAddNewMemberInModal);
   elements.btnResetDefaultCircle.addEventListener('click', resetDefaultCircle);
+  elements.btnModalQuickAdd.addEventListener('click', handleModalQuickAdd);
+  elements.inputModalQuickName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleModalQuickAdd();
+    }
+  });
+  elements.btnSwitchToPayment.addEventListener('click', () => {
+    closeCircleModal();
+    openPaymentModal();
+  });
+
+  // Modal 2: Rekening
+  elements.btnPaymentSettings.addEventListener('click', openPaymentModal);
+  if (elements.btnOpenRekInline) elements.btnOpenRekInline.addEventListener('click', openPaymentModal);
+  elements.btnClosePaymentModal.addEventListener('click', closePaymentModal);
+  elements.btnCancelPayment.addEventListener('click', closePaymentModal);
+  elements.btnSavePayment.addEventListener('click', savePaymentModalChanges);
 
   elements.btnApiKey.addEventListener('click', openApiKeyModal);
   elements.btnCloseApiModal.addEventListener('click', closeApiKeyModal);
@@ -947,9 +976,12 @@ function promptEditCharge(field, label) {
 }
 
 
-// Master Member Circle Modal (Dynamic Adjust & Multi-Account Support)
+
+// ==========================================================================
+// MODAL 1: PILIH ANGGOTA YANG IKUT (CLEAN & RINGAN)
+// ==========================================================================
 function openCircleModal() {
-  renderCircleModalCards();
+  renderCirclePickList();
   elements.modalCircle.classList.remove('hidden');
 }
 
@@ -957,121 +989,96 @@ function closeCircleModal() {
   elements.modalCircle.classList.add('hidden');
 }
 
-function renderCircleModalCards() {
-  elements.circleSettingsForm.innerHTML = '';
+function renderCirclePickList() {
+  elements.circlePickListContainer.innerHTML = '';
   const canDelete = state.allMembers.length > 1;
 
-  state.allMembers.forEach((m, idx) => {
-    const card = document.createElement('div');
-    card.className = 'member-manage-card';
-    card.dataset.id = m.id;
-    card.dataset.idx = idx;
+  state.allMembers.forEach(m => {
+    const isParticipating = state.participatingMemberIds.includes(m.id);
+    const row = document.createElement('div');
+    row.className = 'member-pick-row' + (isParticipating ? ' active' : '');
 
-    card.innerHTML = `
-      <div class="member-manage-header">
-        <div class="member-manage-left">
-          <div class="avatar-initial-badge" id="avatar-${m.id}">${escapeHtml(m.initial)}</div>
-          <input type="text" class="input-text-compact input-member-name" data-field="name" value="${escapeHtml(m.name)}" placeholder="Nama Anggota">
+    row.innerHTML = `
+      <div class="member-pick-left">
+        <div class="member-checkbox-circle">${isParticipating ? '✓' : ''}</div>
+        <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
+        <div>
+          <div class="member-pick-name">${escapeHtml(m.name)}</div>
+          <div class="member-pick-sub">${isParticipating ? 'Ikut Patungan' : 'Tidak Ikut'}</div>
         </div>
-        <button type="button" class="btn-delete-member" title="Hapus Anggota" ${canDelete ? '' : 'disabled style="opacity:0.3; cursor:not-allowed;"'}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
       </div>
-      <div class="member-payment-section">
-        <div class="payment-label-row">
-          <span class="payment-label">Pilihan Rekening / E-Wallet:</span>
-          <div class="quick-bank-chips">
-            <button type="button" class="btn-quick-bank" data-bank="BCA">+ BCA</button>
-            <button type="button" class="btn-quick-bank" data-bank="BSI">+ BSI</button>
-            <button type="button" class="btn-quick-bank" data-bank="Mandiri">+ Mandiri</button>
-            <button type="button" class="btn-quick-bank" data-bank="GoPay">+ GoPay</button>
-            <button type="button" class="btn-quick-bank" data-bank="DANA">+ DANA</button>
-          </div>
-        </div>
-        <textarea class="textarea-payment" data-field="paymentInfo" rows="2" placeholder="Bisa simpan beberapa rekening (BCA, BSI, GoPay, dll):&#10;BCA: 1234567890 a.n ${escapeHtml(m.name)}&#10;BSI: 7123456789 a.n ${escapeHtml(m.name)}&#10;GoPay: 08123456789">${escapeHtml(m.paymentInfo || '')}</textarea>
-      </div>
+      <button type="button" class="btn-delete-member" title="Hapus dari daftar master" ${canDelete ? '' : 'disabled style="opacity:0.25; cursor:not-allowed;"'}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
     `;
 
-    // Live update initial badge on name change
-    const nameInput = card.querySelector('.input-member-name');
-    const avatarBadge = card.querySelector(`#avatar-${m.id}`);
-    nameInput.addEventListener('input', (e) => {
-      const val = e.target.value.trim();
-      avatarBadge.textContent = val ? val.charAt(0).toUpperCase() : '?';
+    // Toggle participant status on row click
+    row.querySelector('.member-pick-left').addEventListener('click', () => {
+      toggleMemberParticipationInModal(m.id);
     });
 
-    // Delete member button
-    const btnDelete = card.querySelector('.btn-delete-member');
+    // Delete member
+    const btnDelete = row.querySelector('.btn-delete-member');
     if (canDelete) {
-      btnDelete.addEventListener('click', () => {
-        handleDeleteMember(m.id);
+      btnDelete.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleDeleteMemberMaster(m.id);
       });
     }
 
-    // Quick bank helper chips
-    const textarea = card.querySelector('.textarea-payment');
-    card.querySelectorAll('.btn-quick-bank').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const bank = chip.dataset.bank;
-        const currentVal = textarea.value.trim();
-        const prefix = currentVal ? currentVal + '\n' : '';
-        const memberName = nameInput.value.trim() || 'Saya';
-        textarea.value = prefix + `${bank}:  a.n ${memberName}`;
-        textarea.focus();
-        // Position cursor right after bank name
-        const pos = textarea.value.lastIndexOf(': ') + 2;
-        textarea.setSelectionRange(pos, pos);
-      });
-    });
-
-    elements.circleSettingsForm.appendChild(card);
+    elements.circlePickListContainer.appendChild(row);
   });
 }
 
-function handleAddNewMemberInModal() {
-  saveCurrentModalInputsToState();
-  const count = state.allMembers.length + 1;
+function toggleMemberParticipationInModal(memberId) {
+  const idx = state.participatingMemberIds.indexOf(memberId);
+  if (idx > -1) {
+    if (state.participatingMemberIds.length <= 1) {
+      showToast('Minimal harus ada 1 orang yang ikut patungan', 'error');
+      return;
+    }
+    state.participatingMemberIds.splice(idx, 1);
+  } else {
+    state.participatingMemberIds.push(memberId);
+  }
+  renderCirclePickList();
+}
+
+function handleModalQuickAdd() {
+  const name = elements.inputModalQuickName.value.trim();
+  if (!name) {
+    showToast('Ketik nama teman terlebih dahulu', 'error');
+    return;
+  }
+
   const newId = 'm_' + Date.now();
+  const initial = name.charAt(0).toUpperCase();
   const newMember = {
     id: newId,
-    name: 'Anggota ' + count,
-    initial: 'A',
+    name: name,
+    initial: initial,
     paymentInfo: ''
   };
 
   state.allMembers.push(newMember);
-  if (!state.participatingMemberIds.includes(newId)) {
-    state.participatingMemberIds.push(newId);
-  }
+  state.participatingMemberIds.push(newId);
+  saveMembers();
 
-  renderCircleModalCards();
-
-  // Scroll to bottom and focus new input
-  setTimeout(() => {
-    const cards = elements.circleSettingsForm.querySelectorAll('.member-manage-card');
-    if (cards.length > 0) {
-      const lastCard = cards[cards.length - 1];
-      lastCard.scrollIntoView({ behavior: 'smooth' });
-      const inp = lastCard.querySelector('.input-member-name');
-      if (inp) {
-        inp.focus();
-        inp.select();
-      }
-    }
-  }, 100);
+  elements.inputModalQuickName.value = '';
+  renderCirclePickList();
+  showToast(`${name} ditambahkan dan ikut patungan`, 'success');
 }
 
-function handleDeleteMember(memberId) {
+function handleDeleteMemberMaster(memberId) {
   if (state.allMembers.length <= 1) {
     showToast('Minimal harus ada 1 anggota', 'error');
     return;
   }
 
-  saveCurrentModalInputsToState();
-  const targetMember = state.allMembers.find(m => m.id === memberId);
+  const target = state.allMembers.find(m => m.id === memberId);
   state.allMembers = state.allMembers.filter(m => m.id !== memberId);
   state.participatingMemberIds = state.participatingMemberIds.filter(id => id !== memberId);
 
@@ -1086,32 +1093,12 @@ function handleDeleteMember(memberId) {
     state.payerId = state.allMembers[0]?.id || '';
   }
 
-  renderCircleModalCards();
-  showToast(`${targetMember ? targetMember.name : 'Anggota'} berhasil dihapus`, 'info');
-}
-
-function saveCurrentModalInputsToState() {
-  const cards = elements.circleSettingsForm.querySelectorAll('.member-manage-card');
-  cards.forEach(card => {
-    const id = card.dataset.id;
-    const nameInput = card.querySelector('.input-member-name');
-    const textarea = card.querySelector('.textarea-payment');
-    const m = state.allMembers.find(item => item.id === id);
-    if (m) {
-      if (nameInput) {
-        const nameVal = nameInput.value.trim();
-        m.name = nameVal || m.name;
-        m.initial = m.name.charAt(0).toUpperCase() || '?';
-      }
-      if (textarea) {
-        m.paymentInfo = textarea.value.trim();
-      }
-    }
-  });
+  saveMembers();
+  renderCirclePickList();
+  showToast(`${target ? target.name : 'Anggota'} dihapus dari daftar`, 'info');
 }
 
 function saveCircleModalChanges() {
-  saveCurrentModalInputsToState();
   saveMembers();
   closeCircleModal();
 
@@ -1121,16 +1108,95 @@ function saveCircleModalChanges() {
     calculateAndRenderFinal();
   }
 
-  showToast('Pengaturan anggota & nomor rekening berhasil disimpan! ✓', 'success');
+  showToast(`${state.participatingMemberIds.length} anggota aktif patungan`, 'success');
 }
 
 function resetDefaultCircle() {
   state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
   state.participatingMemberIds = state.allMembers.map(m => m.id);
   saveMembers();
-  renderCircleModalCards();
+  renderCirclePickList();
   showToast('Master anggota dikembalikan ke default', 'info');
 }
+
+// ==========================================================================
+// MODAL 2: PENGATURAN NOMOR REKENING & E-WALLET (BCA, BSI, GOPAY, DLL)
+// ==========================================================================
+function openPaymentModal() {
+  renderPaymentCardsList();
+  elements.modalPayment.classList.remove('hidden');
+}
+
+function closePaymentModal() {
+  elements.modalPayment.classList.add('hidden');
+}
+
+function renderPaymentCardsList() {
+  elements.paymentSettingsForm.innerHTML = '';
+
+  state.allMembers.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'payment-person-card';
+    card.dataset.id = m.id;
+
+    card.innerHTML = `
+      <div class="payment-person-header">
+        <div class="payment-person-title">
+          <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
+          <span>${escapeHtml(m.name)}</span>
+        </div>
+        <div class="quick-bank-chips">
+          <button type="button" class="btn-quick-bank" data-bank="BCA">+ BCA</button>
+          <button type="button" class="btn-quick-bank" data-bank="BSI">+ BSI</button>
+          <button type="button" class="btn-quick-bank" data-bank="Mandiri">+ Mandiri</button>
+          <button type="button" class="btn-quick-bank" data-bank="GoPay">+ GoPay</button>
+          <button type="button" class="btn-quick-bank" data-bank="DANA">+ DANA</button>
+        </div>
+      </div>
+      <textarea class="textarea-payment" data-field="paymentInfo" rows="3" placeholder="Contoh:&#10;BCA: 1234567890 a.n ${escapeHtml(m.name)}&#10;BSI: 7123456789 a.n ${escapeHtml(m.name)}&#10;GoPay: 08123456789">${escapeHtml(m.paymentInfo || '')}</textarea>
+    `;
+
+    // Quick bank helper chips
+    const textarea = card.querySelector('.textarea-payment');
+    card.querySelectorAll('.btn-quick-bank').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const bank = chip.dataset.bank;
+        const currentVal = textarea.value.trim();
+        const prefix = currentVal ? currentVal + '\n' : '';
+        textarea.value = prefix + `${bank}:  a.n ${m.name}`;
+        textarea.focus();
+        const pos = textarea.value.lastIndexOf(': ') + 2;
+        textarea.setSelectionRange(pos, pos);
+      });
+    });
+
+    elements.paymentSettingsForm.appendChild(card);
+  });
+}
+
+function savePaymentModalChanges() {
+  const cards = elements.paymentSettingsForm.querySelectorAll('.payment-person-card');
+  cards.forEach(card => {
+    const id = card.dataset.id;
+    const textarea = card.querySelector('.textarea-payment');
+    const m = state.allMembers.find(item => item.id === id);
+    if (m && textarea) {
+      m.paymentInfo = textarea.value.trim();
+    }
+  });
+
+  saveMembers();
+  closePaymentModal();
+
+  if (state.currentStep === 3) {
+    renderStep3();
+  } else if (state.currentStep === 4) {
+    calculateAndRenderFinal();
+  }
+
+  showToast('Nomor rekening & e-wallet berhasil disimpan! ✓', 'success');
+}
+
 
 
 // API Key Modal
