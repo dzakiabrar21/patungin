@@ -365,13 +365,18 @@
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">Kelola Master Anggota</h3>
-          <p class="modal-desc">Atur nama dan nomor rekening/e-wallet untuk info transfer</p>
+          <h3 class="modal-title">Kelola Anggota & Rekening</h3>
+          <p class="modal-desc">Atur nama anggota dan simpan nomor rekening / e-wallet (BCA, BSI, GoPay, dll)</p>
         </div>
         <button class="btn-close-modal" id="btn-close-circle-modal" aria-label="Tutup">✕</button>
       </div>
-      <div class="modal-body" id="circle-settings-form-container">
-        <!-- Injected via JS -->
+      <div class="modal-body">
+        <div id="circle-settings-form-container" class="member-manage-list">
+          <!-- Injected via JS -->
+        </div>
+        <button type="button" id="btn-modal-add-member" class="btn-outline btn-block" style="margin-top: 0.85rem;">
+          <span>+ Tambah Anggota Baru</span>
+        </button>
       </div>
       <div class="modal-footer">
         <button id="btn-reset-default-circle" class="btn-outline-sm" type="button">Reset Default</button>

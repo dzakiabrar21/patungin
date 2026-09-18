@@ -1483,3 +1483,133 @@ html, body {
     to { transform: translateY(0); }
   }
 }
+
+/* ==========================================================================
+   Dynamic Member Management Cards & Multi-Account Styling
+   ========================================================================== */
+.member-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.member-manage-card {
+  background: var(--color-bg-subtle);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.member-manage-card:focus-within {
+  border-color: var(--color-primary);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 129, 167, 0.08);
+}
+
+.member-manage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.member-manage-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+}
+
+.input-member-name {
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--color-text-main);
+  background: #ffffff;
+}
+
+.btn-delete-member {
+  background: #ffffff;
+  border: 1px solid #fee2e2;
+  color: #ef4444;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.btn-delete-member:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.member-payment-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.payment-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.payment-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.quick-bank-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.btn-quick-bank {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-quick-bank:hover, .btn-quick-bank:active {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.textarea-payment {
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.65rem;
+  font-family: var(--font-family);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--color-text-main);
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.textarea-payment:focus {
+  border-color: var(--color-primary);
+}

@@ -5,10 +5,30 @@
  */
 
 const DEFAULT_MEMBERS = [
-  { id: 'm1', name: 'Saya', initial: 'S', paymentInfo: 'BCA 1234567890 a.n Saya' },
-  { id: 'm2', name: 'Andi', initial: 'A', paymentInfo: 'Mandiri 0987654321 a.n Andi' },
-  { id: 'm3', name: 'Budi', initial: 'B', paymentInfo: 'GoPay 08123456789' },
-  { id: 'm4', name: 'Citra', initial: 'C', paymentInfo: 'DANA 08571234567' }
+  { 
+    id: 'm1', 
+    name: 'Saya', 
+    initial: 'S', 
+    paymentInfo: 'BCA: 1234567890 a.n Saya\nBSI: 7123456789 a.n Saya\nGoPay: 08123456789' 
+  },
+  { 
+    id: 'm2', 
+    name: 'Andi', 
+    initial: 'A', 
+    paymentInfo: 'Mandiri: 0987654321 a.n Andi\nShopeePay: 08129876543' 
+  },
+  { 
+    id: 'm3', 
+    name: 'Budi', 
+    initial: 'B', 
+    paymentInfo: 'BCA: 5432167890 a.n Budi\nGoPay: 08123456789' 
+  },
+  { 
+    id: 'm4', 
+    name: 'Citra', 
+    initial: 'C', 
+    paymentInfo: 'BSI: 8901234567 a.n Citra\nDANA: 08571234567' 
+  }
 ];
 
 const state = {
@@ -98,6 +118,7 @@ const elements = {
   modalCircle: document.getElementById('modal-circle-settings'),
   btnCloseCircleModal: document.getElementById('btn-close-circle-modal'),
   circleSettingsForm: document.getElementById('circle-settings-form-container'),
+  btnModalAddMember: document.getElementById('btn-modal-add-member'),
   btnSaveCircle: document.getElementById('btn-save-circle'),
   btnResetDefaultCircle: document.getElementById('btn-reset-default-circle'),
 
@@ -297,6 +318,7 @@ function setupEventListeners() {
   elements.btnCircleSettings.addEventListener('click', openCircleModal);
   elements.btnCloseCircleModal.addEventListener('click', closeCircleModal);
   elements.btnSaveCircle.addEventListener('click', saveCircleModalChanges);
+  if (elements.btnModalAddMember) elements.btnModalAddMember.addEventListener('click', handleAddNewMemberInModal);
   elements.btnResetDefaultCircle.addEventListener('click', resetDefaultCircle);
 
   elements.btnApiKey.addEventListener('click', openApiKeyModal);
@@ -566,12 +588,18 @@ function renderStep3PayerDropdown() {
   active.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.id;
-    opt.textContent = `${m.name} (${m.paymentInfo || 'Belum ada rek'})`;
+    // Extract first account or summary for dropdown label
+    let accountSummary = 'Belum ada rek';
+    if (m.paymentInfo && m.paymentInfo.trim()) {
+      const firstLine = m.paymentInfo.split('\n')[0].trim();
+      const accountsCount = m.paymentInfo.split('\n').filter(Boolean).length;
+      accountSummary = accountsCount > 1 ? `${firstLine} (+ ${accountsCount - 1} rek lainnya)` : firstLine;
+    }
+    opt.textContent = `${m.name} (${accountSummary})`;
     if (m.id === state.payerId) opt.selected = true;
     elements.step3PayerSelect.appendChild(opt);
   });
 
-  // Ensure payerId is valid
   if (!state.participatingMemberIds.includes(state.payerId) && active.length > 0) {
     state.payerId = active[0].id;
     elements.step3PayerSelect.value = state.payerId;
@@ -793,46 +821,40 @@ function calculateAndRenderFinal() {
 function formatWhatsAppText(shares, payer) {
   const r = state.receipt;
   const active = getActiveParticipants();
-  let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*
-`;
-  text += `📅 Tanggal: ${r.date || 'Hari ini'}
-`;
-  text += `💰 Total Tagihan: Rp ${formatRupiah(r.total)}
-`;
-  text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*
-`;
-  text += `------------------------------------
-
-`;
+  let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*\n`;
+  text += `📅 Tanggal: ${r.date || 'Hari ini'}\n`;
+  text += `💰 Total Tagihan: Rp ${formatRupiah(r.total)}\n`;
+  text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
+  text += `------------------------------------\n\n`;
 
   active.forEach(m => {
     const s = shares[m.id];
     const isPayer = m.id === state.payerId;
-    text += `👤 *${m.name}* ${isPayer ? '(Penalangi)' : ''}
-`;
+    text += `👤 *${m.name}* ${isPayer ? '(Penalangi)' : ''}\n`;
     s.items.forEach(it => {
-      text += `  • ${it.name} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}
-`;
+      text += `  • ${it.name} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}\n`;
     });
-    if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}
-`;
-    if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}
-`;
-    if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}
-`;
-    text += `  👉 *Total: Rp ${formatRupiah(s.total)}*
-
-`;
+    if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
+    if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
+    if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}\n`;
+    text += `  👉 *Total: Rp ${formatRupiah(s.total)}*\n\n`;
   });
 
-  text += `------------------------------------
-`;
-  text += `📲 *Info Transfer ke ${payer ? payer.name : 'Penalangi'}:*
-`;
-  text += `${payer && payer.paymentInfo ? payer.paymentInfo : 'Hubungi penalangi untuk nomor rekening/e-wallet'}
-
-`;
-  text += `_Dihitung otomatis dengan PatungIn_`;
+  text += `------------------------------------\n`;
+  text += `📲 *Pilihan Rekening Transfer ke ${payer ? payer.name : 'Penalangi'}:*\n`;
+  if (payer && payer.paymentInfo && payer.paymentInfo.trim()) {
+    const lines = payer.paymentInfo.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0) {
+      lines.forEach(l => {
+        text += `• ${l}\n`;
+      });
+    } else {
+      text += `• ${payer.paymentInfo.trim()}\n`;
+    }
+  } else {
+    text += `(Hubungi ${payer ? payer.name : 'penalangi'} untuk nomor rekening/e-wallet)\n`;
+  }
+  text += `\n_Dihitung otomatis dengan PatungIn_`;
 
   return text;
 }
@@ -924,19 +946,10 @@ function promptEditCharge(field, label) {
   }
 }
 
-// Master Member Circle Modal
+
+// Master Member Circle Modal (Dynamic Adjust & Multi-Account Support)
 function openCircleModal() {
-  elements.circleSettingsForm.innerHTML = '';
-  state.allMembers.forEach((m, idx) => {
-    const row = document.createElement('div');
-    row.className = 'form-member-row';
-    row.innerHTML = `
-      <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
-      <input type="text" class="input-text" data-idx="${idx}" data-field="name" value="${escapeHtml(m.name)}" placeholder="Nama">
-      <input type="text" class="input-text" data-idx="${idx}" data-field="paymentInfo" value="${escapeHtml(m.paymentInfo || '')}" placeholder="BCA / Mandiri / GoPay...">
-    `;
-    elements.circleSettingsForm.appendChild(row);
-  });
+  renderCircleModalCards();
   elements.modalCircle.classList.remove('hidden');
 }
 
@@ -944,32 +957,181 @@ function closeCircleModal() {
   elements.modalCircle.classList.add('hidden');
 }
 
-function saveCircleModalChanges() {
-  const inputs = elements.circleSettingsForm.querySelectorAll('input');
-  inputs.forEach(inp => {
-    const idx = Number(inp.dataset.idx);
-    const field = inp.dataset.field;
-    if (state.allMembers[idx]) {
-      state.allMembers[idx][field] = inp.value.trim();
-      if (field === 'name') {
-        state.allMembers[idx].initial = inp.value.trim().charAt(0).toUpperCase() || '?';
+function renderCircleModalCards() {
+  elements.circleSettingsForm.innerHTML = '';
+  const canDelete = state.allMembers.length > 1;
+
+  state.allMembers.forEach((m, idx) => {
+    const card = document.createElement('div');
+    card.className = 'member-manage-card';
+    card.dataset.id = m.id;
+    card.dataset.idx = idx;
+
+    card.innerHTML = `
+      <div class="member-manage-header">
+        <div class="member-manage-left">
+          <div class="avatar-initial-badge" id="avatar-${m.id}">${escapeHtml(m.initial)}</div>
+          <input type="text" class="input-text-compact input-member-name" data-field="name" value="${escapeHtml(m.name)}" placeholder="Nama Anggota">
+        </div>
+        <button type="button" class="btn-delete-member" title="Hapus Anggota" ${canDelete ? '' : 'disabled style="opacity:0.3; cursor:not-allowed;"'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="member-payment-section">
+        <div class="payment-label-row">
+          <span class="payment-label">Pilihan Rekening / E-Wallet:</span>
+          <div class="quick-bank-chips">
+            <button type="button" class="btn-quick-bank" data-bank="BCA">+ BCA</button>
+            <button type="button" class="btn-quick-bank" data-bank="BSI">+ BSI</button>
+            <button type="button" class="btn-quick-bank" data-bank="Mandiri">+ Mandiri</button>
+            <button type="button" class="btn-quick-bank" data-bank="GoPay">+ GoPay</button>
+            <button type="button" class="btn-quick-bank" data-bank="DANA">+ DANA</button>
+          </div>
+        </div>
+        <textarea class="textarea-payment" data-field="paymentInfo" rows="2" placeholder="Bisa simpan beberapa rekening (BCA, BSI, GoPay, dll):&#10;BCA: 1234567890 a.n ${escapeHtml(m.name)}&#10;BSI: 7123456789 a.n ${escapeHtml(m.name)}&#10;GoPay: 08123456789">${escapeHtml(m.paymentInfo || '')}</textarea>
+      </div>
+    `;
+
+    // Live update initial badge on name change
+    const nameInput = card.querySelector('.input-member-name');
+    const avatarBadge = card.querySelector(`#avatar-${m.id}`);
+    nameInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      avatarBadge.textContent = val ? val.charAt(0).toUpperCase() : '?';
+    });
+
+    // Delete member button
+    const btnDelete = card.querySelector('.btn-delete-member');
+    if (canDelete) {
+      btnDelete.addEventListener('click', () => {
+        handleDeleteMember(m.id);
+      });
+    }
+
+    // Quick bank helper chips
+    const textarea = card.querySelector('.textarea-payment');
+    card.querySelectorAll('.btn-quick-bank').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const bank = chip.dataset.bank;
+        const currentVal = textarea.value.trim();
+        const prefix = currentVal ? currentVal + '\n' : '';
+        const memberName = nameInput.value.trim() || 'Saya';
+        textarea.value = prefix + `${bank}:  a.n ${memberName}`;
+        textarea.focus();
+        // Position cursor right after bank name
+        const pos = textarea.value.lastIndexOf(': ') + 2;
+        textarea.setSelectionRange(pos, pos);
+      });
+    });
+
+    elements.circleSettingsForm.appendChild(card);
+  });
+}
+
+function handleAddNewMemberInModal() {
+  saveCurrentModalInputsToState();
+  const count = state.allMembers.length + 1;
+  const newId = 'm_' + Date.now();
+  const newMember = {
+    id: newId,
+    name: 'Anggota ' + count,
+    initial: 'A',
+    paymentInfo: ''
+  };
+
+  state.allMembers.push(newMember);
+  if (!state.participatingMemberIds.includes(newId)) {
+    state.participatingMemberIds.push(newId);
+  }
+
+  renderCircleModalCards();
+
+  // Scroll to bottom and focus new input
+  setTimeout(() => {
+    const cards = elements.circleSettingsForm.querySelectorAll('.member-manage-card');
+    if (cards.length > 0) {
+      const lastCard = cards[cards.length - 1];
+      lastCard.scrollIntoView({ behavior: 'smooth' });
+      const inp = lastCard.querySelector('.input-member-name');
+      if (inp) {
+        inp.focus();
+        inp.select();
       }
+    }
+  }, 100);
+}
+
+function handleDeleteMember(memberId) {
+  if (state.allMembers.length <= 1) {
+    showToast('Minimal harus ada 1 anggota', 'error');
+    return;
+  }
+
+  saveCurrentModalInputsToState();
+  const targetMember = state.allMembers.find(m => m.id === memberId);
+  state.allMembers = state.allMembers.filter(m => m.id !== memberId);
+  state.participatingMemberIds = state.participatingMemberIds.filter(id => id !== memberId);
+
+  // Clean from assigned items
+  state.receipt.items.forEach(it => {
+    if (it.assignedTo) {
+      it.assignedTo = it.assignedTo.filter(id => id !== memberId);
     }
   });
 
+  if (state.payerId === memberId) {
+    state.payerId = state.allMembers[0]?.id || '';
+  }
+
+  renderCircleModalCards();
+  showToast(`${targetMember ? targetMember.name : 'Anggota'} berhasil dihapus`, 'info');
+}
+
+function saveCurrentModalInputsToState() {
+  const cards = elements.circleSettingsForm.querySelectorAll('.member-manage-card');
+  cards.forEach(card => {
+    const id = card.dataset.id;
+    const nameInput = card.querySelector('.input-member-name');
+    const textarea = card.querySelector('.textarea-payment');
+    const m = state.allMembers.find(item => item.id === id);
+    if (m) {
+      if (nameInput) {
+        const nameVal = nameInput.value.trim();
+        m.name = nameVal || m.name;
+        m.initial = m.name.charAt(0).toUpperCase() || '?';
+      }
+      if (textarea) {
+        m.paymentInfo = textarea.value.trim();
+      }
+    }
+  });
+}
+
+function saveCircleModalChanges() {
+  saveCurrentModalInputsToState();
   saveMembers();
   closeCircleModal();
-  if (state.currentStep === 3) renderStep3();
-  showToast('Pengaturan anggota master disimpan', 'success');
+
+  if (state.currentStep === 3) {
+    renderStep3();
+  } else if (state.currentStep === 4) {
+    calculateAndRenderFinal();
+  }
+
+  showToast('Pengaturan anggota & nomor rekening berhasil disimpan! ✓', 'success');
 }
 
 function resetDefaultCircle() {
   state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
   state.participatingMemberIds = state.allMembers.map(m => m.id);
   saveMembers();
-  openCircleModal();
+  renderCircleModalCards();
   showToast('Master anggota dikembalikan ke default', 'info');
 }
+
 
 // API Key Modal
 function openApiKeyModal() {
