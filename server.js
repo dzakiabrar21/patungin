@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { SAMPLE_PRESETS, parseReceiptWithGemini } from './services/geminiService.js';
@@ -15,8 +16,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Setup upload directory
-const uploadDir = path.join(__dirname, 'uploads');
+// Setup upload directory in OS temporary directory (compatible with Vercel serverless and local)
+const uploadDir = path.join(os.tmpdir(), 'patungin_uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -53,7 +54,6 @@ app.post('/api/scan-receipt', upload.single('receiptImage'), async (req, res) =>
     const customApiKey = req.body.apiKey || null;
 
     if (!req.file) {
-      // If no file uploaded, return the first preset or error
       return res.status(400).json({
         success: false,
         error: 'Tidak ada gambar yang diunggah.'
@@ -80,17 +80,21 @@ app.post('/api/scan-receipt', upload.single('receiptImage'), async (req, res) =>
   }
 });
 
-// Start server with fallback if port busy
-const server = app.listen(PORT, () => {
-  console.log(`🚀 PatungIn Server berjalan di http://localhost:${PORT}`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    const ALT_PORT = Number(PORT) + 1;
-    console.log(`Port ${PORT} terpakai, mencoba port alternatif ${ALT_PORT}...`);
-    app.listen(ALT_PORT, () => {
-      console.log(`🚀 Circle Split Bill Server berjalan di http://localhost:${ALT_PORT}`);
-    });
-  } else {
-    console.error('Server error:', err);
-  }
-});
+// Start local server if not running in Vercel serverless environment
+if (!process.env.VERCEL) {
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 PatungIn Server berjalan di http://localhost:${PORT}`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const ALT_PORT = Number(PORT) + 1;
+      console.log(`Port ${PORT} terpakai, mencoba port alternatif ${ALT_PORT}...`);
+      app.listen(ALT_PORT, () => {
+        console.log(`🚀 PatungIn Server berjalan di http://localhost:${ALT_PORT}`);
+      });
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+}
+
+export default app;
