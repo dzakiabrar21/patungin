@@ -236,13 +236,38 @@
 
             <!-- Payer Selection (Who paid the bill) -->
             <div class="payer-selection-box">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <label for="step3-payer-select" class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+                <label class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
                 <button type="button" id="btn-open-rek-inline" class="btn-link-action" style="font-size: 0.72rem;">Atur No. Rekening ⚙️</button>
               </div>
-              <select id="step3-payer-select" class="select-clean">
-                <!-- Injected via JS with active participants -->
-              </select>
+
+              <!-- Payer Mode Segmented Switch -->
+              <div class="payer-mode-segmented">
+                <button type="button" class="btn-segment active" id="btn-payer-mode-single">1 Orang</button>
+                <button type="button" class="btn-segment" id="btn-payer-mode-multi">Banyak Orang (Multi)</button>
+              </div>
+
+              <!-- Mode 1: Single Payer -->
+              <div id="single-payer-container">
+                <select id="step3-payer-select" class="select-clean">
+                  <!-- Injected via JS with active participants -->
+                </select>
+              </div>
+
+              <!-- Mode 2: Multi Payers -->
+              <div id="multi-payer-container" class="hidden">
+                <p class="multi-payer-helper">Masukkan jumlah uang yang dibayarkan oleh masing-masing orang:</p>
+                <div id="multi-payer-inputs-list" class="multi-payer-inputs-list">
+                  <!-- Injected via JS -->
+                </div>
+                <div class="multi-payer-status-bar" id="multi-payer-status-bar">
+                  <div class="status-bar-text">
+                    <span>Total Bayar: <strong id="multi-paid-total">Rp 0</strong> / Struk: <strong id="multi-receipt-total">Rp 0</strong></span>
+                    <span id="multi-paid-diff" class="paid-diff-pill diff-match">Pas ✓</span>
+                  </div>
+                  <button type="button" id="btn-split-payers-equal" class="btn-outline-sm">Bagi Rata Bayar</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -322,6 +347,19 @@
 
             <div class="final-members-list" id="final-members-container">
               <!-- Injected via JS -->
+            </div>
+
+            <!-- Transfer Directions Card (Siapa Transfer ke Siapa) -->
+            <div id="transfer-directions-card" class="card card-padded transfer-directions-card">
+              <div class="card-header-clean">
+                <div>
+                  <h4 class="card-title-clean">💸 Arahan Transfer (Siapa Bayar ke Siapa)</h4>
+                  <p class="card-desc-clean">Perhitungan otomatis agar utang-piutang selesai tanpa ribet</p>
+                </div>
+              </div>
+              <div id="transfer-directions-list" class="transfer-directions-list">
+                <!-- Injected via JS -->
+              </div>
             </div>
           </div>
 

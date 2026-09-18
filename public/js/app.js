@@ -35,7 +35,9 @@ const state = {
   currentStep: 1,
   allMembers: [], // Master friends pool
   participatingMemberIds: [], // IDs of members active in this specific bill
+  payerMode: 'single', // 'single' | 'multi'
   payerId: 'm1',
+  payerAmounts: {}, // { [memberId]: number } for multi-payer mode
   receipt: {
     merchant: '',
     date: '',
@@ -95,6 +97,17 @@ const elements = {
   inputQuickName: document.getElementById('input-quick-name'),
   btnQuickAdd: document.getElementById('btn-quick-add'),
   step3PayerSelect: document.getElementById('step3-payer-select'),
+  btnPayerModeSingle: document.getElementById('btn-payer-mode-single'),
+  btnPayerModeMulti: document.getElementById('btn-payer-mode-multi'),
+  singlePayerContainer: document.getElementById('single-payer-container'),
+  multiPayerContainer: document.getElementById('multi-payer-container'),
+  multiPayerInputsList: document.getElementById('multi-payer-inputs-list'),
+  multiPaidTotal: document.getElementById('multi-paid-total'),
+  multiReceiptTotal: document.getElementById('multi-receipt-total'),
+  multiPaidDiff: document.getElementById('multi-paid-diff'),
+  btnSplitPayersEqual: document.getElementById('btn-split-payers-equal'),
+  transferDirectionsCard: document.getElementById('transfer-directions-card'),
+  transferDirectionsList: document.getElementById('transfer-directions-list'),
   taxSplitMode: document.getElementById('tax-split-mode'),
   roundingMode: document.getElementById('rounding-mode'),
   unclaimedWarningPill: document.getElementById('unclaimed-warning-pill'),
@@ -278,6 +291,11 @@ function setupEventListeners() {
       handleQuickAddMember();
     }
   });
+
+  // Step 3 Payer Mode Switching
+  elements.btnPayerModeSingle.addEventListener('click', () => setPayerMode('single'));
+  elements.btnPayerModeMulti.addEventListener('click', () => setPayerMode('multi'));
+  elements.btnSplitPayersEqual.addEventListener('click', splitPayerAmountsEqually);
 
   // Step 3 Payer change
   elements.step3PayerSelect.addEventListener('change', (e) => {
@@ -554,6 +572,7 @@ function recalculateTotals() {
 function renderStep3() {
   renderParticipantSelection();
   renderStep3PayerDropdown();
+  if (state.payerMode === "multi") renderMultiPayerInputs();
   renderAssignmentItems();
   renderStep3LiveShares();
 }
@@ -745,6 +764,179 @@ function renderStep3LiveShares() {
   });
 }
 
+
+// ==========================================================================
+// MULTI-PAYER ENGINE & DEBT SETTLEMENT
+// ==========================================================================
+function setPayerMode(mode) {
+  state.payerMode = mode;
+  elements.btnPayerModeSingle.classList.toggle('active', mode === 'single');
+  elements.btnPayerModeMulti.classList.toggle('active', mode === 'multi');
+  elements.singlePayerContainer.classList.toggle('hidden', mode !== 'single');
+  elements.multiPayerContainer.classList.toggle('hidden', mode !== 'multi');
+
+  if (mode === 'multi') {
+    initializeMultiPayerAmounts();
+    renderMultiPayerInputs();
+  }
+
+  renderStep3LiveShares();
+}
+
+function initializeMultiPayerAmounts() {
+  const active = getActiveParticipants();
+  const total = state.receipt.total || 0;
+
+  // If empty or payerAmounts don't match active members
+  if (Object.keys(state.payerAmounts).length === 0) {
+    state.payerAmounts = {};
+    active.forEach(m => {
+      state.payerAmounts[m.id] = (m.id === state.payerId) ? total : 0;
+    });
+  }
+}
+
+function renderMultiPayerInputs() {
+  const active = getActiveParticipants();
+  elements.multiPayerInputsList.innerHTML = '';
+  const total = state.receipt.total || 0;
+
+  active.forEach(m => {
+    const currentPaid = state.payerAmounts[m.id] || 0;
+    const row = document.createElement('div');
+    row.className = 'multi-payer-row';
+    row.innerHTML = `
+      <div class="multi-payer-row-left">
+        <div class="avatar-initial-sm">${escapeHtml(m.initial)}</div>
+        <span class="multi-payer-name">${escapeHtml(m.name)}</span>
+      </div>
+      <div class="multi-payer-row-right">
+        <span>Rp</span>
+        <input type="number" class="input-payer-amount" data-id="${m.id}" value="${currentPaid}" step="1000" min="0">
+        <button type="button" class="btn-all-pay" data-id="${m.id}" title="Orang ini bayar penuh">Full</button>
+      </div>
+    `;
+
+    const input = row.querySelector('.input-payer-amount');
+    input.addEventListener('input', (e) => {
+      const val = Math.max(0, Number(e.target.value) || 0);
+      state.payerAmounts[m.id] = val;
+      updateMultiPayerStatus();
+      renderStep3LiveShares();
+    });
+
+    const btnAll = row.querySelector('.btn-all-pay');
+    btnAll.addEventListener('click', () => {
+      active.forEach(item => {
+        state.payerAmounts[item.id] = (item.id === m.id) ? total : 0;
+      });
+      renderMultiPayerInputs();
+      renderStep3LiveShares();
+    });
+
+    elements.multiPayerInputsList.appendChild(row);
+  });
+
+  updateMultiPayerStatus();
+}
+
+function splitPayerAmountsEqually() {
+  const active = getActiveParticipants();
+  const total = state.receipt.total || 0;
+  if (active.length === 0) return;
+
+  const perPerson = Math.floor(total / active.length);
+  const remainder = total - (perPerson * active.length);
+
+  active.forEach((m, idx) => {
+    state.payerAmounts[m.id] = perPerson + (idx === 0 ? remainder : 0);
+  });
+
+  renderMultiPayerInputs();
+  renderStep3LiveShares();
+  showToast('Total struk dibagi rata ke semua pembayar', 'info');
+}
+
+function updateMultiPayerStatus() {
+  const active = getActiveParticipants();
+  const totalReceipt = state.receipt.total || 0;
+  const totalPaid = active.reduce((sum, m) => sum + (state.payerAmounts[m.id] || 0), 0);
+  const diff = totalPaid - totalReceipt;
+
+  elements.multiPaidTotal.textContent = `Rp ${formatRupiah(totalPaid)}`;
+  elements.multiReceiptTotal.textContent = `Rp ${formatRupiah(totalReceipt)}`;
+
+  elements.multiPaidDiff.className = 'paid-diff-pill';
+  if (diff === 0) {
+    elements.multiPaidDiff.classList.add('diff-match');
+    elements.multiPaidDiff.textContent = 'Pas ✓';
+  } else if (diff < 0) {
+    elements.multiPaidDiff.classList.add('diff-under');
+    elements.multiPaidDiff.textContent = `Kurang Rp ${formatRupiah(Math.abs(diff))}`;
+  } else {
+    elements.multiPaidDiff.classList.add('diff-over');
+    elements.multiPaidDiff.textContent = `Lebih Rp ${formatRupiah(diff)}`;
+  }
+}
+
+// Settlement Algorithm: Resolves Debt Graph with Minimum Transactions
+function calculateSettlementTransfers(shares) {
+  const active = getActiveParticipants();
+  const balances = active.map(m => {
+    const s = shares[m.id];
+    let paid = 0;
+    if (state.payerMode === 'single') {
+      paid = (m.id === state.payerId) ? state.receipt.total : 0;
+    } else {
+      paid = state.payerAmounts[m.id] || 0;
+    }
+    const net = Math.round(paid - s.total);
+    return {
+      id: m.id,
+      name: m.name,
+      paid: paid,
+      consumed: s.total,
+      net: net
+    };
+  });
+
+  // Debtors: net < 0 (must pay money)
+  const debtors = balances.filter(b => b.net < -1).map(b => ({ ...b, debt: -b.net }));
+  // Creditors: net > 0 (should receive money)
+  const creditors = balances.filter(b => b.net > 1).map(b => ({ ...b, credit: b.net }));
+
+  debtors.sort((a, b) => b.debt - a.debt);
+  creditors.sort((a, b) => b.credit - a.credit);
+
+  const transfers = [];
+  let d = 0;
+  let c = 0;
+
+  while (d < debtors.length && c < creditors.length) {
+    const debtor = debtors[d];
+    const creditor = creditors[c];
+
+    const amount = Math.min(debtor.debt, creditor.credit);
+    if (amount > 0) {
+      transfers.push({
+        fromId: debtor.id,
+        fromName: debtor.name,
+        toId: creditor.id,
+        toName: creditor.name,
+        amount: Math.round(amount)
+      });
+    }
+
+    debtor.debt -= amount;
+    creditor.credit -= amount;
+
+    if (debtor.debt <= 1) d++;
+    if (creditor.credit <= 1) c++;
+  }
+
+  return { balances, transfers };
+}
+
 // Splitting Math Engine
 function calculateSplits() {
   const active = getActiveParticipants();
@@ -815,76 +1007,153 @@ function calculateSplits() {
 function calculateAndRenderFinal() {
   const shares = calculateSplits();
   const active = getActiveParticipants();
-  const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+  const { balances, transfers } = calculateSettlementTransfers(shares);
 
   elements.finalMerchantName.textContent = state.receipt.merchant || 'Struk Belanja';
   elements.finalTotalAmount.textContent = `Total: Rp ${formatRupiah(state.receipt.total)}`;
-  elements.finalPayerInfo.textContent = `Penanggung: ${payer ? payer.name : '-'}`;
 
+  // Payer display in header
+  if (state.payerMode === 'single') {
+    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+    elements.finalPayerInfo.textContent = `Penanggung: ${payer ? payer.name : '-'}`;
+  } else {
+    const payersList = active.filter(m => (state.payerAmounts[m.id] || 0) > 0);
+    const payersNames = payersList.map(m => `${m.name} (Rp ${formatRupiah(state.payerAmounts[m.id])})`).join(', ');
+    elements.finalPayerInfo.textContent = `Ditalangi: ${payersNames || '-'}`;
+  }
+
+  // Render Member Rows with net surplus / deficit badges
   elements.finalMembersContainer.innerHTML = '';
-
-  active.forEach(m => {
-    const s = shares[m.id];
-    const isPayer = m.id === state.payerId;
-
+  balances.forEach(b => {
+    const s = shares[b.id];
     const row = document.createElement('div');
-    row.className = 'final-member-row' + (isPayer ? ' is-payer' : '');
+    row.className = 'final-member-row' + (b.net > 0 ? ' is-payer' : '');
+
+    let statusText = '';
+    if (b.net > 0) {
+      statusText = `<span style="color: #059669; font-weight: 800;">(Surplus: +Rp ${formatRupiah(b.net)})</span>`;
+    } else if (b.net < 0) {
+      statusText = `<span style="color: #dc2626; font-weight: 700;">(Transfer: Rp ${formatRupiah(-b.net)})</span>`;
+    } else {
+      statusText = `<span style="color: #64748b;">(Pas)</span>`;
+    }
+
     row.innerHTML = `
       <div class="final-row-left">
-        <div class="avatar-initial-badge">${escapeHtml(m.initial)}</div>
+        <div class="avatar-initial-badge">${escapeHtml(s.member.initial)}</div>
         <div>
-          <span class="final-row-name">${escapeHtml(m.name)} ${isPayer ? '⭐ (Penalangi)' : ''}</span>
-          <div class="final-row-sub">${s.items.length} Menu dipesan</div>
+          <span class="final-row-name">${escapeHtml(b.name)}</span>
+          <div class="final-row-sub">Porsi: Rp ${formatRupiah(b.consumed)} ${statusText}</div>
         </div>
       </div>
-      <strong class="final-row-amount">Rp ${formatRupiah(s.total)}</strong>
+      <div style="text-align: right;">
+        <div class="final-row-amount">Rp ${formatRupiah(b.consumed)}</div>
+        <div style="font-size: 0.7rem; color: #64748b;">Bayar: Rp ${formatRupiah(b.paid)}</div>
+      </div>
     `;
     elements.finalMembersContainer.appendChild(row);
   });
 
+  // Render Transfer Directions (Siapa Transfer ke Siapa)
+  elements.transferDirectionsList.innerHTML = '';
+  if (transfers.length === 0) {
+    elements.transferDirectionsList.innerHTML = `
+      <div style="text-align: center; color: #10b981; font-weight: 700; font-size: 0.82rem; padding: 0.5rem 0;">
+        Semua tagihan sudah pas dan lunas! Tidak ada transfer tambahan.
+      </div>
+    `;
+  } else {
+    transfers.forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'transfer-direction-item';
+      item.innerHTML = `
+        <div class="transfer-from-to">
+          <strong>${escapeHtml(t.fromName)}</strong>
+          <span class="transfer-arrow">➔</span>
+          <span>transfer ke</span>
+          <strong class="transfer-target-name">${escapeHtml(t.toName)}</strong>
+        </div>
+        <span class="transfer-amount-badge">Rp ${formatRupiah(t.amount)}</span>
+      `;
+      elements.transferDirectionsList.appendChild(item);
+    });
+  }
+
   // Generate WhatsApp Message
-  const waText = formatWhatsAppText(shares, payer);
+  const waText = formatWhatsAppText(shares, balances, transfers);
   elements.waPreview.textContent = waText;
 }
 
-function formatWhatsAppText(shares, payer) {
+function formatWhatsAppText(shares, balances, transfers) {
   const r = state.receipt;
   const active = getActiveParticipants();
   let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*\n`;
   text += `📅 Tanggal: ${r.date || 'Hari ini'}\n`;
   text += `💰 Total Tagihan: Rp ${formatRupiah(r.total)}\n`;
-  text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
+
+  if (state.payerMode === 'single') {
+    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+    text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
+  } else {
+    text += `💳 *Ditalangi Bersama oleh:*\n`;
+    active.forEach(m => {
+      const paid = state.payerAmounts[m.id] || 0;
+      if (paid > 0) {
+        text += `  • ${m.name}: Rp ${formatRupiah(paid)}\n`;
+      }
+    });
+  }
   text += `------------------------------------\n\n`;
 
+  // Itemized breakdown per member
+  text += `👥 *Porsi Konsumsi Masing-Masing:*\n`;
   active.forEach(m => {
     const s = shares[m.id];
-    const isPayer = m.id === state.payerId;
-    text += `👤 *${m.name}* ${isPayer ? '(Penalangi)' : ''}\n`;
+    const b = balances.find(item => item.id === m.id) || { net: 0, paid: 0 };
+    text += `👤 *${m.name}*\n`;
     s.items.forEach(it => {
       text += `  • ${it.name} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}\n`;
     });
     if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
     if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
     if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}\n`;
-    text += `  👉 *Total: Rp ${formatRupiah(s.total)}*\n\n`;
+    text += `  👉 *Porsi: Rp ${formatRupiah(s.total)}*`;
+    if (state.payerMode === 'multi' && b.paid > 0) {
+      text += ` _(Sudah bayar Rp ${formatRupiah(b.paid)})_`;
+    }
+    text += `\n\n`;
   });
 
   text += `------------------------------------\n`;
-  text += `📲 *Pilihan Rekening Transfer ke ${payer ? payer.name : 'Penalangi'}:*\n`;
-  if (payer && payer.paymentInfo && payer.paymentInfo.trim()) {
-    const lines = payer.paymentInfo.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length > 0) {
+
+  // Transfer Directions (Siapa bayar ke siapa)
+  if (transfers && transfers.length > 0) {
+    text += `💸 *ARAHAN TRANSFER (SIAPA BAYAR KE SIAPA):*\n`;
+    transfers.forEach(t => {
+      text += `👉 *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
+    });
+    text += `------------------------------------\n`;
+  }
+
+  // Creditors Bank Accounts
+  text += `📲 *Pilihan Rekening Transfer:*\n`;
+  const creditors = (transfers && transfers.length > 0)
+    ? [...new Set(transfers.map(t => t.toId))].map(id => state.allMembers.find(m => m.id === id)).filter(Boolean)
+    : (state.payerMode === 'single' ? [state.allMembers.find(m => m.id === state.payerId)].filter(Boolean) : active);
+
+  creditors.forEach(creditor => {
+    text += `• *Rekening ${creditor.name}:*\n`;
+    if (creditor.paymentInfo && creditor.paymentInfo.trim()) {
+      const lines = creditor.paymentInfo.split('\n').map(l => l.trim()).filter(Boolean);
       lines.forEach(l => {
-        text += `• ${l}\n`;
+        text += `  ${l}\n`;
       });
     } else {
-      text += `• ${payer.paymentInfo.trim()}\n`;
+      text += `  (Hubungi ${creditor.name} untuk nomor rekening/e-wallet)\n`;
     }
-  } else {
-    text += `(Hubungi ${payer ? payer.name : 'penalangi'} untuk nomor rekening/e-wallet)\n`;
-  }
-  text += `\n_Dihitung otomatis dengan PatungIn_`;
+  });
 
+  text += `\n_Dihitung otomatis dengan PatungIn_`;
   return text;
 }
 

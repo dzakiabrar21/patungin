@@ -1744,3 +1744,207 @@ html, body {
   align-items: center;
   gap: 0.45rem;
 }
+
+/* ==========================================================================
+   Multi-Payer Segmented Switch & Settlement UI
+   ========================================================================== */
+.payer-mode-segmented {
+  display: flex;
+  background: #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 0.65rem;
+}
+
+.btn-segment {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-family: var(--font-family);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-segment.active {
+  background: #ffffff;
+  color: var(--color-primary);
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.multi-payer-helper {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.55rem;
+}
+
+.multi-payer-inputs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.multi-payer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+}
+
+.multi-payer-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.multi-payer-name {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.multi-payer-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.input-payer-amount {
+  width: 110px;
+  background: var(--color-bg-subtle);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text-main);
+  text-align: right;
+  outline: none;
+}
+
+.input-payer-amount:focus {
+  border-color: var(--color-primary);
+  background: #ffffff;
+}
+
+.btn-all-pay {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.btn-all-pay:hover {
+  background: var(--color-primary-light);
+}
+
+.multi-payer-status-bar {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.status-bar-text {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--color-text-main);
+}
+
+.paid-diff-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.diff-match {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.diff-under {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.diff-over {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* Step 4 Transfer Directions */
+.transfer-directions-card {
+  margin-top: 0.85rem;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.transfer-directions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.transfer-direction-item {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.transfer-from-to {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.transfer-arrow {
+  color: #10b981;
+  font-weight: 900;
+}
+
+.transfer-target-name {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.transfer-amount-badge {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #047857;
+}
