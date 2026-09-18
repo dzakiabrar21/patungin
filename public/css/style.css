@@ -1969,3 +1969,14 @@ html, body {
   color: #ffffff;
   border-color: var(--color-primary);
 }
+
+.payer-badge-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #047857;
+  background: #dcfce7;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+  white-space: nowrap;
+}

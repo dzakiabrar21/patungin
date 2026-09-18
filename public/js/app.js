@@ -750,16 +750,34 @@ function renderStep3LiveShares() {
   const active = getActiveParticipants();
   active.forEach(m => {
     const s = shares[m.id] || { total: 0 };
-    const isPayer = m.id === state.payerId;
+    let isPayer = false;
+    let payerBadgeHtml = '';
+    let payerSubInfo = '';
+
+    if (state.payerMode === 'single') {
+      isPayer = (m.id === state.payerId);
+      if (isPayer) {
+        payerBadgeHtml = '<span class="payer-badge-tag">⭐ Payer</span>';
+      }
+    } else {
+      const paid = state.payerAmounts[m.id] || 0;
+      isPayer = (paid > 0);
+      if (isPayer) {
+        payerBadgeHtml = `<span class="payer-badge-tag">⭐ Bayar Rp ${formatRupiah(paid)}</span>`;
+        payerSubInfo = `<div style="font-size: 0.7rem; color: #047857; font-weight: 700; margin-top: 0.15rem;">Telah bayar: Rp ${formatRupiah(paid)}</div>`;
+      }
+    }
 
     const div = document.createElement('div');
     div.className = 'share-preview-item' + (isPayer ? ' is-payer' : '');
     div.innerHTML = `
       <div class="share-preview-header">
         <div class="avatar-initial-sm">${escapeHtml(m.initial)}</div>
-        <span class="share-preview-name">${escapeHtml(m.name)} ${isPayer ? '⭐ (Payer)' : ''}</span>
+        <span class="share-preview-name">${escapeHtml(m.name)}</span>
+        ${payerBadgeHtml}
       </div>
       <strong class="share-preview-amount">Rp ${formatRupiah(s.total)}</strong>
+      ${payerSubInfo}
     `;
     elements.previewSharesGrid.appendChild(div);
   });
@@ -858,6 +876,8 @@ function renderMultiPayerInputs() {
     btnAll.addEventListener('click', () => {
       // Set this member as primary payer
       state.primaryPayerId = m.id;
+      state.payerId = m.id;
+      if (elements.step3PayerSelect) elements.step3PayerSelect.value = m.id;
       
       // Give them full total and reset others to 0
       active.forEach(item => {
