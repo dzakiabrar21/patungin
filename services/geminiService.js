@@ -93,14 +93,25 @@ export async function parseReceiptWithGemini(filePath, mimeType, customApiKey = 
     const base64Data = fileBuffer.toString('base64');
 
     const promptText = `
-You are an expert AI receipt parser.
-Analyze this receipt image and extract structured data.
-Extract every item with its quantity, unit price, and total line price.
-Extract subtotal, tax (PB1/PPN), service charge, discount (if any), and grand total.
-Always ensure numbers are integers in Indonesian Rupiah (IDR).
+You are an expert AI receipt parser and document validator.
+Analyze the provided image carefully.
+
+STEP 1: VALIDATION
+Determine if the image is actually a receipt, bill, invoice, cash register printout, or handwritten payment note/nota.
+If the image is NOT a receipt (for example: a selfie, person, animal, scenery, meme, food photo without a bill, random object, or irrelevant document), set "is_receipt" to false and provide a friendly Indonesian error message.
+If the image IS a receipt or handwritten bill/nota, set "is_receipt": true and extract structured data.
+
+STEP 2: EXTRACTION (Only if is_receipt is true)
+- Extract merchant/store name.
+- Extract date.
+- Extract every purchased item with its name, quantity (qty), unit price, and total line price.
+- Extract subtotal, tax (PB1/PPN), service charge, discount (if any), and grand total.
+- Ensure all numbers are integers in Indonesian Rupiah (IDR).
 
 Return STRICTLY a JSON object matching this schema:
 {
+  "is_receipt": true,
+  "error_message": null,
   "merchant": "Merchant / store name",
   "date": "YYYY-MM-DD or formatted date string",
   "currency": "IDR",
@@ -119,6 +130,13 @@ Return STRICTLY a JSON object matching this schema:
   "discount": 0,
   "total": 115000
 }
+
+If is_receipt is false, return STRICTLY:
+{
+  "is_receipt": false,
+  "error_message": "Gambar yang diunggah bukan struk atau nota pembayaran. Silakan unggah foto struk yang jelas."
+}
+
 Do not include markdown backticks or commentary. Only raw JSON.
 `;
 
@@ -195,6 +213,24 @@ Do not include markdown backticks or commentary. Only raw JSON.
     }
 
     const parsedJson = JSON.parse(candidateText.trim());
+
+    // Validation 1: Image is not a receipt
+    if (parsedJson.is_receipt === false) {
+      return {
+        success: false,
+        is_receipt: false,
+        error: parsedJson.error_message || 'Gambar yang diunggah bukan struk atau nota pembayaran. Silakan unggah foto struk yang jelas.'
+      };
+    }
+
+    // Validation 2: No items extracted or empty list
+    if (!Array.isArray(parsedJson.items) || parsedJson.items.length === 0) {
+      return {
+        success: false,
+        is_receipt: false,
+        error: 'Tidak ditemukan rincian menu atau belanja pada struk. Pastikan foto terlihat jelas dan tidak terpotong.'
+      };
+    }
 
     if (Array.isArray(parsedJson.items)) {
       parsedJson.items = parsedJson.items.map((it, idx) => ({

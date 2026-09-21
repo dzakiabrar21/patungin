@@ -527,6 +527,8 @@ async function uploadFile(file) {
     elements.spinnerOverlay.classList.add('hidden');
     showToast('Terjadi kesalahan koneksi server', 'error');
     console.error(err);
+  } finally {
+    if (elements.fileInput) elements.fileInput.value = '';
   }
 }
 
