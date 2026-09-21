@@ -1678,7 +1678,7 @@ function renderReceiptsPreview() {
     scanBtnText.textContent = 'Pindai Struk Sekarang →';
   } else {
     addSecondBox.classList.add('hidden');
-    scanBtnText.textContent = '✨ Pindai 2 Struk Sekaligus →';
+    scanBtnText.textContent = '✨ Pindai 2 Struk →';
   }
 }
 

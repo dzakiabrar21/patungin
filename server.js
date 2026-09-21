@@ -6,7 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { SAMPLE_PRESETS, parseReceiptWithGemini } from './services/geminiService.js';
+import { SAMPLE_PRESETS, parseReceiptWithGemini, parseMultipleReceipts } from './services/geminiService.js';
 
 dotenv.config();
 
