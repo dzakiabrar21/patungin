@@ -1980,3 +1980,141 @@ html, body {
   margin-left: auto;
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   Dual Receipt Slots (Step 1)
+   ========================================================================== */
+.dual-slots-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .dual-slots-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dual-slot-card {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 1rem 0.85rem;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 155px;
+}
+
+.dual-slot-card:hover {
+  border-color: var(--color-primary);
+}
+
+.dual-slot-card.has-file {
+  border-style: solid;
+  border-color: var(--color-primary);
+  background: #f0f9ff;
+}
+
+.slot-empty-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.slot-icon-badge {
+  font-size: 1.6rem;
+  margin-bottom: 0.15rem;
+}
+
+.slot-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.slot-desc {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.slot-preview-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  position: relative;
+  z-index: 15;
+}
+
+.slot-preview-img {
+  width: 75px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.slot-preview-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.slot-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.slot-filename {
+  font-size: 0.72rem;
+  color: var(--color-text-body);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-link-danger {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.btn-link-danger:hover {
+  background: #fee2e2;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-xs {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  border-radius: var(--radius-sm);
+}

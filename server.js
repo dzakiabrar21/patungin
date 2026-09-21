@@ -49,25 +49,30 @@ app.get('/api/presets', (req, res) => {
   res.json({ success: true, presets: SAMPLE_PRESETS });
 });
 
-app.post('/api/scan-receipt', upload.single('receiptImage'), async (req, res) => {
+app.post('/api/scan-receipt', upload.any(), async (req, res) => {
   try {
     const customApiKey = req.body.apiKey || null;
+    const files = req.files || (req.file ? [req.file] : []);
 
-    if (!req.file) {
+    if (!files || files.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'Tidak ada gambar yang diunggah.'
       });
     }
 
-    const filePath = req.file.path;
-    const mimeType = req.file.mimetype;
+    let result;
+    if (files.length === 1) {
+      result = await parseReceiptWithGemini(files[0].path, files[0].mimetype, customApiKey);
+    } else {
+      result = await parseMultipleReceipts(files, customApiKey);
+    }
 
-    const result = await parseReceiptWithGemini(filePath, mimeType, customApiKey);
-
-    // Clean up file asynchronously
-    fs.unlink(filePath, (err) => {
-      if (err) console.error('Failed to remove temp file:', err);
+    // Clean up temporary files asynchronously
+    files.forEach(f => {
+      fs.unlink(f.path, (err) => {
+        if (err) console.error('Failed to remove temp file:', err);
+      });
     });
 
     return res.json(result);

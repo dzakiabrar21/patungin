@@ -263,3 +263,91 @@ Do not include markdown backticks or commentary. Only raw JSON.
     };
   }
 }
+
+/**
+ * Parses multiple receipts in parallel and merges their items, subtotal, taxes, and totals.
+ * @param {Array<{path: string, mimetype: string}>} files - Array of uploaded image files
+ * @param {string|null} customApiKey - Optional custom API key
+ * @returns {Promise<Object>} Merged structured receipt data
+ */
+export async function parseMultipleReceipts(files, customApiKey = null) {
+  if (!files || files.length === 0) {
+    return { success: false, error: 'Tidak ada file struk yang diberikan.' };
+  }
+
+  if (files.length === 1) {
+    return parseReceiptWithGemini(files[0].path, files[0].mimetype, customApiKey);
+  }
+
+  // Process all receipts concurrently using Gemini Vision
+  const promises = files.map((file, idx) =>
+    parseReceiptWithGemini(file.path, file.mimetype, customApiKey)
+      .then(res => ({ idx, res }))
+      .catch(err => ({ idx, res: { success: false, error: err.message } }))
+  );
+
+  const results = await Promise.all(promises);
+
+  // Check if any file failed validation or error
+  for (const { idx, res } of results) {
+    if (!res.success) {
+      return {
+        success: false,
+        error: `Struk #${idx + 1}: ${res.error || 'Gagal diproses'}`
+      };
+    }
+  }
+
+  // Merge all receipts into a unified structure
+  const mergedItems = [];
+  let combinedSubtotal = 0;
+  let combinedTax = 0;
+  let combinedService = 0;
+  let combinedDiscount = 0;
+  let combinedTotal = 0;
+  const merchantNames = [];
+
+  results.forEach(({ idx, res }) => {
+    const r = res.receipt;
+    const storeName = r.merchant && r.merchant !== 'Merchant' ? r.merchant : `Struk ${idx + 1}`;
+    merchantNames.push(storeName);
+
+    if (Array.isArray(r.items)) {
+      r.items.forEach(it => {
+        mergedItems.push({
+          id: `item-${mergedItems.length + 1}`,
+          name: `[${storeName}] ${it.name}`,
+          qty: Number(it.qty) || 1,
+          price: Number(it.price) || 0,
+          total: Number(it.total) || (Number(it.qty) || 1) * (Number(it.price) || 0),
+          sourceStore: storeName
+        });
+      });
+    }
+
+    combinedSubtotal += Number(r.subtotal) || 0;
+    combinedTax += Number(r.tax) || 0;
+    combinedService += Number(r.service) || 0;
+    combinedDiscount += Number(r.discount) || 0;
+    combinedTotal += Number(r.total) || 0;
+  });
+
+  const mergedReceipt = {
+    merchant: merchantNames.join(' + '),
+    date: results[0]?.res?.receipt?.date || new Date().toLocaleDateString('id-ID'),
+    currency: 'IDR',
+    items: mergedItems,
+    subtotal: combinedSubtotal,
+    tax: combinedTax,
+    service: combinedService,
+    discount: combinedDiscount,
+    total: combinedTotal,
+    receiptCount: files.length
+  };
+
+  return {
+    success: true,
+    mode: 'gemini_vision_multi',
+    receipt: mergedReceipt
+  };
+}

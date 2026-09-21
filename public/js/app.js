@@ -45,6 +45,11 @@ const DEFAULT_MEMBERS = [
 
 const state = {
   currentStep: 1,
+  uploadMode: 'single',
+  dualFiles: {
+    file1: null,
+    file2: null
+  },
   allMembers: [], // Master friends pool
   participatingMemberIds: [], // IDs of members active in this specific bill
   payerMode: 'single', // 'single' | 'multi'
@@ -87,6 +92,27 @@ const elements = {
   btnBrowse: document.getElementById('btn-browse-file'),
   spinnerOverlay: document.getElementById('upload-loading-spinner'),
   spinnerStatus: document.getElementById('spinner-status-text'),
+
+  // Dual Receipt Mode Elements
+  btnMode1Receipt: document.getElementById('btn-mode-1-receipt'),
+  btnMode2Receipt: document.getElementById('btn-mode-2-receipt'),
+  singleUploadContainer: document.getElementById('single-upload-container'),
+  dualUploadContainer: document.getElementById('dual-upload-container'),
+  fileInputDual1: document.getElementById('file-input-dual-1'),
+  fileInputDual2: document.getElementById('file-input-dual-2'),
+  slotCard1: document.getElementById('slot-card-1'),
+  slotCard2: document.getElementById('slot-card-2'),
+  slotEmpty1: document.getElementById('slot-empty-1'),
+  slotEmpty2: document.getElementById('slot-empty-2'),
+  slotPreview1: document.getElementById('slot-preview-1'),
+  slotPreview2: document.getElementById('slot-preview-2'),
+  imgPreview1: document.getElementById('img-preview-1'),
+  imgPreview2: document.getElementById('img-preview-2'),
+  filename1: document.getElementById('filename-1'),
+  filename2: document.getElementById('filename-2'),
+  btnRemoveDual1: document.getElementById('btn-remove-dual-1'),
+  btnRemoveDual2: document.getElementById('btn-remove-dual-2'),
+  btnScanDual: document.getElementById('btn-scan-dual'),
   presetButtonsContainer: document.getElementById('preset-buttons-container'),
 
   // Step 2 (Review)
@@ -336,6 +362,7 @@ function setupEventListeners() {
   // File Upload Handlers
   elements.btnBrowse.addEventListener('click', () => elements.fileInput.click());
   elements.fileInput.addEventListener('change', handleFileUpload);
+  setupDualReceiptListeners();
   elements.dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     elements.dropzone.classList.add('dragover');
@@ -1597,3 +1624,172 @@ function showToast(msg, type = 'info') {
 
 // Run init on DOM ready
 document.addEventListener('DOMContentLoaded', init);
+
+// ==========================================================================
+// DUAL RECEIPT UPLOAD (2 STRUK SEKALIGUS)
+// ==========================================================================
+function setupDualReceiptListeners() {
+  if (elements.btnMode1Receipt && elements.btnMode2Receipt) {
+    elements.btnMode1Receipt.addEventListener('click', () => switchReceiptMode('single'));
+    elements.btnMode2Receipt.addEventListener('click', () => switchReceiptMode('dual'));
+  }
+
+  if (elements.fileInputDual1) {
+    elements.fileInputDual1.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleDualFileSelect(1, e.target.files[0]);
+      }
+    });
+  }
+
+  if (elements.fileInputDual2) {
+    elements.fileInputDual2.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleDualFileSelect(2, e.target.files[0]);
+      }
+    });
+  }
+
+  if (elements.btnRemoveDual1) {
+    elements.btnRemoveDual1.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeDualFile(1);
+    });
+  }
+
+  if (elements.btnRemoveDual2) {
+    elements.btnRemoveDual2.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeDualFile(2);
+    });
+  }
+
+  if (elements.btnScanDual) {
+    elements.btnScanDual.addEventListener('click', scanDualReceipts);
+  }
+}
+
+function switchReceiptMode(mode) {
+  state.uploadMode = mode;
+  if (mode === 'single') {
+    elements.btnMode1Receipt.classList.add('active');
+    elements.btnMode2Receipt.classList.remove('active');
+    elements.singleUploadContainer.classList.remove('hidden');
+    elements.dualUploadContainer.classList.add('hidden');
+  } else {
+    elements.btnMode2Receipt.classList.add('active');
+    elements.btnMode1Receipt.classList.remove('active');
+    elements.singleUploadContainer.classList.add('hidden');
+    elements.dualUploadContainer.classList.remove('hidden');
+  }
+}
+
+function handleDualFileSelect(slotNum, file) {
+  if (!file.type.startsWith('image/')) {
+    showToast('Format file harus berupa gambar (JPG, PNG, WEBP)', 'error');
+    return;
+  }
+
+  state.dualFiles[`file${slotNum}`] = file;
+
+  const emptyView = slotNum === 1 ? elements.slotEmpty1 : elements.slotEmpty2;
+  const previewView = slotNum === 1 ? elements.slotPreview1 : elements.slotPreview2;
+  const imgPreview = slotNum === 1 ? elements.imgPreview1 : elements.imgPreview2;
+  const filenameEl = slotNum === 1 ? elements.filename1 : elements.filename2;
+  const cardEl = slotNum === 1 ? elements.slotCard1 : elements.slotCard2;
+
+  emptyView.classList.add('hidden');
+  previewView.classList.remove('hidden');
+  imgPreview.src = URL.createObjectURL(file);
+  filenameEl.textContent = file.name;
+  cardEl.classList.add('has-file');
+
+  updateDualScanButton();
+}
+
+function removeDualFile(slotNum) {
+  state.dualFiles[`file${slotNum}`] = null;
+
+  const emptyView = slotNum === 1 ? elements.slotEmpty1 : elements.slotEmpty2;
+  const previewView = slotNum === 1 ? elements.slotPreview1 : elements.slotPreview2;
+  const inputEl = slotNum === 1 ? elements.fileInputDual1 : elements.fileInputDual2;
+  const cardEl = slotNum === 1 ? elements.slotCard1 : elements.slotCard2;
+
+  inputEl.value = '';
+  previewView.classList.add('hidden');
+  emptyView.classList.remove('hidden');
+  cardEl.classList.remove('has-file');
+
+  updateDualScanButton();
+}
+
+function updateDualScanButton() {
+  const count = (state.dualFiles.file1 ? 1 : 0) + (state.dualFiles.file2 ? 1 : 0);
+
+  if (count === 2) {
+    elements.btnScanDual.disabled = false;
+    elements.btnScanDual.innerHTML = '<span>✨ Pindai 2 Struk Sekaligus</span>';
+  } else if (count === 1) {
+    elements.btnScanDual.disabled = false;
+    elements.btnScanDual.innerHTML = '<span>✨ Pindai 1 Struk (Atau Tambah Struk 2)</span>';
+  } else {
+    elements.btnScanDual.disabled = true;
+    elements.btnScanDual.innerHTML = '<span>✨ Pindai 2 Struk Sekaligus</span>';
+  }
+}
+
+async function scanDualReceipts() {
+  const filesToUpload = [state.dualFiles.file1, state.dualFiles.file2].filter(Boolean);
+  if (filesToUpload.length === 0) {
+    showToast('Silakan pilih minimal 1 foto struk terlebih dahulu', 'error');
+    return;
+  }
+
+  elements.spinnerOverlay.classList.remove('hidden');
+  elements.spinnerStatus.textContent = `Memindai ${filesToUpload.length} struk dengan AI...`;
+
+  const formData = new FormData();
+  filesToUpload.forEach(file => {
+    formData.append('receiptImages', file);
+  });
+  if (state.apiKey) {
+    formData.append('apiKey', state.apiKey);
+  }
+
+  try {
+    const response = await fetch('/api/scan-receipt', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+    elements.spinnerOverlay.classList.add('hidden');
+
+    if (result.success && result.receipt) {
+      const r = result.receipt;
+      const active = getActiveParticipants();
+      const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
+
+      if (Array.isArray(r.items)) {
+        r.items.forEach((item, idx) => {
+          item.assignedTo = [activeIds[idx % activeIds.length]];
+        });
+      }
+
+      state.receipt = r;
+      if (filesToUpload.length > 1) {
+        showToast('2 Struk berhasil digabungkan oleh AI! ✓', 'success');
+      } else {
+        showToast('Struk berhasil dipindai oleh AI! ✓', 'success');
+      }
+
+      goToStep(2);
+    } else {
+      showToast(result.error || 'Gagal memindai struk', 'error');
+    }
+  } catch (err) {
+    elements.spinnerOverlay.classList.add('hidden');
+    showToast('Terjadi kesalahan koneksi server', 'error');
+    console.error(err);
+  }
+}
