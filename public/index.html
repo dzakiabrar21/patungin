@@ -384,7 +384,7 @@
               </div>
               <div>
                 <h4 class="card-title-clean">Format Pesan WhatsApp</h4>
-                <p class="card-desc-clean">Salin untuk dikirimkan langsung ke grup</p>
+                <p class="card-desc-clean">Salin untuk dikirimkan langsung</p>
               </div>
             </div>
 
@@ -521,6 +521,10 @@
         <button class="btn-close-modal" id="btn-close-item-modal" aria-label="Tutup">✕</button>
       </div>
       <div class="modal-body">
+        <div class="form-group" id="form-group-item-store" style="display: none; margin-bottom: 0.75rem;">
+          <label class="form-label" for="select-item-store">Pilih Struk / Tempat:</label>
+          <select id="select-item-store" class="input-text" style="padding: 0.55rem 0.75rem;"></select>
+        </div>
         <div class="form-group">
           <label class="form-label" for="input-item-name">Nama Menu:</label>
           <input type="text" id="input-item-name" class="input-text" placeholder="Contoh: Nasi Goreng">
@@ -540,6 +544,45 @@
         <button id="btn-cancel-item-modal" class="btn-outline-sm" type="button">Batal</button>
         <button id="btn-save-item-modal" class="btn-primary-sm" type="button">Tambahkan</button>
       </div>
+    </div>
+  </div>
+
+    <!-- Modal Konfirmasi Menu Belum Dipilih -->
+  <div id="modal-confirm-unclaimed" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="color: #b45309;">⚠️ Masih Ada Menu Belum Dipilih</h3>
+          <p class="modal-desc" id="unclaimed-modal-desc">Ada beberapa menu yang belum dipilih oleh siapa pun.</p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-unclaimed-modal" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" style="padding-top: 0.25rem;">
+        <div id="unclaimed-items-modal-list" class="unclaimed-modal-list"></div>
+        <p style="font-size: 0.78rem; color: #64748b; margin-top: 0.75rem; line-height: 1.4;">
+          Menu yang belum dipilih tidak akan dibebankan ke siapa pun. Apakah Anda ingin tetap lanjut atau memilih menu dulu?
+        </p>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button id="btn-unclaimed-back" class="btn-outline-sm" type="button">Pilih Menu Dulu</button>
+        <button id="btn-unclaimed-proceed" class="btn-primary-sm" type="button" style="background: #0284c7;">Tetap Lanjut →</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- iOS-Style Success & Calculation HUD -->
+  <div id="ios-success-hud" class="ios-hud-backdrop hidden">
+    <div class="ios-hud-card">
+      <div class="ios-hud-spinner" id="ios-hud-spinner">
+        <div class="ios-spinner-ring"></div>
+      </div>
+      <div class="ios-hud-checkmark hidden" id="ios-hud-checkmark">
+        <svg class="ios-checkmark-svg" viewBox="0 0 52 52">
+          <circle class="ios-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="ios-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+      </div>
+      <span class="ios-hud-text" id="ios-hud-text">Menghitung tagihan...</span>
     </div>
   </div>
 

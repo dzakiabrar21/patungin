@@ -161,7 +161,12 @@ Do not include markdown backticks or commentary. Only raw JSON.
     };
 
     // Resilient Model Calling: try gemini-3.6-flash, on 503/429 retry and fallback to gemini-flash-latest
-    const CANDIDATE_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
+    const CANDIDATE_MODELS = [
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.6-flash',
+      'gemini-flash-latest'
+    ];
     let lastError = null;
     let response = null;
 
@@ -314,13 +319,16 @@ export async function parseMultipleReceipts(files, customApiKey = null) {
 
     if (Array.isArray(r.items)) {
       r.items.forEach(it => {
+        // Clean item name without [Store] prefix
+        let cleanName = (it.name || '').replace(/^\[.*?\]\s*/, '').trim();
         mergedItems.push({
           id: `item-${mergedItems.length + 1}`,
-          name: `[${storeName}] ${it.name}`,
+          name: cleanName,
           qty: Number(it.qty) || 1,
           price: Number(it.price) || 0,
           total: Number(it.total) || (Number(it.qty) || 1) * (Number(it.price) || 0),
-          sourceStore: storeName
+          sourceStore: storeName,
+          receiptIdx: idx + 1
         });
       });
     }

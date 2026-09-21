@@ -324,8 +324,30 @@ function setupEventListeners() {
       showToast('Pilih minimal 1 orang yang ikut patungan!', 'error');
       return;
     }
-    goToStep(4);
+
+    // Check if there are unassigned/unclaimed items
+    const unclaimed = state.receipt.items.filter(it => !it.assignedTo || it.assignedTo.length === 0);
+    if (unclaimed.length > 0) {
+      openUnclaimedConfirmModal(unclaimed);
+      return;
+    }
+
+    proceedToStep4WithIosHud();
   });
+
+  // Modal Unclaimed Confirmation Listeners
+  const btnCloseUnclaimed = document.getElementById('btn-close-unclaimed-modal');
+  const btnUnclaimedBack = document.getElementById('btn-unclaimed-back');
+  const btnUnclaimedProceed = document.getElementById('btn-unclaimed-proceed');
+
+  if (btnCloseUnclaimed) btnCloseUnclaimed.addEventListener('click', closeUnclaimedConfirmModal);
+  if (btnUnclaimedBack) btnUnclaimedBack.addEventListener('click', closeUnclaimedConfirmModal);
+  if (btnUnclaimedProceed) {
+    btnUnclaimedProceed.addEventListener('click', () => {
+      closeUnclaimedConfirmModal();
+      proceedToStep4WithIosHud();
+    });
+  }
 
   elements.btnResetNewBill.addEventListener('click', resetAllToStart);
 
@@ -513,32 +535,86 @@ function renderStep2Review() {
         Belum ada menu yang terbaca. Klik <strong>+ Menu Manual</strong> untuk menambah.
       </div>
     `;
+    recalculateTotals();
+    return;
   }
 
-  r.items.forEach(item => {
-    const row = document.createElement('div');
-    row.className = 'receipt-row-item';
-    row.innerHTML = `
-      <div class="row-item-left">
-        <span class="qty-badge">${item.qty}x</span>
-        <span class="item-name-text">${escapeHtml(item.name)}</span>
-      </div>
-      <div class="row-item-right">
-        <span>Rp ${formatRupiah(item.total)}</span>
-        <button type="button" class="btn-delete-item" data-id="${item.id}" title="Hapus Item" aria-label="Hapus">✕</button>
-      </div>
-    `;
-
-    row.querySelector('.btn-delete-item').addEventListener('click', () => {
-      state.receipt.items = state.receipt.items.filter(i => i.id !== item.id);
-      recalculateTotals();
-      renderStep2Review();
-    });
-
-    elements.receiptItemsReviewList.appendChild(row);
+  // Auto-clean any legacy [Store Name] prefix from item.name and assign to sourceStore
+  r.items.forEach(it => {
+    if (it.name && it.name.startsWith('[')) {
+      const match = it.name.match(/^\[(.*?)\]\s*(.*)$/);
+      if (match) {
+        if (!it.sourceStore) it.sourceStore = match[1];
+        it.name = match[2];
+      }
+    }
   });
 
+  // Check if multiple stores exist
+  const uniqueStores = [...new Set(r.items.map(it => it.sourceStore).filter(Boolean))];
+
+  if (uniqueStores.length > 1) {
+    // Ensure any item with missing sourceStore is assigned to the first store
+    r.items.forEach(it => {
+      if (!it.sourceStore) {
+        it.sourceStore = uniqueStores[0];
+      }
+    });
+
+    // Group and render by store sections
+    uniqueStores.forEach((storeName, idx) => {
+      const storeItems = r.items.filter(it => it.sourceStore === storeName);
+
+      // Section Header
+      const header = document.createElement('div');
+      header.className = 'receipt-store-section-header';
+      header.innerHTML = `
+        <div class="store-section-title">
+          <span class="store-badge-tag">Struk #${idx + 1}</span>
+          <strong class="store-name-text">${escapeHtml(storeName)}</strong>
+        </div>
+        <span class="store-item-count">${storeItems.length} menu</span>
+      `;
+      elements.receiptItemsReviewList.appendChild(header);
+
+      // Store Item Rows
+      storeItems.forEach(item => {
+        const row = createReviewItemRow(item);
+        elements.receiptItemsReviewList.appendChild(row);
+      });
+    });
+  } else {
+    // Single store - render items normally without extra headers
+    r.items.forEach(item => {
+      const row = createReviewItemRow(item);
+      elements.receiptItemsReviewList.appendChild(row);
+    });
+  }
+
   recalculateTotals();
+}
+
+function createReviewItemRow(item) {
+  const row = document.createElement('div');
+  row.className = 'receipt-row-item';
+  row.innerHTML = `
+    <div class="row-item-left">
+      <span class="qty-badge">${item.qty}x</span>
+      <span class="item-name-text">${escapeHtml(item.name)}</span>
+    </div>
+    <div class="row-item-right">
+      <span>Rp ${formatRupiah(item.total)}</span>
+      <button type="button" class="btn-delete-item" data-id="${item.id}" title="Hapus Item" aria-label="Hapus">✕</button>
+    </div>
+  `;
+
+  row.querySelector('.btn-delete-item').addEventListener('click', () => {
+    state.receipt.items = state.receipt.items.filter(i => i.id !== item.id);
+    recalculateTotals();
+    renderStep2Review();
+  });
+
+  return row;
 }
 
 function recalculateTotals() {
@@ -645,84 +721,133 @@ function renderAssignmentItems() {
 
   let hasUnclaimed = false;
 
-  state.receipt.items.forEach(item => {
-    if (!item.assignedTo) item.assignedTo = [];
-
-    // Clean up members who are no longer participating
-    item.assignedTo = item.assignedTo.filter(id => state.participatingMemberIds.includes(id));
-
-    if (item.assignedTo.length === 0) {
-      hasUnclaimed = true;
+  // Auto-clean any legacy [Store Name] prefix from item.name
+  state.receipt.items.forEach(it => {
+    if (it.name && it.name.startsWith('[')) {
+      const match = it.name.match(/^\[(.*?)\]\s*(.*)$/);
+      if (match) {
+        if (!it.sourceStore) it.sourceStore = match[1];
+        it.name = match[2];
+      }
     }
+  });
 
-    const card = document.createElement('div');
-    card.className = 'assignment-card';
+  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
 
-    const isAllClaimed = active.length > 0 && item.assignedTo.length === active.length;
-    let splitNote = '';
-    if (item.assignedTo.length > 1) {
-      const perPerson = Math.round(item.total / item.assignedTo.length);
-      splitNote = `<span class="split-portion-note">(@ Rp ${formatRupiah(perPerson)} / org)</span>`;
-    }
-
-    card.innerHTML = `
-      <div class="assignment-head">
-        <div>
-          <span class="qty-badge">${item.qty}x</span>
-          <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
-          ${splitNote}
-        </div>
-        <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
-      </div>
-      <div class="assignment-chips-row" id="chips-${item.id}"></div>
-      <div style="display: flex; justify-content: flex-end;">
-        <button type="button" class="btn-toggle-all" id="all-${item.id}">
-          ${isAllClaimed ? 'Batalkan Semua' : 'Bagi Rata ke Semua'}
-        </button>
-      </div>
-    `;
-
-    const chipsRow = card.querySelector(`#chips-${item.id}`);
-    active.forEach(member => {
-      const isAssigned = item.assignedTo.includes(member.id);
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'btn-member-chip' + (isAssigned ? ' active' : '');
-      chip.innerHTML = `
-        <span class="chip-avatar-mini">${escapeHtml(member.initial)}</span>
-        <span>${escapeHtml(member.name)}</span>
-        ${isAssigned ? '<span class="check-icon">✓</span>' : ''}
-      `;
-
-      chip.addEventListener('click', () => {
-        if (isAssigned) {
-          item.assignedTo = item.assignedTo.filter(id => id !== member.id);
-        } else {
-          item.assignedTo.push(member.id);
-        }
-        renderAssignmentItems();
-        renderStep3LiveShares();
-      });
-
-      chipsRow.appendChild(chip);
+  if (uniqueStores.length > 1) {
+    state.receipt.items.forEach(it => {
+      if (!it.sourceStore) {
+        it.sourceStore = uniqueStores[0];
+      }
     });
 
-    // Toggle all button
-    const btnAll = card.querySelector(`#all-${item.id}`);
-    btnAll.addEventListener('click', () => {
-      if (isAllClaimed) {
-        item.assignedTo = [];
+    // Render grouped by store section
+    uniqueStores.forEach((storeName, sIdx) => {
+      const storeItems = state.receipt.items.filter(it => it.sourceStore === storeName);
+
+      const header = document.createElement('div');
+      header.className = 'receipt-store-section-header';
+      header.innerHTML = `
+        <div class="store-section-title">
+          <span class="store-badge-tag">Struk #${sIdx + 1}</span>
+          <strong class="store-name-text">${escapeHtml(storeName)}</strong>
+        </div>
+        <span class="store-item-count">${storeItems.length} menu</span>
+      `;
+      elements.itemsContainer.appendChild(header);
+
+      storeItems.forEach(item => {
+        const card = createAssignmentCard(item, active);
+        elements.itemsContainer.appendChild(card);
+        if (!item.assignedTo || item.assignedTo.length === 0) {
+          hasUnclaimed = true;
+        }
+      });
+    });
+  } else {
+    // Normal single store
+    state.receipt.items.forEach(item => {
+      const card = createAssignmentCard(item, active);
+      elements.itemsContainer.appendChild(card);
+      if (!item.assignedTo || item.assignedTo.length === 0) {
+        hasUnclaimed = true;
+      }
+    });
+  }
+
+  elements.unclaimedWarningPill.classList.toggle('hidden', !hasUnclaimed);
+}
+
+function createAssignmentCard(item, active) {
+  if (!item.assignedTo) item.assignedTo = [];
+
+  // Clean up members who are no longer participating
+  item.assignedTo = item.assignedTo.filter(id => state.participatingMemberIds.includes(id));
+
+  const card = document.createElement('div');
+  card.className = 'assignment-card';
+
+  const isAllClaimed = active.length > 0 && item.assignedTo.length === active.length;
+  let splitNote = '';
+  if (item.assignedTo.length > 1) {
+    const perPerson = Math.round(item.total / item.assignedTo.length);
+    splitNote = `<span class="split-portion-note">(@ Rp ${formatRupiah(perPerson)} / org)</span>`;
+  }
+
+  card.innerHTML = `
+    <div class="assignment-head">
+      <div>
+        <span class="qty-badge">${item.qty}x</span>
+        <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
+        ${splitNote}
+      </div>
+      <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
+    </div>
+    <div class="assignment-chips-row" id="chips-${item.id}"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <button type="button" class="btn-toggle-all" id="all-${item.id}">
+        ${isAllClaimed ? 'Batalkan Semua' : 'Bagi Rata ke Semua'}
+      </button>
+    </div>
+  `;
+
+  const chipsRow = card.querySelector(`#chips-${item.id}`);
+  active.forEach(member => {
+    const isAssigned = item.assignedTo.includes(member.id);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'btn-member-chip' + (isAssigned ? ' active' : '');
+    chip.innerHTML = `
+      <span class="chip-avatar-mini">${escapeHtml(member.initial)}</span>
+      <span>${escapeHtml(member.name)}</span>
+      ${isAssigned ? '<span class="check-icon">✓</span>' : ''}
+    `;
+
+    chip.addEventListener('click', () => {
+      if (isAssigned) {
+        item.assignedTo = item.assignedTo.filter(id => id !== member.id);
       } else {
-        item.assignedTo = active.map(m => m.id);
+        item.assignedTo.push(member.id);
       }
       renderAssignmentItems();
       renderStep3LiveShares();
     });
 
-    elements.itemsContainer.appendChild(card);
+    chipsRow.appendChild(chip);
   });
 
-  elements.unclaimedWarningPill.classList.toggle('hidden', !hasUnclaimed);
+  const btnAll = card.querySelector(`#all-${item.id}`);
+  btnAll.addEventListener('click', () => {
+    if (isAllClaimed) {
+      item.assignedTo = [];
+    } else {
+      item.assignedTo = active.map(m => m.id);
+    }
+    renderAssignmentItems();
+    renderStep3LiveShares();
+  });
+
+  return card;
 }
 
 // Step 3: Real-time Live Share Preview
@@ -1229,6 +1354,26 @@ function openItemModal() {
   elements.inputItemName.value = '';
   elements.inputItemQty.value = '1';
   elements.inputItemPrice.value = '';
+
+  const storeGroup = document.getElementById('form-group-item-store');
+  const storeSelect = document.getElementById('select-item-store');
+  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+
+  if (storeGroup && storeSelect) {
+    if (uniqueStores.length > 1) {
+      storeGroup.style.display = 'block';
+      storeSelect.innerHTML = '';
+      uniqueStores.forEach((storeName, idx) => {
+        const opt = document.createElement('option');
+        opt.value = storeName;
+        opt.textContent = `Struk #${idx + 1}: ${storeName}`;
+        storeSelect.appendChild(opt);
+      });
+    } else {
+      storeGroup.style.display = 'none';
+    }
+  }
+
   elements.modalCustomItem.classList.remove('hidden');
   elements.inputItemName.focus();
 }
@@ -1251,6 +1396,10 @@ function saveCustomItem() {
     return;
   }
 
+  const storeSelect = document.getElementById('select-item-store');
+  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+  const targetStore = (storeSelect && storeSelect.value) ? storeSelect.value : (uniqueStores[0] || null);
+
   const active = getActiveParticipants();
   const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
 
@@ -1260,6 +1409,7 @@ function saveCustomItem() {
     qty: qty,
     price: Math.round(price / qty),
     total: price,
+    sourceStore: targetStore,
     assignedTo: [activeIds[0] || 'm1']
   };
 
@@ -1756,4 +1906,65 @@ async function executeReceiptScan() {
     showToast('Terjadi kesalahan koneksi server', 'error');
     console.error(err);
   }
+}
+
+// Unclaimed Items Confirmation Modal Functions
+function openUnclaimedConfirmModal(unclaimedItems) {
+  const modal = document.getElementById('modal-confirm-unclaimed');
+  const listEl = document.getElementById('unclaimed-items-modal-list');
+  const descEl = document.getElementById('unclaimed-modal-desc');
+
+  if (descEl) descEl.textContent = `Ada ${unclaimedItems.length} menu yang belum dipilih oleh siapa pun:`;
+  if (listEl) {
+    listEl.innerHTML = '';
+    unclaimedItems.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'unclaimed-modal-item';
+      row.innerHTML = `
+        <span class="unclaimed-item-name">${it.qty}x ${escapeHtml(it.name)}</span>
+        <span class="unclaimed-item-price">Rp ${formatRupiah(it.total)}</span>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeUnclaimedConfirmModal() {
+  const modal = document.getElementById('modal-confirm-unclaimed');
+  if (modal) modal.classList.add('hidden');
+}
+
+
+// iOS-Style Success & Calculation HUD
+function proceedToStep4WithIosHud() {
+  const hud = document.getElementById('ios-success-hud');
+  const spinner = document.getElementById('ios-hud-spinner');
+  const checkmark = document.getElementById('ios-hud-checkmark');
+  const text = document.getElementById('ios-hud-text');
+
+  if (!hud) {
+    goToStep(4);
+    return;
+  }
+
+  // Phase 1: Loading calculation state
+  spinner.classList.remove('hidden');
+  checkmark.classList.add('hidden');
+  text.textContent = 'Menghitung tagihan...';
+  hud.classList.remove('hidden');
+
+  // Phase 2: Switch to iOS checkmark success after brief calculation
+  setTimeout(() => {
+    spinner.classList.add('hidden');
+    checkmark.classList.remove('hidden');
+    text.textContent = 'Rincian Siap!';
+
+    // Phase 3: Smoothly land on Step 4
+    setTimeout(() => {
+      hud.classList.add('hidden');
+      goToStep(4);
+    }, 600);
+  }, 650);
 }
