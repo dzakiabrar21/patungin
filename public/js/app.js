@@ -1,3 +1,67 @@
+
+// Client-side image compression & format normalization for mobile browsers
+async function compressImageIfNeeded(file, maxDimension = 1800, quality = 0.82) {
+  // If file is small (< 1MB) and not HEIC, no need to compress
+  if (file.size < 1024 * 1024 && !file.name.toLowerCase().endsWith('.heic')) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+              const compressedFile = new File([blob], newName, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file); // fallback to original file if decode fails
+      };
+
+      img.src = url;
+    } catch (err) {
+      console.warn('Compression failed, using original file:', err);
+      resolve(file);
+    }
+  });
+}
+
 /**
  * PatungIn - Smart Receipt Split Bill Engine
  * Open-source receipt scanner and proportional bill splitting utility.
@@ -382,8 +446,7 @@ function setupEventListeners() {
   });
 
   // File Upload Handlers
-  elements.btnBrowse.addEventListener('click', () => elements.fileInput.click());
-  // fileInput is handled by setupCleanUploadListeners()
+  // elements.btnBrowse is handled inside setupCleanUploadListeners() to avoid double clicks on mobile
   setupCleanUploadListeners();
   elements.dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -1720,6 +1783,13 @@ document.addEventListener('DOMContentLoaded', init);
 // ==========================================================================
 let selectedReceiptFiles = []; // Array of File objects (max 2)
 
+function isValidImageFile(file) {
+  if (!file) return false;
+  if (!file.type) return true; // file selected via accept="image/*"
+  if (file.type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|heic|heif|bmp|gif|tiff?)$/i.test(file.name || '');
+}
+
 function setupCleanUploadListeners() {
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
@@ -1728,6 +1798,15 @@ function setupCleanUploadListeners() {
   const btnClearAll = document.getElementById('btn-clear-all-receipts');
   const btnStartScan = document.getElementById('btn-start-scan');
   const btnTriggerSecond = document.getElementById('btn-trigger-second-file');
+
+  // Click on dropzone card or browse button opens file picker
+  if (dropzone && fileInput) {
+    dropzone.addEventListener('click', (e) => {
+      // Prevent double trigger if clicked directly on btnBrowse
+      if (e.target.closest('#btn-browse-file')) return;
+      fileInput.click();
+    });
+  }
 
   if (btnBrowse && fileInput) {
     btnBrowse.addEventListener('click', (e) => {
@@ -1738,8 +1817,9 @@ function setupCleanUploadListeners() {
 
   if (fileInput) {
     fileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length > 0) {
-        const picked = Array.from(e.target.files).filter(f => f.type.startsWith('image/')).slice(0, 2);
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const picked = Array.from(files).filter(isValidImageFile).slice(0, 2);
         if (picked.length > 0) {
           selectedReceiptFiles = picked;
           renderReceiptsPreview();
@@ -1759,7 +1839,7 @@ function setupCleanUploadListeners() {
     fileInputSecond.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
-        if (file.type.startsWith('image/') && selectedReceiptFiles.length < 2) {
+        if (isValidImageFile(file) && selectedReceiptFiles.length < 2) {
           selectedReceiptFiles.push(file);
           renderReceiptsPreview();
         }
@@ -1801,15 +1881,20 @@ function renderReceiptsPreview() {
     const row = document.createElement('div');
     row.className = 'selected-receipt-row';
 
-    const thumbUrl = URL.createObjectURL(file);
+    let thumbUrl = '';
+    try {
+      thumbUrl = URL.createObjectURL(file);
+    } catch (_) {
+      thumbUrl = '';
+    }
     const label = idx === 0 ? 'Struk #1' : 'Struk #2';
 
     row.innerHTML = `
       <div class="selected-receipt-left">
-        <img src="${thumbUrl}" alt="${label}" class="selected-receipt-thumb">
+        ${thumbUrl ? `<img src="${thumbUrl}" alt="${label}" class="selected-receipt-thumb">` : ''}
         <div class="selected-receipt-meta">
           <span class="selected-receipt-label">${label}</span>
-          <span class="selected-receipt-name">${file.name}</span>
+          <span class="selected-receipt-name">${file.name || 'Foto Struk'}</span>
         </div>
       </div>
       <button type="button" class="btn-remove-receipt" title="Hapus struk ini" data-idx="${idx}">✕</button>
@@ -1830,6 +1915,11 @@ function renderReceiptsPreview() {
     addSecondBox.classList.add('hidden');
     scanBtnText.textContent = '✨ Pindai 2 Struk →';
   }
+
+  // Ensure card is visible in mobile viewport
+  try {
+    previewCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (_) {}
 }
 
 function removeReceiptAtIndex(idx) {
@@ -1857,23 +1947,45 @@ async function executeReceiptScan() {
   }
 
   elements.spinnerOverlay.classList.remove('hidden');
-  elements.spinnerStatus.textContent = selectedReceiptFiles.length > 1
-    ? 'Memindai 2 struk dengan AI...'
-    : 'Memindai struk dengan AI...';
-
-  const formData = new FormData();
-  selectedReceiptFiles.forEach(file => {
-    formData.append('receiptImages', file);
-  });
-  if (state.apiKey) {
-    formData.append('apiKey', state.apiKey);
-  }
+  elements.spinnerStatus.textContent = 'Menyiapkan foto struk...';
 
   try {
+    // Compress large mobile photos to avoid Vercel 4.5MB payload limit
+    const compressedFiles = await Promise.all(
+      selectedReceiptFiles.map(f => compressImageIfNeeded(f))
+    );
+
+    elements.spinnerStatus.textContent = compressedFiles.length > 1
+      ? 'Memindai 2 struk dengan AI...'
+      : 'Memindai struk dengan AI...';
+
+    const formData = new FormData();
+    compressedFiles.forEach(file => {
+      formData.append('receiptImages', file);
+    });
+    if (state.apiKey) {
+      formData.append('apiKey', state.apiKey);
+    }
+
     const response = await fetch('/api/scan-receipt', {
       method: 'POST',
       body: formData
     });
+
+    if (!response.ok) {
+      let errMsg = 'Gagal memindai struk (Error ' + response.status + ')';
+      try {
+        const errJson = await response.json();
+        if (errJson.error) errMsg = errJson.error;
+      } catch (_) {
+        if (response.status === 413) {
+          errMsg = 'Ukuran foto terlalu besar. Silakan coba foto dengan resolusi lebih rendah.';
+        }
+      }
+      elements.spinnerOverlay.classList.add('hidden');
+      showToast(errMsg, 'error');
+      return;
+    }
 
     const result = await response.json();
     elements.spinnerOverlay.classList.add('hidden');
@@ -1907,7 +2019,6 @@ async function executeReceiptScan() {
     console.error(err);
   }
 }
-
 // Unclaimed Items Confirmation Modal Functions
 function openUnclaimedConfirmModal(unclaimedItems) {
   const modal = document.getElementById('modal-confirm-unclaimed');
