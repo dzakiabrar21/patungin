@@ -1982,131 +1982,105 @@ html, body {
 }
 
 /* ==========================================================================
-   Dual Receipt Slots (Step 1)
+   Selected Receipts Preview (Step 1 Clean UI)
    ========================================================================== */
-.dual-slots-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-@media (max-width: 480px) {
-  .dual-slots-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.dual-slot-card {
-  background: #ffffff;
-  border: 1.5px dashed #cbd5e1;
-  border-radius: var(--radius-md);
-  padding: 1rem 0.85rem;
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-  transition: all var(--transition-normal);
+.selected-receipts-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 155px;
+  gap: 0.55rem;
 }
 
-.dual-slot-card:hover {
-  border-color: var(--color-primary);
-}
-
-.dual-slot-card.has-file {
-  border-style: solid;
-  border-color: var(--color-primary);
-  background: #f0f9ff;
-}
-
-.slot-empty-view {
+.selected-receipt-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  width: 100%;
-}
-
-.slot-icon-badge {
-  font-size: 1.6rem;
-  margin-bottom: 0.15rem;
-}
-
-.slot-title {
-  font-size: 0.88rem;
-  font-weight: 800;
-  color: var(--color-text-main);
-}
-
-.slot-desc {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  margin-bottom: 0.45rem;
-}
-
-.slot-preview-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  width: 100%;
-  position: relative;
-  z-index: 15;
-}
-
-.slot-preview-img {
-  width: 75px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  background: #f8fafc;
   border: 1px solid var(--color-border);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
 }
 
-.slot-preview-info {
+.selected-receipt-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  overflow: hidden;
+}
+
+.selected-receipt-thumb {
+  width: 44px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.selected-receipt-meta {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  width: 100%;
+  gap: 0.15rem;
+  overflow: hidden;
 }
 
-.slot-tag {
-  font-size: 0.68rem;
+.selected-receipt-label {
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--color-primary);
-  background: var(--color-primary-light);
-  padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.slot-filename {
-  font-size: 0.72rem;
-  color: var(--color-text-body);
-  max-width: 130px;
+.selected-receipt-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  max-width: 190px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.btn-link-danger {
+.btn-remove-receipt {
   background: none;
   border: none;
-  color: #ef4444;
-  font-family: var(--font-family);
-  font-size: 0.75rem;
+  color: #94a3b8;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 0.2rem 0.5rem;
+  padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
+  line-height: 1;
 }
 
-.btn-link-danger:hover {
+.btn-remove-receipt:hover {
+  color: #ef4444;
   background: #fee2e2;
+}
+
+.btn-dashed-action {
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-dashed-action:hover {
+  border-color: var(--color-primary);
+  background: #f0f9ff;
 }
 
 .btn-block {
