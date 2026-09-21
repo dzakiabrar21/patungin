@@ -361,7 +361,7 @@ function setupEventListeners() {
 
   // File Upload Handlers
   elements.btnBrowse.addEventListener('click', () => elements.fileInput.click());
-  elements.fileInput.addEventListener('change', handleFileUpload);
+  // fileInput is handled by setupCleanUploadListeners()
   setupCleanUploadListeners();
   elements.dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -371,8 +371,12 @@ function setupEventListeners() {
   elements.dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     elements.dropzone.classList.remove('dragover');
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      uploadFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const picked = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')).slice(0, 2);
+      if (picked.length > 0) {
+        selectedReceiptFiles = picked;
+        renderReceiptsPreview();
+      }
     }
   });
 
@@ -493,70 +497,6 @@ function loadPresetAndProceed(presetId) {
   state.receipt = data;
   showToast(`Memuat contoh struk: ${found.merchant}`, 'success');
   goToStep(2);
-}
-
-// File Upload
-function handleFileUpload(e) {
-  if (e.target.files && e.target.files[0]) {
-    uploadFile(e.target.files[0]);
-  }
-}
-
-async function uploadFile(file) {
-  if (!file.type.startsWith('image/')) {
-    showToast('Format file harus berupa gambar (JPG, PNG, WEBP)', 'error');
-    return;
-  }
-
-  elements.spinnerOverlay.classList.remove('hidden');
-  elements.spinnerStatus.textContent = state.apiKey
-    ? 'Memindai struk dengan Gemini Vision API...'
-    : 'Memproses struk (Mode Simulasi)...';
-
-  const formData = new FormData();
-  formData.append('receiptImage', file);
-  if (state.apiKey) {
-    formData.append('apiKey', state.apiKey);
-  }
-
-  try {
-    const response = await fetch('/api/scan-receipt', {
-      method: 'POST',
-      body: formData
-    });
-
-    const result = await response.json();
-    elements.spinnerOverlay.classList.add('hidden');
-
-    if (result.success && result.receipt) {
-      const r = result.receipt;
-      const active = getActiveParticipants();
-      const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
-
-      if (Array.isArray(r.items)) {
-        r.items.forEach((item, idx) => {
-          item.assignedTo = [activeIds[idx % activeIds.length]];
-        });
-      }
-
-      state.receipt = r;
-      if (result.mode === 'gemini_vision') {
-        showToast('Struk berhasil dipindai oleh AI', 'success');
-      } else {
-        showToast('Struk dimuat (Mode Simulasi)', 'info');
-      }
-
-      goToStep(2);
-    } else {
-      showToast(result.error || 'Gagal memindai struk', 'error');
-    }
-  } catch (err) {
-    elements.spinnerOverlay.classList.add('hidden');
-    showToast('Terjadi kesalahan koneksi server', 'error');
-    console.error(err);
-  } finally {
-    if (elements.fileInput) elements.fileInput.value = '';
-  }
 }
 
 // Step 2: Cek Detail Pesanan
@@ -1637,18 +1577,31 @@ function setupCleanUploadListeners() {
   const btnBrowse = document.getElementById('btn-browse-file');
   const btnClearAll = document.getElementById('btn-clear-all-receipts');
   const btnStartScan = document.getElementById('btn-start-scan');
+  const btnTriggerSecond = document.getElementById('btn-trigger-second-file');
 
   if (btnBrowse && fileInput) {
-    btnBrowse.addEventListener('click', () => fileInput.click());
+    btnBrowse.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
   }
 
   if (fileInput) {
     fileInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files.length > 0) {
         const picked = Array.from(e.target.files).filter(f => f.type.startsWith('image/')).slice(0, 2);
-        selectedReceiptFiles = picked;
-        renderReceiptsPreview();
+        if (picked.length > 0) {
+          selectedReceiptFiles = picked;
+          renderReceiptsPreview();
+        }
       }
+    });
+  }
+
+  if (btnTriggerSecond && fileInputSecond) {
+    btnTriggerSecond.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInputSecond.click();
     });
   }
 
