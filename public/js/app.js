@@ -1,3 +1,13 @@
+function toTitleCase(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.replace(/^([a-z])/, c => c.toUpperCase()).replace(/(\()([a-z])/, (m, p1, p2) => p1 + p2.toUpperCase()))
+    .join(' ')
+    .trim();
+}
+
 
 // Client-side image compression & format normalization for mobile browsers
 async function compressImageIfNeeded(file, maxDimension = 1800, quality = 0.82) {
@@ -109,6 +119,7 @@ const DEFAULT_MEMBERS = [
 
 const state = {
   currentStep: 1,
+  activeSession: null,
   uploadMode: 'single',
   dualFiles: {
     file1: null,
@@ -227,6 +238,7 @@ const elements = {
   waPreview: document.getElementById('wa-message-preview'),
   btnCopyWa: document.getElementById('btn-copy-wa'),
   btnOpenWa: document.getElementById('btn-open-wa'),
+  btnSendToWaGroup: document.getElementById('btn-send-to-wa-group'),
   btnResetNewBill: document.getElementById('btn-reset-new-bill'),
 
   // Modals
@@ -283,6 +295,7 @@ function init() {
 
   loadMembers();
   setupEventListeners();
+  checkAndLoadSessionFromUrl();
   goToStep(1);
 }
 
@@ -468,6 +481,12 @@ function setupEventListeners() {
   // WhatsApp Actions
   elements.btnCopyWa.addEventListener('click', copyWaMessage);
   elements.btnOpenWa.addEventListener('click', openWaDirect);
+
+  const btnSendWa = elements.btnSendToWaGroup || document.getElementById('btn-send-to-wa-group');
+  if (btnSendWa) {
+    btnSendWa.addEventListener('click', sendFinalBillToWhatsAppGroup);
+    console.log('✅ Click listener attached to btn-send-to-wa-group');
+  }
 
   // Custom Item Modal
   elements.btnAddItemStep2.addEventListener('click', () => openItemModal());
@@ -1313,14 +1332,14 @@ function formatWhatsAppText(shares, balances, transfers) {
   const r = state.receipt;
   const active = getActiveParticipants();
   let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*\n`;
-  text += `📅 Tanggal: ${r.date || 'Hari ini'}\n`;
-  text += `💰 Total Tagihan: Rp ${formatRupiah(r.total)}\n`;
+  text += `Tanggal: ${r.date || 'Hari ini'}\n`;
+  text += `Total Tagihan: Rp ${formatRupiah(r.total)}\n`;
 
   if (state.payerMode === 'single') {
     const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
-    text += `💳 Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
+    text += `Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
   } else {
-    text += `💳 *Ditalangi Bersama oleh:*\n`;
+    text += `*Ditalangi Bersama oleh:*\n`;
     active.forEach(m => {
       const paid = state.payerAmounts[m.id] || 0;
       if (paid > 0) {
@@ -1337,7 +1356,7 @@ function formatWhatsAppText(shares, balances, transfers) {
     const b = balances.find(item => item.id === m.id) || { net: 0, paid: 0 };
     text += `👤 *${m.name}*\n`;
     s.items.forEach(it => {
-      text += `  • ${it.name} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}\n`;
+      text += `  • ${toTitleCase(it.name)} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}\n`;
     });
     if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
     if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
@@ -1353,7 +1372,7 @@ function formatWhatsAppText(shares, balances, transfers) {
 
   // Transfer Directions (Siapa bayar ke siapa)
   if (transfers && transfers.length > 0) {
-    text += `💸 *ARAHAN TRANSFER (SIAPA BAYAR KE SIAPA):*\n`;
+    text += `💸 *ARAHAN TRANSFER:*\n`;
     transfers.forEach(t => {
       text += `👉 *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
     });
@@ -2078,4 +2097,222 @@ function proceedToStep4WithIosHud() {
       goToStep(4);
     }, 600);
   }, 650);
+}
+
+
+// ==========================================
+// WhatsApp Bot Group Session Integration
+// ==========================================
+
+async function checkAndLoadSessionFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const billId = urlParams.get('bill');
+
+  if (!billId) return;
+
+  elements.spinnerOverlay.classList.remove('hidden');
+  elements.spinnerStatus.textContent = 'Memuat tagihan dari grup WhatsApp...';
+
+  try {
+    const res = await fetch(`/api/bill/${billId}`);
+    const data = await res.json();
+    elements.spinnerOverlay.classList.add('hidden');
+
+    if (data.success && data.session) {
+      state.activeSession = data.session;
+      state.receipt = data.session.receipt;
+
+      // Show group session banner
+      const banner = document.getElementById('group-session-banner');
+      const titleEl = document.getElementById('group-session-title');
+      if (banner && titleEl) {
+        titleEl.textContent = `Sesi Grup: ${data.session.groupName || 'Grup WhatsApp'}`;
+        banner.classList.remove('hidden');
+      }
+
+      // Show "Kirim ke Grup WA" button in Step 4
+      const btnSendWa = document.getElementById('btn-send-to-wa-group');
+      if (btnSendWa) {
+        btnSendWa.classList.remove('hidden');
+      }
+
+      // Assign items to members if needed
+      const active = getActiveParticipants();
+      const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
+
+      if (Array.isArray(state.receipt.items)) {
+        state.receipt.items.forEach((item, idx) => {
+          if (!item.assignedTo || item.assignedTo.length === 0) {
+            item.assignedTo = [activeIds[idx % activeIds.length]];
+          }
+        });
+      }
+
+      showToast(`Tagihan dari "${data.session.groupName || 'Grup WA'}" berhasil dimuat! 📋`, 'success');
+      goToStep(2);
+    } else {
+      showToast(data.error || 'Sesi tagihan tidak ditemukan.', 'error');
+    }
+  } catch (err) {
+    elements.spinnerOverlay.classList.add('hidden');
+    console.error('Error loading session:', err);
+    showToast('Gagal memuat sesi tagihan dari server.', 'error');
+  }
+}
+
+async function sendFinalBillToWhatsAppGroup() {
+  console.log('[sendFinalBillToWhatsAppGroup] Clicked!');
+
+  // Fallback if activeSession is missing from state
+  if (!state.activeSession || !state.activeSession.groupId) {
+    const billId = new URLSearchParams(window.location.search).get('bill');
+    if (billId) {
+      try {
+        const res = await fetch(`/api/bill/${billId}`);
+        const data = await res.json();
+        if (data.success && data.session) {
+          state.activeSession = data.session;
+        }
+      } catch (e) {
+        console.error('Failed to reload session:', e);
+      }
+    }
+  }
+
+  if (!state.activeSession || !state.activeSession.groupId) {
+    showToast('Sesi ini tidak terhubung ke grup WhatsApp.', 'error');
+    return;
+  }
+
+  // Ensure WA message preview is up to date
+  if (typeof generateWaMessage === 'function') {
+    generateWaMessage();
+  }
+
+  const messageText = (elements.waPreview || document.getElementById('wa-message-preview'))?.textContent;
+  if (!messageText || messageText.includes('Membuat format')) {
+    showToast('Format rincian tagihan belum siap. Silakan tunggu sebentar.', 'error');
+    return;
+  }
+
+  // Disable button to prevent spamming
+  const btnSend = elements.btnSendToWaGroup || document.getElementById('btn-send-to-wa-group');
+  if (btnSend) {
+    btnSend.disabled = true;
+    btnSend.style.opacity = '0.6';
+  }
+
+  // Trigger iOS HUD
+  const hud = document.getElementById('ios-success-hud');
+  const spinner = document.getElementById('ios-hud-spinner');
+  const checkmark = document.getElementById('ios-hud-checkmark');
+  const text = document.getElementById('ios-hud-text');
+
+  if (hud) {
+    spinner.classList.remove('hidden');
+    checkmark.classList.add('hidden');
+    text.textContent = 'Mengirim ke WhatsApp...';
+    hud.classList.remove('hidden');
+  }
+
+  const MAX_RETRIES = 3;
+  let success = false;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 1 && hud && text) {
+        text.textContent = `Mencoba kirim ulang (${attempt}/${MAX_RETRIES})...`;
+      }
+
+      // 8s timeout controller
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(`/api/bill/${state.activeSession.id}/send-to-wa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageText }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+
+      if (data.success) {
+        success = true;
+        if (hud) {
+          spinner.classList.add('hidden');
+          checkmark.classList.remove('hidden');
+          text.textContent = 'Terkirim ke Grup!';
+          setTimeout(() => hud.classList.add('hidden'), 1200);
+        }
+        showToast('Rincian tagihan berhasil dikirim ke grup WhatsApp! 🚀', 'success');
+        break;
+      } else {
+        // Server returned an explicit error response
+        lastError = new Error(data.error || 'Gagal mengirim ke grup WhatsApp.');
+        break;
+      }
+    } catch (err) {
+      console.warn(`[sendFinalBillToWhatsAppGroup] Attempt ${attempt} failed:`, err);
+      lastError = err;
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+
+  if (!success) {
+    if (hud) hud.classList.add('hidden');
+
+    // Auto-copy text to clipboard so user never loses it
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(messageText);
+      }
+    } catch (_) {}
+
+    // Show Fallback Modal
+    openSendFallbackModal(messageText, lastError?.message);
+  }
+
+  if (btnSend) {
+    btnSend.disabled = false;
+    btnSend.style.opacity = '1';
+  }
+}
+
+function openSendFallbackModal(messageText, errorMsg) {
+  const modal = document.getElementById('modal-send-fallback');
+  if (!modal) {
+    showToast('Terjadi kendala koneksi ke server WhatsApp. Rincian sudah disalin ke clipboard!', 'error');
+    return;
+  }
+
+  modal.classList.remove('hidden');
+
+  const btnOpenWa = document.getElementById('btn-fallback-open-wa');
+  const btnRetry = document.getElementById('btn-fallback-retry');
+  const btnClose = document.getElementById('btn-close-fallback-modal');
+
+  if (btnOpenWa) {
+    btnOpenWa.onclick = () => {
+      modal.classList.add('hidden');
+      window.location.href = 'https://wa.me/?text=' + encodeURIComponent(messageText);
+    };
+  }
+
+  if (btnRetry) {
+    btnRetry.onclick = () => {
+      modal.classList.add('hidden');
+      sendFinalBillToWhatsAppGroup();
+    };
+  }
+
+  if (btnClose) {
+    btnClose.onclick = () => {
+      modal.classList.add('hidden');
+    };
+  }
 }

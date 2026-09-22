@@ -1,3 +1,13 @@
+function toTitleCase(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.replace(/^([a-z])/, c => c.toUpperCase()).replace(/(\()([a-z])/, (m, p1, p2) => p1 + p2.toUpperCase()))
+    .join(' ')
+    .trim();
+}
+
 import fs from 'fs';
 
 /**
@@ -240,7 +250,7 @@ Do not include markdown backticks or commentary. Only raw JSON.
     if (Array.isArray(parsedJson.items)) {
       parsedJson.items = parsedJson.items.map((it, idx) => ({
         id: it.id || `item-${idx + 1}`,
-        name: it.name || `Item ${idx + 1}`,
+        name: toTitleCase(it.name || `Item ${idx + 1}`),
         qty: Number(it.qty) || 1,
         price: Number(it.price) || 0,
         total: Number(it.total) || (Number(it.qty) || 1) * (Number(it.price) || 0)
@@ -323,7 +333,7 @@ export async function parseMultipleReceipts(files, customApiKey = null) {
         let cleanName = (it.name || '').replace(/^\[.*?\]\s*/, '').trim();
         mergedItems.push({
           id: `item-${mergedItems.length + 1}`,
-          name: cleanName,
+          name: toTitleCase(cleanName),
           qty: Number(it.qty) || 1,
           price: Number(it.price) || 0,
           total: Number(it.total) || (Number(it.qty) || 1) * (Number(it.price) || 0),
@@ -357,5 +367,95 @@ export async function parseMultipleReceipts(files, customApiKey = null) {
     success: true,
     mode: 'gemini_vision_multi',
     receipt: mergedReceipt
+  };
+}
+
+
+/**
+ * Ask Gemini AI a conversational question (for 2-way WhatsApp Chat)
+ */
+export async function askGeminiText(prompt, customApiKey = null) {
+  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+    };
+  }
+
+  const systemInstruction = "Kamu adalah asisten AI dari PatungIn (aplikasi split bill cerdas & pemindai struk).\n" +
+    "Kamu bertugas di grup WhatsApp untuk membantu teman-teman:\n" +
+    "- Menjawab pertanyaan seputar split bill, rekomendasi tempat makan, ide menu, perhitungan matematika, atau topik santai lainnya.\n" +
+    "- Gaya bicaramu ramah, cerdas, solutif, ringkas, dan berbahasa Indonesia gaul/santai tapi tetap sopan.\n" +
+    "- Gunakan format teks WhatsApp (seperti *bold* untuk poin penting). Jangan membuat jawaban yang terlalu panjang atau bertele-tele.";
+
+  const requestBody = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: systemInstruction + "\n\nPertanyaan pengguna:\n" + prompt }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 800
+    }
+  };
+
+  const CANDIDATE_MODELS = [
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.6-flash',
+    'gemini-flash-latest'
+  ];
+
+  let lastError = null;
+
+  for (const modelName of CANDIDATE_MODELS) {
+    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.status === 503 || response.status === 429) {
+          await new Promise(r => setTimeout(r, 800));
+          continue;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) {
+            return { success: true, text };
+          }
+        } else {
+          const errText = await response.text();
+          lastError = new Error('Gemini API (' + modelName + '): ' + errText);
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+  }
+
+  // Friendly fallback if API key is invalid or quota exceeded
+  if (lastError && (lastError.message.includes('API_KEY_INVALID') || lastError.message.includes('API key not valid'))) {
+    return {
+      success: true,
+      text: 'Hai! Kunci API Gemini di server belum aktif atau tidak valid. Silakan periksa `GEMINI_API_KEY` di file `.env` server (dapatkan gratis di https://aistudio.google.com).\n\nNamun tenang, fitur *split bill & klaim menu* via chat WhatsApp tetap bisa kamu gunakan ya! Ketik */status* atau */bunted* dengan foto struk untuk mulai. ✨'
+    };
+  }
+
+  return {
+    success: false,
+    error: lastError?.message || 'Gagal mendapatkan respon dari Gemini AI.'
   };
 }

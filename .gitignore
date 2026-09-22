@@ -6,7 +6,12 @@ package-lock.json
 .env
 .env.local
 
-# Uploads & Temp Files
+# WhatsApp Bot Session & Auth (CRITICAL: Do NOT commit credentials)
+wa_auth_info/
+
+# Data Sessions & Temp Uploads
+data/sessions/*
+!data/sessions/.gitkeep
 uploads/*
 !uploads/.gitkeep
 

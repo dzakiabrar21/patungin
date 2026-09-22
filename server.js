@@ -7,6 +7,8 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { SAMPLE_PRESETS, parseReceiptWithGemini, parseMultipleReceipts } from './services/geminiService.js';
+import sessionStore from './services/sessionStore.js';
+import { initWhatsAppBot, sendSplitBillToGroup, getBotStatus, logoutWhatsAppBot } from './services/whatsappBot.js';
 
 dotenv.config();
 
@@ -40,7 +42,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ==========================================
 // API Routes
+// ==========================================
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
@@ -49,6 +54,81 @@ app.get('/api/presets', (req, res) => {
   res.json({ success: true, presets: SAMPLE_PRESETS });
 });
 
+// WhatsApp Bot Endpoints
+app.get('/wa-login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'wa-login.html'));
+});
+
+app.post('/api/wa/logout', async (req, res) => {
+  const result = await logoutWhatsAppBot();
+  res.json(result);
+});
+
+app.get('/api/wa/status', (req, res) => {
+  const statusInfo = getBotStatus();
+  res.json(statusInfo);
+});
+
+// Bill Session Endpoints (Hybrid WA + Web)
+app.get('/api/bill/:id', (req, res) => {
+  const session = sessionStore.getSession(req.params.id);
+  if (!session) {
+    return res.status(404).json({
+      success: false,
+      error: 'Sesi tagihan tidak ditemukan atau telah kedaluwarsa.'
+    });
+  }
+  return res.json({ success: true, session });
+});
+
+app.post('/api/bill/:id/claim', (req, res) => {
+  const session = sessionStore.getSession(req.params.id);
+  if (!session) {
+    return res.status(404).json({ success: false, error: 'Sesi tagihan tidak ditemukan.' });
+  }
+
+  const updated = sessionStore.updateSession(req.params.id, {
+    receipt: req.body.receipt || session.receipt,
+    allMembers: req.body.allMembers || session.allMembers,
+    roundingMode: req.body.roundingMode || session.roundingMode
+  });
+
+  return res.json({ success: true, session: updated });
+});
+
+app.post('/api/bill/:id/send-to-wa', async (req, res) => {
+  try {
+    const session = sessionStore.getSession(req.params.id);
+    if (!session) {
+      return res.status(404).json({ success: false, error: 'Sesi tagihan tidak ditemukan.' });
+    }
+
+    if (!session.groupId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Sesi ini tidak terhubung ke grup WhatsApp.'
+      });
+    }
+
+    const { messageText } = req.body;
+    if (!messageText) {
+      return res.status(400).json({ success: false, error: 'Pesan rincian tagihan tidak boleh kosong.' });
+    }
+
+    console.log(`[send-to-wa] Mengirim rincian untuk sesi ${req.params.id} ke ${session.groupId}...`);
+    const result = await sendSplitBillToGroup(session.groupId, messageText);
+    if (result.success) {
+      sessionStore.updateSession(req.params.id, { status: 'completed' });
+    }
+
+    return res.json(result);
+  } catch (err) {
+    console.error('[send-to-wa] Error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Scan Receipt via Web Upload
 app.post('/api/scan-receipt', upload.any(), async (req, res) => {
   try {
     const customApiKey = req.body.apiKey || null;
@@ -89,12 +169,15 @@ app.post('/api/scan-receipt', upload.any(), async (req, res) => {
 if (!process.env.VERCEL) {
   const server = app.listen(PORT, () => {
     console.log(`🚀 PatungIn Server berjalan di http://localhost:${PORT}`);
+    // Initialize WhatsApp Bot
+    initWhatsAppBot();
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       const ALT_PORT = Number(PORT) + 1;
       console.log(`Port ${PORT} terpakai, mencoba port alternatif ${ALT_PORT}...`);
       app.listen(ALT_PORT, () => {
         console.log(`🚀 PatungIn Server berjalan di http://localhost:${ALT_PORT}`);
+        initWhatsAppBot();
       });
     } else {
       console.error('Server error:', err);

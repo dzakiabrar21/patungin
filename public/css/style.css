@@ -2286,3 +2286,53 @@ html, body {
   letter-spacing: -0.01em;
   transition: all 0.2s ease;
 }
+
+
+/* ==========================================================================
+   WhatsApp Group Session Banner
+   ========================================================================== */
+.group-session-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(0, 129, 167, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.group-session-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.group-session-icon {
+  font-size: 1.35rem;
+}
+
+.group-session-title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.group-session-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.group-session-badge {
+  background: #10b981;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}

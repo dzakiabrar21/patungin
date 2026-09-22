@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hubungkan WhatsApp Bot - PatungIn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0081a7;
+      --primary-dark: #006987;
+      --bg: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body {
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+      width: 100%;
+      max-width: 440px;
+      padding: 2rem;
+      text-align: center;
+    }
+    .badge-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--success);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 800; color: var(--text); margin-bottom: 0.35rem; }
+    p.desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    .qr-container {
+      background: white;
+      border: 2px dashed #cbd5e1;
+      border-radius: 20px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 250px;
+      min-height: 250px;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .qr-img { width: 230px; height: 230px; display: block; border-radius: 12px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+    }
+    .status-pill.connecting { background: #fef3c7; color: #d97706; }
+    .status-pill.qr_ready { background: #e0f2fe; color: var(--primary); }
+    .status-pill.connected { background: #dcfce7; color: #15803d; }
+    .status-pill.disconnected { background: #fee2e2; color: #b91c1c; }
+    .instructions {
+      text-align: left;
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 1rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .instructions ol { padding-left: 1.2rem; }
+    .btn-back {
+      display: inline-block;
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3.5px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.044c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+    </div>
+    <h1>Hubungkan WhatsApp Bot</h1>
+    <p class="desc">Scan QR Code di bawah menggunakan WhatsApp untuk mengaktifkan bot grup PatungIn</p>
+
+    <div id="status-badge" class="status-pill connecting">
+      <span>●</span> <span id="status-text">Menghubungkan...</span>
+    </div>
+
+    <div class="qr-container" id="qr-box">
+      <!-- Loading state -->
+      <div id="qr-loading-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
+        <div class="spinner" id="qr-spinner"></div>
+        <p id="qr-loading-text" style="font-size: 0.85rem; color: #64748b;">Menyiapkan QR Code...</p>
+      </div>
+
+      <!-- QR image -->
+      <img id="qr-img" class="qr-img" style="display: none;" alt="QR Code WhatsApp">
+
+      <!-- Connected state -->
+      <div id="qr-connected-box" style="display: none; text-align: center;">
+        <div style="color: #10b981; font-size: 3.2rem;">✓</div>
+        <p style="font-weight: 700; color: #10b981; margin-top: 0.4rem; font-size: 1rem;" id="connected-user-name">WhatsApp Terhubung!</p>
+        <button id="btn-logout-wa" type="button" style="margin-top: 1.25rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 0.6rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
+          🔄 Ganti Nomor / Tautkan Akun Lain
+        </button>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <strong>Cara Menghubungkan:</strong>
+      <ol>
+        <li>Buka aplikasi <strong>WhatsApp</strong> di HP Anda</li>
+        <li>Buka <strong>Setelan / Titik Tiga</strong> &gt; <strong>Perangkat Tertaut</strong></li>
+        <li>Ketuk <strong>Tautkan Perangkat</strong> dan arahkan kamera ke QR Code di atas</li>
+      </ol>
+    </div>
+
+    <a href="/" class="btn-back">← Kembali ke Halaman Utama</a>
+  </div>
+
+  <script>
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/wa/status');
+        const data = await res.json();
+        const badge = document.getElementById('status-badge');
+        const text = document.getElementById('status-text');
+        const loadingBox = document.getElementById('qr-loading-box');
+        const img = document.getElementById('qr-img');
+        const connectedBox = document.getElementById('qr-connected-box');
+        const connectedName = document.getElementById('connected-user-name');
+
+        if (badge) badge.className = 'status-pill ' + data.status;
+
+        if (data.status === 'connected') {
+          if (text) text.textContent = 'WhatsApp Terhubung! (' + (data.user?.name || data.user?.id || 'Bot') + ')';
+          if (loadingBox) loadingBox.style.display = 'none';
+          if (img) img.style.display = 'none';
+          if (connectedBox) connectedBox.style.display = 'block';
+          if (connectedName) {
+            connectedName.textContent = 'Terhubung: ' + (data.user?.name || data.user?.id || 'Bot');
+          }
+        } else if (data.status === 'qr_ready' && data.qrDataUrl) {
+          if (text) text.textContent = 'Scan QR Code Sekarang';
+          if (loadingBox) loadingBox.style.display = 'none';
+          if (connectedBox) connectedBox.style.display = 'none';
+          if (img) {
+            img.style.display = 'block';
+            img.src = data.qrDataUrl;
+          }
+        } else {
+          if (text) text.textContent = 'Menyiapkan QR Code...';
+          if (loadingBox) loadingBox.style.display = 'flex';
+          if (img) img.style.display = 'none';
+          if (connectedBox) connectedBox.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Logout button handler using event delegation
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('#btn-logout-wa');
+      if (btn) {
+        if (confirm('Apakah Anda yakin ingin logout dan mengganti nomor WhatsApp bot?')) {
+          const loadingBox = document.getElementById('qr-loading-box');
+          const loadingText = document.getElementById('qr-loading-text');
+          const img = document.getElementById('qr-img');
+          const connectedBox = document.getElementById('qr-connected-box');
+
+          if (connectedBox) connectedBox.style.display = 'none';
+          if (img) img.style.display = 'none';
+          if (loadingBox) loadingBox.style.display = 'flex';
+          if (loadingText) loadingText.textContent = 'Memutuskan sesi lama & menyiapkan QR baru...';
+
+          try {
+            await fetch('/api/wa/logout', { method: 'POST' });
+          } catch (_) {}
+          setTimeout(checkStatus, 1500);
+        }
+      }
+    });
+
+    checkStatus();
+    setInterval(checkStatus, 2500);
+  </script>
+</body>
+</html>
