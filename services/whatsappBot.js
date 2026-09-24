@@ -365,6 +365,12 @@ export async function initWhatsAppBot() {
         if (shouldChat && text && text.trim().length > 0) {
           if (msgId) processedMessages.add(msgId);
 
+          // Ambil konteks quoted message jika ada
+          const quotedText =
+            contextInfo?.quotedMessage?.conversation ||
+            contextInfo?.quotedMessage?.extendedTextMessage?.text ||
+            '';
+
           // Bersihkan teks dari mention (@123456) dan prefix pembuka di awal kalimat
           let cleanPrompt = text
             .replace(/@[0-9]+/g, '')
@@ -373,7 +379,9 @@ export async function initWhatsAppBot() {
             .trim();
 
           if (!cleanPrompt) {
-            cleanPrompt = text.trim() || 'oi';
+            cleanPrompt = quotedText ? `kenapa ngetag gue soal ini: "${quotedText.trim()}"?` : 'kenapa ngetag gue? ada apa?';
+          } else if (quotedText && !cleanPrompt.includes(quotedText)) {
+            cleanPrompt = `[Membalas chat: "${quotedText.trim()}"]\n${cleanPrompt}`;
           }
 
           console.log(`[WhatsAppBot] 💬 Owichan chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, Keyword: ${hasTriggerKeyword})`);
