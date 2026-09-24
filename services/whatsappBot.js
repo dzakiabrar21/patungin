@@ -216,6 +216,9 @@ export async function initWhatsAppBot() {
       for (const m of messages) {
         if (!m.message) continue;
 
+        // Cegah loop tak berujung: Jangan pernah membalas pesan yang dikirim oleh bot sendiri
+        if (m.key?.fromMe) continue;
+
         const msgId = m.key?.id;
         if (msgId && processedMessages.has(msgId)) continue;
 
@@ -315,7 +318,7 @@ export async function initWhatsAppBot() {
         const startsWithCall = /^(\/tanya|@bot|bro\b|bray\b|cuy\b|bang\b|bot\b|min\b|halo|hai|hei)/i.test(lowerText);
 
         const isPrivateChat = !isGroup;
-        const shouldChat = isPrivateChat || isBotMentioned || isReplyToBot || hasOwiName || startsWithCall;
+        const shouldChat = !m.key?.fromMe && (isPrivateChat || isBotMentioned || isReplyToBot || hasOwiName || startsWithCall);
 
         if (shouldChat && text && text.trim().length > 0) {
           if (msgId) processedMessages.add(msgId);
