@@ -300,7 +300,7 @@ export async function initWhatsAppBot() {
         const isBotMentioned = mentionedJids.some(jid => jid.includes(botPhone));
         const isReplyToBot = contextInfo?.participant ? contextInfo.participant.includes(botPhone) : false;
 
-        const startsWithCall = /^(\/tanya|@bot|bot\b|min\b|halo bot|hai bot|hei bot)/i.test(lowerText);
+        const startsWithCall = /^(\/tanya|@bot|owichan\b|owi\b|wi\b|bot\b|min\b|halo owi|hai owi|halo owichan|hai owichan|halo bot|hai bot)/i.test(lowerText);
         const isPrivateChat = !isGroup;
 
         // Di Private Chat balas semua obrolan; di Grup balas jika di-mention, di-reply, atau dipanggil
@@ -309,9 +309,9 @@ export async function initWhatsAppBot() {
         if (shouldChat && text && text.trim().length > 0) {
           // Bersihkan prefix panggilan (@bot, /tanya, bot,)
           let cleanPrompt = text
-            .replace(/^(\/tanya|@bot|halo bot|hai bot|hei bot)\s*/i, '')
+            .replace(/^(\/tanya|@bot|halo owi|hai owi|halo owichan|hai owichan|halo bot|hai bot|hei bot)\s*/i, '')
             .replace(/@[0-9]+/g, '')
-            .replace(/^(bot|min)[,:]?\s*/i, '')
+            .replace(/^(owichan|owi|wi|bot|min)[,:]?\s*/i, '')
             .trim();
 
           if (!cleanPrompt) {
@@ -319,7 +319,7 @@ export async function initWhatsAppBot() {
           }
 
           if (msgId) processedMessages.add(msgId);
-          console.log(`[WhatsAppBot] 💬 Chat alami dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: ${cleanPrompt}`);
+          console.log(`[WhatsAppBot] 💬 Owichan chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: ${cleanPrompt}`);
 
           try {
             await sock.sendPresenceUpdate('composing', chatId);
