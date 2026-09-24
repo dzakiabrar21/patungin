@@ -28,9 +28,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Auth state directory
-const AUTH_DIR = path.join(__dirname, '..', 'wa_auth_info');
-if (!fs.existsSync(AUTH_DIR)) {
-  fs.mkdirSync(AUTH_DIR, { recursive: true });
+const AUTH_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'wa_auth_info')
+  : path.join(__dirname, '..', 'wa_auth_info');
+
+try {
+  if (!fs.existsSync(AUTH_DIR)) {
+    fs.mkdirSync(AUTH_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('[WhatsAppBot] Could not create AUTH_DIR:', e.message);
 }
 
 let sock = null;

@@ -17,9 +17,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Data directory for persistent session files
-const DATA_DIR = path.join(__dirname, '..', 'data', 'sessions');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+const DATA_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'data', 'sessions')
+  : path.join(__dirname, '..', 'data', 'sessions');
+
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('[SessionStore] Could not create DATA_DIR:', e.message);
 }
 
 // In-memory cache
