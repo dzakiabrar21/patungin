@@ -459,3 +459,121 @@ export async function askGeminiText(prompt, customApiKey = null) {
     error: lastError?.message || 'Gagal mendapatkan respon dari Gemini AI.'
   };
 }
+
+
+/**
+ * Natural Conversational AI Chat with Multi-turn Context Memory
+ */
+export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', customApiKey = null }) {
+  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+    };
+  }
+
+  const systemInstruction = 
+    "Kamu adalah asisten pintar dan teman mengobrol yang asyik di WhatsApp.\n" +
+    "Nama kamu PatungIn (atau dipanggil Mimin / Bot).\n" +
+    "Gaya bicaramu santai, gaul, cerdas, ramah, dan solutif (seperti teman tongkrongan/kuliah yang supel dan asyik).\n" +
+    "Gunakan bahasa Indonesia kasual (boleh pakai kata 'gue/lu', 'aku/kamu', atau istilah santai yang relevan), tapi tetap sopan dan enak dibaca.\n" +
+    "Gunakan format teks WhatsApp sesekali (*bold* untuk poin penting). Jangan membuat jawaban yang terlalu kaku seperti robot atau ensiklopedia.\n" +
+    "Penting: Kamu paham konteks percakapan sebelumnya dan menanggapi obrolan secara nyambung.\n" +
+    "Keahlian khususmu adalah membantu split bill dan hitung patungan belanjaan. Jika ada teman yang butuh hitung tagihan atau bagi struk, beri tahu dengan santai bahwa mereka cukup kirim foto struk dengan caption /bunted.";
+
+  // Build contents array from history + new user message
+  const contents = [];
+
+  // Add system instruction as initial context
+  contents.push({
+    role: 'user',
+    parts: [{ text: "[SYSTEM INSTRUCTION]\n" + systemInstruction + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName }]
+  });
+  contents.push({
+    role: 'model',
+    parts: [{ text: "Siap! Aku paham. Aku akan bersikap santai, ramah, dan asyik sebagai teman ngobrol " + senderName + " di WhatsApp." }]
+  });
+
+  // Append history turns (last 10 messages)
+  if (Array.isArray(history) && history.length > 0) {
+    const recentHistory = history.slice(-10);
+    recentHistory.forEach(turn => {
+      if (turn.role && turn.text) {
+        contents.push({
+          role: turn.role === 'model' || turn.role === 'bot' ? 'model' : 'user',
+          parts: [{ text: turn.text }]
+        });
+      }
+    });
+  }
+
+  // Append current user message
+  contents.push({
+    role: 'user',
+    parts: [{ text: message }]
+  });
+
+  const requestBody = {
+    contents,
+    generationConfig: {
+      temperature: 0.75,
+      maxOutputTokens: 800
+    }
+  };
+
+  const CANDIDATE_MODELS = [
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.6-flash',
+    'gemini-flash-latest'
+  ];
+
+  let lastError = null;
+
+  for (const modelName of CANDIDATE_MODELS) {
+    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.status === 503 || response.status === 429) {
+          await new Promise(r => setTimeout(r, 800));
+          continue;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) {
+            return { success: true, text };
+          }
+        } else {
+          const errText = await response.text();
+          lastError = new Error('Gemini API (' + modelName + '): ' + errText);
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+  }
+
+  // Friendly fallback if API key is invalid
+  if (lastError && (lastError.message.includes('API_KEY_INVALID') || lastError.message.includes('API key not valid'))) {
+    return {
+      success: true,
+      text: 'Hai ' + senderName + '! Kunci API Gemini di server belum aktif atau tidak valid. Silakan periksa GEMINI_API_KEY di server ya! Tapi tenang, fitur split bill tetap bisa kamu pakai. ✨'
+    };
+  }
+
+  return {
+    success: false,
+    error: lastError?.message || 'Gagal memproses percakapan.'
+  };
+}

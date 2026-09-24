@@ -21,7 +21,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText } from './geminiService.js';
+import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini } from './geminiService.js';
 import sessionStore from './sessionStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -124,6 +124,34 @@ function unwrapMessage(m) {
 /**
  * Initialize WhatsApp Bot Socket with Baileys
  */
+
+// Memory store for multi-turn conversations: chatId -> { history: [{ role, text }], lastActivity: timestamp }
+const chatMemoryMap = new Map();
+const MEMORY_TIMEOUT_MS = 45 * 60 * 1000; // 45 minutes idle reset
+
+function getChatHistory(chatId) {
+  const data = chatMemoryMap.get(chatId);
+  if (!data) return [];
+  if (Date.now() - data.lastActivity > MEMORY_TIMEOUT_MS) {
+    chatMemoryMap.delete(chatId);
+    return [];
+  }
+  return data.history || [];
+}
+
+function addChatTurn(chatId, role, text) {
+  let data = chatMemoryMap.get(chatId);
+  if (!data || Date.now() - data.lastActivity > MEMORY_TIMEOUT_MS) {
+    data = { history: [], lastActivity: Date.now() };
+    chatMemoryMap.set(chatId, data);
+  }
+  data.history.push({ role, text });
+  if (data.history.length > 10) {
+    data.history = data.history.slice(-10); // keep last 10 messages for context
+  }
+  data.lastActivity = Date.now();
+}
+
 export async function initWhatsAppBot() {
   setupPublicTunnel();
   try {
@@ -265,16 +293,60 @@ export async function initWhatsAppBot() {
           continue;
         }
 
-        // Case D: /tanya or @bot (Gemini AI Assistant)
-        if (lowerText.startsWith('/tanya') || lowerText.startsWith('@bot')) {
-          if (msgId) processedMessages.add(msgId);
-          const question = text.replace(/^(\/tanya|@bot)\s*/i, '').trim();
-          if (!question) {
-            await sock.sendMessage(chatId, {
-              text: '💡 *Tanya PatungIn AI:*\nSilakan ketik */tanya [pertanyaan kamu]* untuk bertanya ke AI!'
-            }, { quoted: m });
-            continue;
+        // Case D: Percakapan Alami 2 Arah dengan Context Memory
+        const contextInfo = m.message?.extendedTextMessage?.contextInfo || rawMsg?.extendedTextMessage?.contextInfo;
+        const botPhone = (sock.user?.id || '').split(':')[0];
+        const mentionedJids = contextInfo?.mentionedJid || [];
+        const isBotMentioned = mentionedJids.some(jid => jid.includes(botPhone));
+        const isReplyToBot = contextInfo?.participant ? contextInfo.participant.includes(botPhone) : false;
+
+        const startsWithCall = /^(\/tanya|@bot|bot\b|min\b|halo bot|hai bot|hei bot)/i.test(lowerText);
+        const isPrivateChat = !isGroup;
+
+        // Di Private Chat balas semua obrolan; di Grup balas jika di-mention, di-reply, atau dipanggil
+        const shouldChat = isPrivateChat || isBotMentioned || isReplyToBot || startsWithCall;
+
+        if (shouldChat && text && text.trim().length > 0) {
+          // Bersihkan prefix panggilan (@bot, /tanya, bot,)
+          let cleanPrompt = text
+            .replace(/^(\/tanya|@bot|halo bot|hai bot|hei bot)\s*/i, '')
+            .replace(/@[0-9]+/g, '')
+            .replace(/^(bot|min)[,:]?\s*/i, '')
+            .trim();
+
+          if (!cleanPrompt) {
+            cleanPrompt = 'Halo!';
           }
+
+          if (msgId) processedMessages.add(msgId);
+          console.log(`[WhatsAppBot] 💬 Chat alami dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: ${cleanPrompt}`);
+
+          try {
+            await sock.sendPresenceUpdate('composing', chatId);
+          } catch (_) {}
+
+          const senderName = m.pushName || 'Teman';
+          const history = getChatHistory(chatId);
+
+          const aiRes = await chatWithGemini({
+            history,
+            message: cleanPrompt,
+            senderName
+          });
+
+          if (aiRes.success) {
+            // Simpan ke riwayat percakapan agar ingat konteks selanjutnya
+            addChatTurn(chatId, 'user', cleanPrompt);
+            addChatTurn(chatId, 'model', aiRes.text);
+
+            await sock.sendMessage(chatId, { text: aiRes.text }, { quoted: m });
+          } else {
+            await sock.sendMessage(chatId, {
+              text: `⚠️ Maaf ${senderName}, ${aiRes.error || 'aku lagi agak pusing, coba tanya lagi sebentar ya!'}`
+            }, { quoted: m });
+          }
+          continue;
+        }
 
           console.log(`[WhatsAppBot] 🤖 Pertanyaan AI diterima dari ${m.pushName || 'User'}: ${question}`);
           try {
