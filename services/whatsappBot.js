@@ -50,7 +50,22 @@ let botUser = null;
 const processedMessages = new Set();
 
 // Base URL for session links
-const APP_PORT = process.env.PORT || 3001;
+const APP_PORT = process.env.PORT || 3000;
+
+export let publicServerIp = null;
+
+async function detectPublicIp() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.ip) {
+        publicServerIp = data.ip;
+        console.log(`[WhatsAppBot] 🌐 Public Server IP terdeteksi: ${publicServerIp}`);
+      }
+    }
+  } catch (_) {}
+}
 
 function getPrimaryNetworkIp() {
   const nets = os.networkInterfaces();
@@ -84,6 +99,9 @@ export function getAppBaseUrl() {
   }
   if (publicTunnelUrl) {
     return publicTunnelUrl;
+  }
+  if (publicServerIp) {
+    return `http://${publicServerIp}:${APP_PORT}`;
   }
   const ip = getPrimaryNetworkIp();
   return `http://${ip}:${APP_PORT}`;
@@ -153,6 +171,7 @@ function addChatTurn(chatId, role, text) {
 }
 
 export async function initWhatsAppBot() {
+  detectPublicIp();
   setupPublicTunnel();
   try {
     botStatus = 'connecting';
@@ -393,71 +412,7 @@ export async function initWhatsAppBot() {
           continue;
         }
 
-        // Case E: Klaim menu via chat ('klaim 1, 2', 'aku 1, 3', 'claim 1, 2')
-        const isClaim = /^(\/klaim|klaim|claim|aku)\b/i.test(lowerText);
-        if (isClaim) {
-          const numbers = text.match(/\d+/g)?.map(Number) || [];
-          if (numbers.length > 0) {
-            if (msgId) processedMessages.add(msgId);
-            const session = sessionStore.getActiveSessionForGroup(chatId);
-            if (!session) {
-              await sock.sendMessage(chatId, {
-                text: '⚠️ Belum ada sesi split bill aktif di grup ini. Kirim foto struk dengan */bunted* terlebih dahulu!'
-              }, { quoted: m });
-              continue;
-            }
 
-            const senderName = m.pushName || 'Teman';
-            const claimRes = sessionStore.claimItemsForMember(session.id, senderName, numbers);
-            if (claimRes.success) {
-              const itemsStr = claimRes.claimedItems
-                .map(it => `  • ${it.num}. ${it.name}${it.isShared ? ' _(Patungan)_' : ''}: Rp ${it.price.toLocaleString('id-ID')}`)
-                .join('\n');
-
-              await sock.sendMessage(chatId, {
-                text: `✅ *${senderName}* berhasil klaim:\n${itemsStr}\n\n_Ketik */status* untuk cek atau */rekap* jika sudah selesai._`
-              }, { quoted: m });
-            } else {
-              await sock.sendMessage(chatId, {
-                text: `⚠️ ${claimRes.error}`
-              }, { quoted: m });
-            }
-            continue;
-          }
-        }
-
-        // Case F: Batal klaim via chat ('batal 1', 'unclaim 1')
-        const isUnclaim = /^(\/batal|batal|unclaim)\b/i.test(lowerText);
-        if (isUnclaim) {
-          const numbers = text.match(/\d+/g)?.map(Number) || [];
-          if (numbers.length > 0) {
-            if (msgId) processedMessages.add(msgId);
-            const session = sessionStore.getActiveSessionForGroup(chatId);
-            if (!session) {
-              await sock.sendMessage(chatId, {
-                text: '⚠️ Belum ada sesi split bill aktif di grup ini.'
-              }, { quoted: m });
-              continue;
-            }
-
-            const senderName = m.pushName || 'Teman';
-            const unclaimRes = sessionStore.unclaimItemsForMember(session.id, senderName, numbers);
-            if (unclaimRes.success && unclaimRes.unclaimedItems.length > 0) {
-              const itemsStr = unclaimRes.unclaimedItems
-                .map(it => `  • ${it.num}. ${it.name}`)
-                .join('\n');
-
-              await sock.sendMessage(chatId, {
-                text: `🗑️ *${senderName}* membatalkan klaim:\n${itemsStr}`
-              }, { quoted: m });
-            } else {
-              await sock.sendMessage(chatId, {
-                text: `⚠️ ${unclaimRes.error || 'Nomor menu tidak ditemukan dalam klaim kamu.'}`
-              }, { quoted: m });
-            }
-            continue;
-          }
-        }
 
         // Case G: Cek status klaim ('/status', '/cek', '/list')
         if (lowerText === '/status' || lowerText === '/cek' || lowerText === '/list') {
@@ -609,30 +564,14 @@ async function processBatchReceipts(batch) {
 
     const countDesc = count > 1 ? ` (${r.items?.length || 0} menu dari 2 struk)` : '';
 
-    // Format numbered menu list for WhatsApp chat claims
-    let itemsListText = '';
-    if (r.items && r.items.length > 0) {
-      itemsListText = '\n📋 *DAFTAR MENU:*\n' +
-        r.items.map((it, i) => `${i + 1}. ${toTitleCase(it.name)} — Rp ${(it.total || (it.qty * it.price) || it.price).toLocaleString('id-ID')}`).join('\n') + '\n';
-    }
-
-    const localIp = getPrimaryNetworkIp();
-    const localUrl = localIp && localIp !== 'localhost' ? `http://${localIp}:${APP_PORT}/?bill=${session.id}` : null;
     const replyText =
 `${titleText}
 🏪 *Toko:* ${storeName}
 💰 *Total Tagihan:* Rp ${totalFormatted}
 📦 *Jumlah Menu:* ${r.items?.length || 0} item${countDesc}
-${itemsListText}
-👉 *CARA KLAIM PESANAN:*
-• *Via Chat WA:* Balas \`klaim 1, 2\` atau \`aku 3\`
-• *Via Web (Online):* ${sessionUrl}
-${localUrl ? `• *Via Web (Satu WiFi/Hotspot):* ${localUrl}\n` : ''}
 
-_Perintah lain:_
-• *Batal:* \`batal 1\`
-• *Cek Status:* */status*
-• *Hitung Final:* */rekap* ✨`;
+👉 *Buka link ini untuk split bill & atur patungan:*
+${sessionUrl}`;
 
     await sock.sendMessage(chatId, { text: replyText });
     console.log(`[WhatsAppBot] Sesi ${session.id} (${count} struk) berhasil dibuat dan dikirim ke ${chatId}`);
