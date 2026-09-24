@@ -113,54 +113,58 @@ export function getGutsApiKey(customApiKey = null) {
 
 export async function executeGutsRequest({
   messages,
-  model = 'gemini-3.6-flash',
+  models = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
   isJson = false,
   maxTokens = 1200,
-  timeoutMs = 8000
+  timeoutMs = 25000
 }) {
   const apiKey = getGutsApiKey();
   if (!apiKey) return null;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  for (const model of models) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const payload = {
-    model,
-    messages,
-    temperature: isJson ? 0.1 : 0.8,
-    max_tokens: maxTokens
-  };
+    const payload = {
+      model,
+      messages,
+      temperature: isJson ? 0.1 : 0.8,
+      max_tokens: maxTokens
+    };
 
-  if (isJson) {
-    payload.response_format = { type: 'json_object' };
-  }
-
-  try {
-    const response = await fetch('https://api.gutsai.id/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-
-    if (response.ok) {
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content?.trim();
-      return { success: true, content, usage: data.usage };
-    } else {
-      const err = await response.text();
-      console.warn(`[GutsService] Request to ${model} failed (${response.status}):`, err.slice(0, 150));
-      return { success: false, error: err };
+    if (isJson) {
+      payload.response_format = { type: 'json_object' };
     }
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn(`[GutsService] Error calling Guts AI:`, err.message);
-    return { success: false, error: err.message };
+
+    try {
+      const response = await fetch('https://api.gutsai.id/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content?.trim();
+        if (content) {
+          return { success: true, content, usage: data.usage };
+        }
+      } else {
+        const err = await response.text();
+        console.warn(`[GutsService] Model ${model} returned ${response.status}:`, err.slice(0, 120));
+      }
+    } catch (err) {
+      clearTimeout(timer);
+      console.warn(`[GutsService] Model ${model} call error:`, err.message);
+    }
   }
+
+  return { success: false, error: 'Semua model Guts AI gagal merespon.' };
 }
 
 export const CANDIDATE_VISION_MODELS = [
@@ -356,10 +360,10 @@ Do not include markdown backticks or commentary. Only raw JSON.
             ]
           }
         ],
-        model: 'gemini-3.6-flash',
+        models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
         isJson: true,
         maxTokens: 2000,
-        timeoutMs: 18000
+        timeoutMs: 30000
       });
 
       if (gutsRes?.success && gutsRes.content) {
@@ -633,9 +637,9 @@ export async function askGeminiText(prompt, customApiKey = null) {
         { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
         { role: 'user', content: prompt }
       ],
-      model: 'gemini-3.6-flash',
+      models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
       maxTokens: 1200,
-      timeoutMs: 12000
+      timeoutMs: 15000
     });
 
     if (gutsRes?.success && gutsRes.content) {
@@ -740,9 +744,9 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     const gutsRes = await executeGutsRequest({
       messages,
-      model: 'gemini-3.6-flash',
+      models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
       maxTokens: 1200,
-      timeoutMs: 12000
+      timeoutMs: 15000
     });
 
     if (gutsRes?.success && gutsRes.content) {
@@ -863,9 +867,9 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
             ]
           }
         ],
-        model: 'gemini-3.6-flash',
+        models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
         maxTokens: 1200,
-        timeoutMs: 15000
+        timeoutMs: 30000
       });
 
       if (gutsRes?.success && gutsRes.content) {
