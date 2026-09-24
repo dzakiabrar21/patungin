@@ -100,6 +100,69 @@ function setModelCooldown(key, model, durationMs) {
   modelCooldownMap.set(`${shortKey}_${model}`, Date.now() + durationMs);
 }
 
+export function getGutsApiKey(customApiKey = null) {
+  if (customApiKey && (customApiKey.startsWith('sk-guts-') || customApiKey.startsWith('sk-'))) {
+    return customApiKey.trim();
+  }
+  const envGuts = process.env.GUTS_API_KEY || '';
+  if (envGuts.trim()) return envGuts.trim();
+  const envGemini = process.env.GEMINI_API_KEY || '';
+  if (envGemini.startsWith('sk-guts-') || envGemini.startsWith('sk-')) return envGemini.trim();
+  return null;
+}
+
+export async function executeGutsRequest({
+  messages,
+  model = 'gemini-3.6-flash',
+  isJson = false,
+  maxTokens = 1200,
+  timeoutMs = 8000
+}) {
+  const apiKey = getGutsApiKey();
+  if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const payload = {
+    model,
+    messages,
+    temperature: isJson ? 0.1 : 0.8,
+    max_tokens: maxTokens
+  };
+
+  if (isJson) {
+    payload.response_format = { type: 'json_object' };
+  }
+
+  try {
+    const response = await fetch('https://api.gutsai.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      return { success: true, content, usage: data.usage };
+    } else {
+      const err = await response.text();
+      console.warn(`[GutsService] Request to ${model} failed (${response.status}):`, err.slice(0, 150));
+      return { success: false, error: err };
+    }
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn(`[GutsService] Error calling Guts AI:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 export const CANDIDATE_VISION_MODELS = [
   'gemini-3.5-flash',
   'gemini-3.7-flash',
@@ -215,13 +278,14 @@ export async function executeGeminiRequest({
  * @returns {Promise<Object>} Structured receipt data
  */
 export async function parseReceiptWithGemini(filePath, mimeType, customApiKey = null) {
+  const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
-  if (apiKeys.length === 0) {
+  if (!gutsKey && apiKeys.length === 0) {
     return {
       success: true,
       mode: 'fallback_mock',
-      message: 'GEMINI_API_KEY is not configured. Running in simulation mode.',
+      message: 'API Key belum dikonfigurasi. Berjalan dalam mode simulasi.',
       receipt: SAMPLE_PRESETS[0]
     };
   }
@@ -278,37 +342,65 @@ If is_receipt is false, return STRICTLY:
 Do not include markdown backticks or commentary. Only raw JSON.
 `;
 
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            { text: promptText },
-            {
-              inline_data: {
-                mime_type: mimeType || 'image/jpeg',
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        temperature: 0.1
+    let candidateText = null;
+
+    // 1. Try Guts AI first if configured (Fast, High Quota)
+    if (gutsKey) {
+      const gutsRes = await executeGutsRequest({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: promptText },
+              { type: 'image_url', image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${base64Data}` } }
+            ]
+          }
+        ],
+        model: 'gemini-3.6-flash',
+        isJson: true,
+        maxTokens: 2000,
+        timeoutMs: 18000
+      });
+
+      if (gutsRes?.success && gutsRes.content) {
+        candidateText = gutsRes.content;
       }
-    };
+    }
 
-    const { data } = await executeGeminiRequest({
-      requestBody,
-      candidateModels: CANDIDATE_VISION_MODELS,
-      customApiKey,
-      timeoutMs: 9000
-    });
+    // 2. Fallback to Google Gemini direct
+    if (!candidateText && apiKeys.length > 0) {
+      const requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: promptText },
+              {
+                inline_data: {
+                  mime_type: mimeType || 'image/jpeg',
+                  data: base64Data
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          response_mime_type: 'application/json',
+          temperature: 0.1
+        }
+      };
 
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const { data } = await executeGeminiRequest({
+        requestBody,
+        candidateModels: CANDIDATE_VISION_MODELS,
+        customApiKey,
+        timeoutMs: 9000
+      });
+
+      candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
 
     if (!candidateText) {
-      throw new Error('No candidate content received from Gemini API');
+      throw new Error('Tidak ada respon konten dari AI.');
     }
 
     const parsedJson = JSON.parse(candidateText.trim());
@@ -349,7 +441,7 @@ Do not include markdown backticks or commentary. Only raw JSON.
 
     return {
       success: true,
-      mode: 'gemini_vision',
+      mode: gutsKey ? 'guts_ai_vision' : 'gemini_vision',
       receipt: parsedJson
     };
   } catch (error) {
@@ -524,13 +616,36 @@ export const BOT_SYSTEM_INSTRUCTION =
  * Ask Gemini AI a conversational question (for 2-way WhatsApp Chat)
  */
 export async function askGeminiText(prompt, customApiKey = null) {
+  const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
-  if (apiKeys.length === 0) {
+  if (!gutsKey && apiKeys.length === 0) {
     return {
       success: false,
-      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+      error: 'API key AI belum dikonfigurasi di server.'
     };
+  }
+
+  // 1. Try Guts AI first if configured
+  if (gutsKey) {
+    const gutsRes = await executeGutsRequest({
+      messages: [
+        { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
+        { role: 'user', content: prompt }
+      ],
+      model: 'gemini-3.6-flash',
+      maxTokens: 1200,
+      timeoutMs: 12000
+    });
+
+    if (gutsRes?.success && gutsRes.content) {
+      const text = cleanCoolResponse(gutsRes.content);
+      return { success: true, text };
+    }
+  }
+
+  if (apiKeys.length === 0) {
+    return { success: false, error: 'Gagal mendapatkan respon dari AI.' };
   }
 
   const requestBody = {
@@ -586,19 +701,63 @@ export async function askGeminiText(prompt, customApiKey = null) {
  * Natural Conversational AI Chat with Multi-turn Context Memory and Group Context Awareness
  */
 export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+  const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
-  if (apiKeys.length === 0) {
+  if (!gutsKey && apiKeys.length === 0) {
     return {
       success: false,
-      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+      error: 'API key AI belum dikonfigurasi di server.'
     };
   }
 
-  // Build contents array from history + new user message
+  const userMessageText = recentContext
+    ? `[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP SEBELUMNYA]:\n${recentContext}\n\n[PESAN UNTUK EDWIN JARVIS DARI ${senderName}]:\n${message}`
+    : message;
+
+  // 1. Try Guts AI first if configured (Super fast & reliable)
+  if (gutsKey) {
+    const messages = [
+      {
+        role: 'system',
+        content: BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName
+      }
+    ];
+
+    if (Array.isArray(history) && history.length > 0) {
+      const recentHistory = history.slice(-10);
+      recentHistory.forEach(turn => {
+        if (turn.role && turn.text) {
+          messages.push({
+            role: turn.role === 'model' || turn.role === 'bot' ? 'assistant' : 'user',
+            content: turn.text
+          });
+        }
+      });
+    }
+
+    messages.push({ role: 'user', content: userMessageText });
+
+    const gutsRes = await executeGutsRequest({
+      messages,
+      model: 'gemini-3.6-flash',
+      maxTokens: 1200,
+      timeoutMs: 12000
+    });
+
+    if (gutsRes?.success && gutsRes.content) {
+      const text = cleanCoolResponse(gutsRes.content);
+      return { success: true, text };
+    }
+  }
+
+  // 2. Fallback to Google Gemini
+  if (apiKeys.length === 0) {
+    return { success: false, error: 'Gagal memproses percakapan dengan AI.' };
+  }
+
   const contents = [];
 
-  // Add system instruction as initial context
   contents.push({
     role: 'user',
     parts: [{ text: "[SYSTEM INSTRUCTION]\n" + BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName }]
@@ -608,7 +767,6 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     parts: [{ text: "oke siap. gue edwin jarvis, bot/temen tongkrongan yang kalem dan agak cuek tapi peduli. ga manggil 'dik'/'abang', panggil nama/lu/bro. kalo dibercandain/disudutin gue bakal judes santai, kalo nanya serius gue jawab bijak tanpa ngejudge (bisa longteks), baru ngejudge parah kalo dia ngelakuin hal bego yg ngerusak dirinya sendiri. paham konteks obrolan grup dan bisa jawab foto juga. typingan ganteng, no capslock." }]
   });
 
-  // Append history turns (last 10 messages)
   if (Array.isArray(history) && history.length > 0) {
     const recentHistory = history.slice(-10);
     recentHistory.forEach(turn => {
@@ -620,11 +778,6 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
       }
     });
   }
-
-  // Append current user message with group background context if available
-  const userMessageText = recentContext
-    ? `[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP SEBELUMNYA]:\n${recentContext}\n\n[PESAN UNTUK EDWIN JARVIS DARI ${senderName}]:\n${message}`
-    : message;
 
   contents.push({
     role: 'user',
@@ -677,12 +830,13 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
  * Ask Gemini AI to analyze an image with user's conversational question (Vision Q&A)
  */
 export async function askGeminiVision({ filePath, mimeType, prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+  const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
-  if (apiKeys.length === 0) {
+  if (!gutsKey && apiKeys.length === 0) {
     return {
       success: false,
-      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+      error: 'API key AI belum dikonfigurasi di server.'
     };
   }
 
@@ -696,6 +850,34 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
       (recentContext ? "[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP]:\n" + recentContext + "\n\n" : "") +
       `[USER INFO]\nNama teman: ${senderName}\n\n` +
       `[PERTANYAAN TENTANG GAMBAR/FOTO INI]:\n${prompt || 'Tolong jelaskan atau analisis apa yang ada di foto ini secara santai.'}`;
+
+    // 1. Try Guts AI first if configured
+    if (gutsKey) {
+      const gutsRes = await executeGutsRequest({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: promptText },
+              { type: 'image_url', image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${base64Data}` } }
+            ]
+          }
+        ],
+        model: 'gemini-3.6-flash',
+        maxTokens: 1200,
+        timeoutMs: 15000
+      });
+
+      if (gutsRes?.success && gutsRes.content) {
+        const text = cleanCoolResponse(gutsRes.content);
+        return { success: true, text };
+      }
+    }
+
+    // 2. Fallback to Google Gemini direct
+    if (apiKeys.length === 0) {
+      return { success: false, error: 'Gagal menganalisis foto dengan AI.' };
+    }
 
     const requestBody = {
       contents: [
