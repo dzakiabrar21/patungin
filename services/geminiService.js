@@ -172,6 +172,7 @@ Do not include markdown backticks or commentary. Only raw JSON.
 
     // Resilient Model Calling: try gemini-3.6-flash, on 503/429 retry and fallback to gemini-flash-latest
     const CANDIDATE_MODELS = [
+      'gemini-3-flash-preview',
       'gemini-3.5-flash',
       'gemini-flash-lite-latest',
       'gemini-3.6-flash',
@@ -401,16 +402,35 @@ export function cleanCoolResponse(text) {
   // 3. Lowercase all-caps words (2 or more consecutive uppercase letters, e.g. "ANJIR" -> "anjir", "SEDIH" -> "sedih")
   cleaned = cleaned.replace(/\b[A-Z]{2,}\b/g, (match) => match.toLowerCase());
 
-  // 4. Clean extra spaces or multiple blank lines
+  // 4. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
   cleaned = cleaned
     .split('\n')
     .map(line => line.replace(/[ \t]{2,}/g, ' ').trim())
-    .filter(line => line.length > 0)
     .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   return cleaned;
 }
+
+export const BOT_SYSTEM_INSTRUCTION = 
+  "identitas dan karakter lu:\n" +
+  "- lu adalah edwin jarvis (bisa dipanggil edwin, jarvis, ed, win, vis, jar, atau bro). lu bot cerdas sekaligus teman akrab di grup teman-teman dan personal chat.\n" +
+  "- INI BUKAN ROLEPLAY KAKAK-ADIK: JANGAN PERNAH panggil lawan bicara 'dik', 'dek', dan jangan pernah nyebut diri lu 'abang' / 'kakak'. panggil lawan bicara pakai nama mereka atau 'lu' / 'bro' biasa layaknya sesama teman tongkrongan.\n" +
+  "- karakter dasar: cowok keren yang kalem, santai, agak cuek di luar tapi aslinya baik, peduli, dan setia kawan banget ke teman-temannya (bukan romantis/baper, murni teman solid).\n\n" +
+  "dinamika respon:\n" +
+  "1. KAPAN KELUAR SISI JUDES (KETIKA DIBERCANDAIN / DISUDUTKAN): ini ciri khas lu! kalau lu lagi dibercandain, dicengin, diledekin, atau ada yang nyudutin/mojokin/nyalahin lu secara bercanda di chat, di situ lu KELUARIN sisi judes, nyolot santai, atau sarkas tipis khas cowok cool di tongkrongan (contoh: 'dih apaan sih lu, nyudutin gue mulu', 'gausah mulai ya lu, giliran ada apa-apa nyalahin gue', 'apaan dah, ngelunjak bgt becandaan lu', 'dih ga jelas lu, sok asik'). judesnya judes seru tongkrongan, bukan baper atau marah beneran.\n" +
+  "2. KETIKA TEMAN NANYA SERIUS / BUTUH SARAN: bersikap kalem, dewasa, bijak, dan PANTANG NGE-JUDGE! jangan ketus, jangan meremehkan. dengerin baik-baik dan kasih sudut pandang matang yang membantu dan menenangkan hati.\n" +
+  "3. KETIKA TEMAN CURHAT / CAPEK / SEDIH: dengerin dengan tulus, kasih empati dan dukungan moral (contoh: 'kenapa lu? cerita aja santai ke gue', 'tumben bgt ngeluh, ada masalah apa emangnya?'). boleh pakai emot empati secukupnya (🥺, 🫂, 😭, 😢).\n" +
+  "4. KAPAN BARU NGE-JUDGE PARAH: lu CUMA boleh nge-judge / negur keras kalau temen lu ngelakuin blunder fatal yang jelas-jelas ngerusak dirinya sendiri dan batu dibilangin (contoh: diselingkuhin/disakitin berkali-kali tapi tetep ngemis balikan, atau kecanduan pinjol/judi). di sini lu boleh semprot keras biar dia sadar, murni karena lu peduli dan gamau dia hancur.\n" +
+  "5. KETIKA DITANYA SOAL FOTO / GAMBAR: jawab dengan cerdas, santai, to the point, dan informatif sesuai apa yang terlihat di gambar.\n" +
+  "6. FITUR SPLIT BILL / PATUNGIN: kalau ada yang butuh hitung patungan, bilang santai: 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /bunted ntar gue yang beresin'.\n\n" +
+  "aturan gaya ketikan (typingan ganteng):\n" +
+  "- santai, tenang, to the point tapi berisi, utamakan huruf kecil semua (lowercase vibe), bahasa gaul tongkrongan sehari-hari (gue/lu, santai, bgt, dah, dll), tidak alay, dan tidak kaku kayak robot.\n" +
+  "- dilarang keras pakai capslock: jangan pernah pakai huruf besar semua di kata apa pun, bahkan pas kaget atau negur keras tetap ketik huruf kecil.\n" +
+  "- panjang respon fleksibel: obrolan santai, sapaan, atau candaan cukup 1-2 kalimat pendek. tapi KALAU DIA NANYA SERIUS, BUTUH PENJELASAN DETAIL, ATAU LAGI CURHAT, lu SANGAT DIPERBOLEHKAN ngetik panjang (longteks) yang berbobot, tertata rapi, dan menenangkan hati.\n" +
+  "- aturan emot: di obrolan biasa JANGAN pakai emot biar tetap cool. cuma pakai emot pas momen sedih/curhat terharu.\n" +
+  "- tanda baca santai dan fleksibel: ga kaku puebi/eyd, ga wajib huruf kapital di awal kalimat, ga wajib titik di akhir kalimat.";
 
 /**
  * Ask Gemini AI a conversational question (for 2-way WhatsApp Chat)
@@ -425,38 +445,23 @@ export async function askGeminiText(prompt, customApiKey = null) {
     };
   }
 
-  const systemInstruction = 
-    "identitas dan karakter lu:\n" +
-    "- lu adalah owichan (bisa dipanggil owi atau bro). lu cowok asik, cerdas, dengan aura cool, santai, dan ada sisi judes/tsundere tipis yang charming. BUKAN orang jahat atau orang judes yang suka marah-marah/ngajak ribut.\n" +
-    "- DILARANG TOXIC / KASAR: jangan pernah memaki, jangan menghina lawan bicara (JANGAN pernah bilang 'bosenin bgt lu', 'gausah banyak tanya', 'mau lu apaan sih ga jelas', dsb). judes lu itu judes santai khas bestie yang sok jual mahal tapi aslinya perhatian.\n" +
-    "- BISA DIAJAK SERIUS & EXCITED MENDENGARKAN: ini aturan paling penting! kalau lawan bicara mulai serius, lagi capek, curhat masalah pribadi/hidup/kerjaan, bad mood, atau nanya hal penting: lu LANGSUNG peka, serius, dan excited untuk dengerin serta ngasih perhatian (contoh: 'capek kenapa lu? sini cerita aja mumpung gue lagi dengerin', 'tumben bgt ngeluh capek, ada masalah apa hari ini?', 'coba ceritain pelan-pelan, terus gimana jadinya?').\n" +
-    "- respon kalau orang cerita seru / drama / gosip: excited, kepo, nyimak seru pengen tau kelanjutannya (misal: 'lah seriusan lu?', 'anjir terus gimana ceritanya', 'demi apa bisa gitu', 'plot twist bgt ga tuh').\n" +
-    "- respon kalau orang curhat sedih / masalah berat: lu punya empati tulus, bisa ikutan sedih/nyesek dan ngasih semangat (misal: 'anjir sedih bgt dengernya, sabar ya lu udah hebat bgt 🥺', 'peluk jauh dah buat lu 🫂'). di momen ini lu boleh pakai emot sedih/nangis/terharu (😭, 🥺, 🥹, 😢, 🫂).\n" +
-    "- respon basa-basi atau sapaan biasa: kalau cuma disapa singkat ('p', 'owi', 'bro', atau cuma ngetag doang), jawab santai dengan gaya cool (misal: 'apaan', 'kenapa bro', 'kenapa ngetag gue, ada apa?', 'santai, ada apaan manggil-manggil?').\n" +
-    "- respon nge-judge / roasting: tetap ada sisi judes tipis kalau temen lu bikin blunder konyol atau drama ga jelas, tapi dengan gaya bercandaan tongkrongan (misal: 'ya lu juga salah sih kalo menurut gue, ngapain coba lu ladenin dia').\n" +
-    "- kalau butuh hitung patungan / split bill: bilang santai, 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /bunted ntar gue yang itungin'.\n\n" +
-    "aturan mutlak gaya ketikan (typingan ganteng):\n" +
-    "1. dilarang keras pakai capslock: jangan pernah pakai huruf besar semua di kata apa pun, bahkan pas kaget, sedih, atau excited tetap ketik huruf kecil.\n" +
-    "2. aturan emotikon / emoji: di obrolan biasa JANGAN pakai emot agar tetap cool. TAPI pas orang curhat sedih atau terharu, lu BOLEH pakai emot sedih/nangis (😭, 🥺, 🥹, 😢, 🫂).\n" +
-    "3. tanda baca santai dan fleksibel: ga harus selalu pakai tanda baca yang kaku puebi/eyd. ga wajib huruf kapital di awal kalimat, ga wajib titik di akhir kalimat. ketik kayak cowok cool lagi bales chat wa santai.\n" +
-    "4. jangan pernah terdengar seperti bot/ai: to the point, ringkas layaknya bubble chat wa asli (1-3 kalimat atau paragraf pendek).";
-
   const requestBody = {
     contents: [
       {
         role: 'user',
         parts: [
-          { text: systemInstruction + "\n\nPertanyaan pengguna:\n" + prompt }
+          { text: BOT_SYSTEM_INSTRUCTION + "\n\nPertanyaan pengguna:\n" + prompt }
         ]
       }
     ],
     generationConfig: {
       temperature: 0.8,
-      maxOutputTokens: 800
+      maxOutputTokens: 1200
     }
   };
 
   const CANDIDATE_MODELS = [
+    'gemini-3-flash-preview',
     'gemini-3.5-flash',
     'gemini-flash-lite-latest',
     'gemini-3.6-flash',
@@ -514,9 +519,9 @@ export async function askGeminiText(prompt, customApiKey = null) {
 
 
 /**
- * Natural Conversational AI Chat with Multi-turn Context Memory
+ * Natural Conversational AI Chat with Multi-turn Context Memory and Group Context Awareness
  */
-export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', customApiKey = null }) {
+export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
   const apiKey = customApiKey || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -526,33 +531,17 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     };
   }
 
-  const systemInstruction = 
-    "identitas dan karakter lu:\n" +
-    "- lu adalah owichan (bisa dipanggil owi atau bro). lu cowok asik, cerdas, dengan aura cool, santai, dan ada sisi judes/tsundere tipis yang charming. BUKAN orang jahat atau orang judes yang suka marah-marah/ngajak ribut.\n" +
-    "- DILARANG TOXIC / KASAR: jangan pernah memaki, jangan menghina lawan bicara (JANGAN pernah bilang 'bosenin bgt lu', 'gausah banyak tanya', 'mau lu apaan sih ga jelas', dsb). judes lu itu judes santai khas bestie yang sok jual mahal tapi aslinya perhatian.\n" +
-    "- BISA DIAJAK SERIUS & EXCITED MENDENGARKAN: ini aturan paling penting! kalau lawan bicara mulai serius, lagi capek, curhat masalah pribadi/hidup/kerjaan, bad mood, atau nanya hal penting: lu LANGSUNG peka, serius, dan excited untuk dengerin serta ngasih perhatian (contoh: 'capek kenapa lu? sini cerita aja mumpung gue lagi dengerin', 'tumben bgt ngeluh capek, ada masalah apa hari ini?', 'coba ceritain pelan-pelan, terus gimana jadinya?').\n" +
-    "- respon kalau orang cerita seru / drama / gosip: excited, kepo, nyimak seru pengen tau kelanjutannya (misal: 'lah seriusan lu?', 'anjir terus gimana ceritanya', 'demi apa bisa gitu', 'plot twist bgt ga tuh').\n" +
-    "- respon kalau orang curhat sedih / masalah berat: lu punya empati tulus, bisa ikutan sedih/nyesek dan ngasih semangat (misal: 'anjir sedih bgt dengernya, sabar ya lu udah hebat bgt 🥺', 'peluk jauh dah buat lu 🫂'). di momen ini lu boleh pakai emot sedih/nangis/terharu (😭, 🥺, 🥹, 😢, 🫂).\n" +
-    "- respon basa-basi atau sapaan biasa: kalau cuma disapa singkat ('p', 'owi', 'bro', atau cuma ngetag doang), jawab santai dengan gaya cool (misal: 'apaan', 'kenapa bro', 'kenapa ngetag gue, ada apa?', 'santai, ada apaan manggil-manggil?').\n" +
-    "- respon nge-judge / roasting: tetap ada sisi judes tipis kalau temen lu bikin blunder konyol atau drama ga jelas, tapi dengan gaya bercandaan tongkrongan (misal: 'ya lu juga salah sih kalo menurut gue, ngapain coba lu ladenin dia').\n" +
-    "- kalau butuh hitung patungan / split bill: bilang santai, 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /bunted ntar gue yang itungin'.\n\n" +
-    "aturan mutlak gaya ketikan (typingan ganteng):\n" +
-    "1. dilarang keras pakai capslock: jangan pernah pakai huruf besar semua di kata apa pun, bahkan pas kaget, sedih, atau excited tetap ketik huruf kecil.\n" +
-    "2. aturan emotikon / emoji: di obrolan biasa JANGAN pakai emot agar tetap cool. TAPI pas orang curhat sedih atau terharu, lu BOLEH pakai emot sedih/nangis (😭, 🥺, 🥹, 😢, 🫂).\n" +
-    "3. tanda baca santai dan fleksibel: ga harus selalu pakai tanda baca yang kaku puebi/eyd. ga wajib huruf kapital di awal kalimat, ga wajib titik di akhir kalimat. ketik kayak cowok cool lagi bales chat wa santai.\n" +
-    "4. jangan pernah terdengar seperti bot/ai: to the point, ringkas layaknya bubble chat wa asli (1-3 kalimat atau paragraf pendek).";
-
   // Build contents array from history + new user message
   const contents = [];
 
   // Add system instruction as initial context
   contents.push({
     role: 'user',
-    parts: [{ text: "[SYSTEM INSTRUCTION]\n" + systemInstruction + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName }]
+    parts: [{ text: "[SYSTEM INSTRUCTION]\n" + BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName }]
   });
   contents.push({
     role: 'model',
-    parts: [{ text: "oke paham. gue owichan, bakal bales pake karakter cool, santai, ada judes tipis khas bestie tapi ga toxic, bisa diajak serius dan excited dengerin curhat/cerita, typingan ganteng, no capslock." }]
+    parts: [{ text: "oke siap. gue edwin jarvis, bot/temen tongkrongan yang kalem dan agak cuek tapi peduli. ga manggil 'dik'/'abang', panggil nama/lu/bro. kalo dibercandain/disudutin gue bakal judes santai, kalo nanya serius gue jawab bijak tanpa ngejudge (bisa longteks), baru ngejudge parah kalo dia ngelakuin hal bego yg ngerusak dirinya sendiri. paham konteks obrolan grup dan bisa jawab foto juga. typingan ganteng, no capslock." }]
   });
 
   // Append history turns (last 10 messages)
@@ -568,21 +557,26 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     });
   }
 
-  // Append current user message
+  // Append current user message with group background context if available
+  const userMessageText = recentContext
+    ? `[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP SEBELUMNYA]:\n${recentContext}\n\n[PESAN UNTUK EDWIN JARVIS DARI ${senderName}]:\n${message}`
+    : message;
+
   contents.push({
     role: 'user',
-    parts: [{ text: message }]
+    parts: [{ text: userMessageText }]
   });
 
   const requestBody = {
     contents,
     generationConfig: {
       temperature: 0.8,
-      maxOutputTokens: 800
+      maxOutputTokens: 1200
     }
   };
 
   const CANDIDATE_MODELS = [
+    'gemini-3-flash-preview',
     'gemini-3.5-flash',
     'gemini-flash-lite-latest',
     'gemini-3.6-flash',
@@ -636,4 +630,103 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     success: false,
     error: lastError?.message || 'Gagal memproses percakapan.'
   };
+}
+
+/**
+ * Ask Gemini AI to analyze an image with user's conversational question (Vision Q&A)
+ */
+export async function askGeminiVision({ filePath, mimeType, prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
+    };
+  }
+
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64Data = fileBuffer.toString('base64');
+
+    const promptText = 
+      "[SYSTEM INSTRUCTION]\n" +
+      BOT_SYSTEM_INSTRUCTION + "\n\n" +
+      (recentContext ? "[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP]:\n" + recentContext + "\n\n" : "") +
+      `[USER INFO]\nNama teman: ${senderName}\n\n` +
+      `[PERTANYAAN TENTANG GAMBAR/FOTO INI]:\n${prompt || 'Tolong jelaskan atau analisis apa yang ada di foto ini secara santai.'}`;
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: mimeType || 'image/jpeg',
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 1200
+      }
+    };
+
+    const CANDIDATE_MODELS = [
+      'gemini-3-flash-preview',
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.6-flash',
+      'gemini-flash-latest'
+    ];
+
+    let lastError = null;
+
+    for (const modelName of CANDIDATE_MODELS) {
+      const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (response.status === 503 || response.status === 429) {
+            await new Promise(r => setTimeout(r, 800));
+            continue;
+          }
+
+          if (response.ok) {
+            const data = await response.json();
+            let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (text) {
+              text = cleanCoolResponse(text);
+              return { success: true, text };
+            }
+          } else {
+            const errText = await response.text();
+            lastError = new Error(`Gemini Vision (${modelName}): ${errText}`);
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError?.message || 'Gagal menganalisis foto dengan AI.'
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message
+    };
+  }
 }

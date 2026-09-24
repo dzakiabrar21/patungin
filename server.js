@@ -170,14 +170,14 @@ if (!process.env.VERCEL) {
   const server = app.listen(PORT, () => {
     console.log(`🚀 PatungIn Server berjalan di http://localhost:${PORT}`);
     // Initialize WhatsApp Bot
-    initWhatsAppBot();
+    initWhatsAppBot(PORT);
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       const ALT_PORT = Number(PORT) + 1;
       console.log(`Port ${PORT} terpakai, mencoba port alternatif ${ALT_PORT}...`);
       app.listen(ALT_PORT, () => {
         console.log(`🚀 PatungIn Server berjalan di http://localhost:${ALT_PORT}`);
-        initWhatsAppBot();
+        initWhatsAppBot(ALT_PORT);
       });
     } else {
       console.error('Server error:', err);

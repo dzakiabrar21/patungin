@@ -21,7 +21,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini } from './geminiService.js';
+import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision } from './geminiService.js';
 import sessionStore from './sessionStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,9 +50,15 @@ let botUser = null;
 const processedMessages = new Set();
 
 // Base URL for session links
-const APP_PORT = process.env.PORT || 3000;
+let activeAppPort = Number(process.env.PORT) || 3000;
+
+export function setAppPort(port) {
+  if (port) activeAppPort = Number(port);
+}
 
 export let publicServerIp = null;
+export let publicTunnelUrl = null;
+let tunnelPromise = null;
 
 async function detectPublicIp() {
   try {
@@ -80,31 +86,44 @@ function getPrimaryNetworkIp() {
   return 'localhost';
 }
 
-export let publicTunnelUrl = null;
-
-async function setupPublicTunnel() {
+async function setupPublicTunnel(port = activeAppPort) {
   try {
-    console.log('[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel (tanpa warning page)...');
-    const tunnel = await startTunnel({ port: APP_PORT });
+    console.log(`[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel untuk port ${port}...`);
+    tunnelPromise = startTunnel({ port });
+    const tunnel = await tunnelPromise;
     publicTunnelUrl = await tunnel.getURL();
     console.log(`\n🚀 [WhatsAppBot] Cloudflare HTTPS Tunnel Aktif (Langsung Buka, Tanpa Warning): ${publicTunnelUrl}\n`);
+    return publicTunnelUrl;
   } catch (err) {
     console.warn('[WhatsAppBot] Cloudflare tunnel tidak dapat dibuat, menggunakan fallback IP:', err.message);
+    return null;
   }
 }
 
-export function getAppBaseUrl() {
+export async function getAppBaseUrl() {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL.replace(/\/$/, '');
   }
   if (publicTunnelUrl) {
     return publicTunnelUrl;
   }
+  if (tunnelPromise) {
+    try {
+      const tunnel = await Promise.race([
+        tunnelPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4500))
+      ]);
+      if (tunnel) {
+        publicTunnelUrl = await tunnel.getURL();
+        if (publicTunnelUrl) return publicTunnelUrl;
+      }
+    } catch (_) {}
+  }
   if (publicServerIp) {
-    return `http://${publicServerIp}:${APP_PORT}`;
+    return `http://${publicServerIp}:${activeAppPort}`;
   }
   const ip = getPrimaryNetworkIp();
-  return `http://${ip}:${APP_PORT}`;
+  return `http://${ip}:${activeAppPort}`;
 }
 
 /**
@@ -170,9 +189,46 @@ function addChatTurn(chatId, role, text) {
   data.lastActivity = Date.now();
 }
 
-export async function initWhatsAppBot() {
+// Rolling message buffer to capture ongoing group conversations for context
+// chatId -> [{ sender: 'Rian', text: 'futsal jam berapa?', time: timestamp }]
+const recentGroupChatMap = new Map();
+const MAX_RECENT_CHAT_MESSAGES = 15;
+
+function recordRecentMessage(chatId, sender, text) {
+  if (!chatId || !text || text.trim().length === 0) return;
+  let list = recentGroupChatMap.get(chatId);
+  if (!list) {
+    list = [];
+    recentGroupChatMap.set(chatId, list);
+  }
+  list.push({
+    sender: sender || 'Teman',
+    text: text.trim(),
+    time: Date.now()
+  });
+  if (list.length > MAX_RECENT_CHAT_MESSAGES) {
+    list.splice(0, list.length - MAX_RECENT_CHAT_MESSAGES);
+  }
+}
+
+function getRecentContextText(chatId, excludeCurrentText = '') {
+  const list = recentGroupChatMap.get(chatId) || [];
+  if (list.length === 0) return '';
+  
+  // Format as readable timeline
+  const formatted = list
+    .filter(m => m.text !== excludeCurrentText)
+    .slice(-8)
+    .map(m => `${m.sender}: ${m.text}`)
+    .join('\n');
+    
+  return formatted;
+}
+
+export async function initWhatsAppBot(port = null) {
+  if (port) setAppPort(port);
   detectPublicIp();
-  setupPublicTunnel();
+  setupPublicTunnel(activeAppPort);
   try {
     botStatus = 'connecting';
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -271,6 +327,11 @@ export async function initWhatsAppBot() {
         const chatId = m.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
 
+        // Record incoming messages to rolling context buffer so Edwin Jarvis understands what is being discussed
+        if (text && text.trim().length > 0) {
+          recordRecentMessage(chatId, m.pushName || 'Teman', text);
+        }
+
         const isTrigger =
           lowerText.startsWith('/bunted') ||
           lowerText.startsWith('/patungin') ||
@@ -340,7 +401,7 @@ export async function initWhatsAppBot() {
           continue;
         }
 
-        // Case D: Percakapan Alami 2 Arah dengan Context Memory (Owichan)
+        // Case D: Percakapan Alami 2 Arah dengan Context Memory & Vision (Edwin Jarvis)
         const contextInfo = m.message?.extendedTextMessage?.contextInfo || rawMsg?.extendedTextMessage?.contextInfo;
 
         const mentionedJids = contextInfo?.mentionedJid || [];
@@ -355,14 +416,31 @@ export async function initWhatsAppBot() {
           (botLid && replyParticipant.includes(botLid))
         );
 
-        // Deteksi panggilan Owi / Owichan / Bro di mana saja (awal, tengah, atau akhir kalimat)
-        const hasTriggerKeyword = /\b(owichan|owi+|bro+)\b/i.test(lowerText);
-        const startsWithCall = /^(\/tanya|@bot|bray\b|cuy\b|bang\b|bot\b|min\b|halo|hai|hei)/i.test(lowerText);
+        // Deteksi panggilan Edwin, Ed, Win, Jarvis, Vis, Jar, Bro di mana saja
+        const hasTriggerKeyword = /\b(edwin|ed|win|jarvis|vis|jar|bro+)\b/i.test(lowerText);
+        const startsWithCall = /^(\/tanya|@bot|edwin\b|ed\b|win\b|jarvis\b|vis\b|jar\b|bro+\b|bray\b|cuy\b|bang\b|bot\b|min\b|halo|hai|hei)/i.test(lowerText);
+
+        // Deteksi apakah pesan menyertakan gambar atau me-reply gambar
+        const quotedImageMsg =
+          contextInfo?.quotedMessage?.imageMessage ||
+          contextInfo?.quotedMessage?.viewOnceMessage?.message?.imageMessage ||
+          contextInfo?.quotedMessage?.viewOnceMessageV2?.message?.imageMessage ||
+          contextInfo?.quotedMessage?.ephemeralMessage?.message?.imageMessage;
+
+        const hasDirectImage = hasImage && !isTrigger;
+        const hasQuotedImage = Boolean(quotedImageMsg);
 
         const isPrivateChat = !isGroup;
-        const shouldChat = !m.key?.fromMe && !isFromBot && (isPrivateChat || isBotMentioned || isReplyToBot || hasTriggerKeyword || startsWithCall);
+        const shouldChat = !m.key?.fromMe && !isFromBot && (
+          isPrivateChat ||
+          isBotMentioned ||
+          isReplyToBot ||
+          hasTriggerKeyword ||
+          startsWithCall ||
+          ((hasDirectImage || hasQuotedImage) && (hasTriggerKeyword || isBotMentioned))
+        );
 
-        if (shouldChat && text && text.trim().length > 0) {
+        if (shouldChat && (text?.trim().length > 0 || hasDirectImage || hasQuotedImage)) {
           if (msgId) processedMessages.add(msgId);
 
           // Ambil konteks quoted message jika ada
@@ -375,16 +453,20 @@ export async function initWhatsAppBot() {
           let cleanPrompt = text
             .replace(/@[0-9]+/g, '')
             .replace(/^(\/tanya|@bot)[,:]?\s*/i, '')
-            .replace(/^(halo|hai|hei|bro+|owichan|owi+|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
+            .replace(/^(halo|hai|hei|edwin|ed|win|jarvis|vis|jar|bro+|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
             .trim();
 
           if (!cleanPrompt) {
-            cleanPrompt = quotedText ? `kenapa ngetag gue soal ini: "${quotedText.trim()}"?` : 'kenapa ngetag gue? ada apa?';
+            if (hasDirectImage || hasQuotedImage) {
+              cleanPrompt = 'Tolong jelasin atau analisis apa yang ada di foto ini santai aja bro.';
+            } else {
+              cleanPrompt = quotedText ? `kenapa ngetag gue soal ini: "${quotedText.trim()}"?` : 'kenapa ngetag gue? ada apa?';
+            }
           } else if (quotedText && !cleanPrompt.includes(quotedText)) {
             cleanPrompt = `[Membalas chat: "${quotedText.trim()}"]\n${cleanPrompt}`;
           }
 
-          console.log(`[WhatsAppBot] 💬 Owichan chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, Keyword: ${hasTriggerKeyword})`);
+          console.log(`[WhatsAppBot] 💬 Edwin Jarvis chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, Keyword: ${hasTriggerKeyword}, Img: ${hasDirectImage || hasQuotedImage})`);
 
           try {
             await sock.sendPresenceUpdate('composing', chatId);
@@ -392,12 +474,54 @@ export async function initWhatsAppBot() {
 
           const senderName = m.pushName || 'Teman';
           const history = getChatHistory(chatId);
+          const recentContext = isGroup ? getRecentContextText(chatId, text) : '';
 
-          const aiRes = await chatWithGemini({
-            history,
-            message: cleanPrompt,
-            senderName
-          });
+          let aiRes = null;
+
+          // Jika ada gambar (langsung atau dari reply gambar), proses dengan Gemini Vision
+          if (hasDirectImage || hasQuotedImage) {
+            let tempVisionPath = null;
+            try {
+              let imageBuffer = null;
+              if (hasDirectImage) {
+                imageBuffer = await downloadMediaMessage({ key: m.key, message: rawMsg }, 'buffer', {});
+              } else if (hasQuotedImage) {
+                imageBuffer = await downloadMediaMessage({
+                  key: { remoteJid: chatId, id: contextInfo.stanzaId },
+                  message: { imageMessage: quotedImageMsg }
+                }, 'buffer', {});
+              }
+
+              if (imageBuffer) {
+                tempVisionPath = path.join(os.tmpdir(), `wa-vision-${Date.now()}.jpg`);
+                fs.writeFileSync(tempVisionPath, imageBuffer);
+
+                aiRes = await askGeminiVision({
+                  filePath: tempVisionPath,
+                  mimeType: 'image/jpeg',
+                  prompt: cleanPrompt,
+                  senderName,
+                  recentContext
+                });
+              }
+            } catch (vErr) {
+              console.error('[WhatsAppBot] Error processing image vision:', vErr);
+            } finally {
+              if (tempVisionPath && fs.existsSync(tempVisionPath)) {
+                try { fs.unlinkSync(tempVisionPath); } catch (_) {}
+              }
+            }
+          }
+
+          // Fallback ke chat percakapan teks biasa jika bukan gambar atau vision gagal
+          if (!aiRes) {
+            aiRes = await chatWithGemini({
+              history,
+              message: cleanPrompt,
+              senderName,
+              recentContext
+            });
+          }
 
           if (aiRes.success) {
             addChatTurn(chatId, 'user', cleanPrompt);
@@ -407,9 +531,9 @@ export async function initWhatsAppBot() {
             if (sentMsg?.key?.id) {
               processedMessages.add(sentMsg.key.id);
             }
-            console.log(`[WhatsAppBot] ✅ Owichan berhasil membalas ke ${chatId}`);
+            console.log(`[WhatsAppBot] ✅ Edwin Jarvis berhasil membalas ke ${chatId}`);
           } else {
-            console.error('[WhatsAppBot] ❌ Error Owichan:', aiRes.error);
+            console.error('[WhatsAppBot] ❌ Error Edwin Jarvis:', aiRes.error);
             const sentErr = await sock.sendMessage(chatId, {
               text: 'lagi pusing bentar, ntar colek lagi aja'
             }, { quoted: m });
@@ -563,7 +687,8 @@ async function processBatchReceipts(batch) {
 
     const storeName = r.merchant && r.merchant !== 'Merchant' ? r.merchant : (count > 1 ? 'Gabungan 2 Struk' : 'Struk Belanja');
     const totalFormatted = (r.total || 0).toLocaleString('id-ID');
-    const sessionUrl = `${getAppBaseUrl()}/?bill=${session.id}`;
+    const baseUrl = await getAppBaseUrl();
+    const sessionUrl = `${baseUrl}/?bill=${session.id}`;
 
     // 6. Reply to group with interactive link
     const titleText = count > 1
@@ -579,7 +704,9 @@ async function processBatchReceipts(batch) {
 📦 *Jumlah Menu:* ${r.items?.length || 0} item${countDesc}
 
 👉 *Buka link ini untuk split bill & atur patungan:*
-${sessionUrl}`;
+${sessionUrl}
+
+💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan dulu nomor bot ini ke kontak WhatsApp kamu ya!`;
 
     await sock.sendMessage(chatId, { text: replyText });
     console.log(`[WhatsAppBot] Sesi ${session.id} (${count} struk) berhasil dibuat dan dikirim ke ${chatId}`);
