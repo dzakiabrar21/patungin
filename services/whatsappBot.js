@@ -293,33 +293,45 @@ export async function initWhatsAppBot() {
           continue;
         }
 
-        // Case D: Percakapan Alami 2 Arah dengan Context Memory
+        // Case D: Percakapan Alami 2 Arah dengan Context Memory (Owichan)
         const contextInfo = m.message?.extendedTextMessage?.contextInfo || rawMsg?.extendedTextMessage?.contextInfo;
-        const botPhone = (sock.user?.id || '').split(':')[0];
+        const botPhone = (sock.user?.id || '').split(':')[0].replace(/[^0-9]/g, '');
+        const botLid = (sock.user?.lid || '').split(':')[0].replace(/[^0-9]/g, '');
+
         const mentionedJids = contextInfo?.mentionedJid || [];
-        const isBotMentioned = mentionedJids.some(jid => jid.includes(botPhone));
-        const isReplyToBot = contextInfo?.participant ? contextInfo.participant.includes(botPhone) : false;
+        const isBotMentioned = mentionedJids.some(jid => {
+          const cleanJid = jid.split('@')[0].split(':')[0];
+          return (botPhone && cleanJid.includes(botPhone)) || (botLid && cleanJid.includes(botLid));
+        });
 
-        const startsWithCall = /^(\/tanya|@bot|owichan\b|owi\b|wi\b|bro\b|bray\b|cuy\b|bang\b|bot\b|min\b|halo\s+(owi|owichan|bro|bot|min)|hai\s+(owi|owichan|bro|bot|min)|hei\s+(owi|owichan|bro|bot|min))/i.test(lowerText);
+        const replyParticipant = contextInfo?.participant ? contextInfo.participant.split('@')[0].split(':')[0] : '';
+        const isReplyToBot = Boolean(
+          (botPhone && replyParticipant.includes(botPhone)) ||
+          (botLid && replyParticipant.includes(botLid))
+        );
+
+        // Deteksi panggilan Owichan / Bro di mana saja atau di awal kalimat
+        const hasOwiName = /\b(owichan|owi)\b/i.test(lowerText);
+        const startsWithCall = /^(\/tanya|@bot|bro\b|bray\b|cuy\b|bang\b|bot\b|min\b|halo|hai|hei)/i.test(lowerText);
+
         const isPrivateChat = !isGroup;
-
-        // Di Private Chat balas semua obrolan; di Grup balas jika di-mention, di-reply, atau dipanggil
-        const shouldChat = isPrivateChat || isBotMentioned || isReplyToBot || startsWithCall;
+        const shouldChat = isPrivateChat || isBotMentioned || isReplyToBot || hasOwiName || startsWithCall;
 
         if (shouldChat && text && text.trim().length > 0) {
-          // Bersihkan prefix panggilan (@bot, /tanya, bot,)
+          if (msgId) processedMessages.add(msgId);
+
+          // Bersihkan teks dari mention (@123456), nama owi/owichan, dan salam pembuka
           let cleanPrompt = text
-            .replace(/^(\/tanya|@bot|halo\s+(owi|owichan|bro|bot|min)|hai\s+(owi|owichan|bro|bot|min)|hei\s+(owi|owichan|bro|bot|min)|halo bot|hai bot|hei bot)\s*/i, '')
             .replace(/@[0-9]+/g, '')
-            .replace(/^(owichan|owi|wi|bro|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
+            .replace(/\b(owichan|owi)\b/gi, '')
+            .replace(/^(\/tanya|@bot|halo|hai|hei|bro|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
             .trim();
 
           if (!cleanPrompt) {
-            cleanPrompt = 'Halo!';
+            cleanPrompt = 'Halo Owichan!';
           }
 
-          if (msgId) processedMessages.add(msgId);
-          console.log(`[WhatsAppBot] 💬 Owichan chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: ${cleanPrompt}`);
+          console.log(`[WhatsAppBot] 💬 Owichan chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, Name: ${hasOwiName})`);
 
           try {
             await sock.sendPresenceUpdate('composing', chatId);
@@ -335,32 +347,15 @@ export async function initWhatsAppBot() {
           });
 
           if (aiRes.success) {
-            // Simpan ke riwayat percakapan agar ingat konteks selanjutnya
             addChatTurn(chatId, 'user', cleanPrompt);
             addChatTurn(chatId, 'model', aiRes.text);
 
             await sock.sendMessage(chatId, { text: aiRes.text }, { quoted: m });
+            console.log(`[WhatsAppBot] ✅ Owichan berhasil membalas ke ${chatId}`);
           } else {
+            console.error('[WhatsAppBot] ❌ Error Owichan:', aiRes.error);
             await sock.sendMessage(chatId, {
-              text: `⚠️ Maaf ${senderName}, ${aiRes.error || 'aku lagi agak pusing, coba tanya lagi sebentar ya!'}`
-            }, { quoted: m });
-          }
-          continue;
-        }
-
-          console.log(`[WhatsAppBot] 🤖 Pertanyaan AI diterima dari ${m.pushName || 'User'}: ${question}`);
-          try {
-            await sock.sendMessage(chatId, { react: { text: '🤔', key: m.key } });
-          } catch (_) {}
-
-          const aiRes = await askGeminiText(question);
-          if (aiRes.success) {
-            await sock.sendMessage(chatId, {
-              text: `🤖 *PatungIn AI:*\n\n${aiRes.text}`
-            }, { quoted: m });
-          } else {
-            await sock.sendMessage(chatId, {
-              text: `⚠️ Maaf, ${aiRes.error || 'terjadi kendala saat menghubungi AI.'}`
+              text: `⚠️ Maaf ${senderName}, ${aiRes.error || 'aku lagi agak pusing, coba colek lagi ya!'}`
             }, { quoted: m });
           }
           continue;
