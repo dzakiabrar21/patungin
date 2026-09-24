@@ -77,6 +77,134 @@ export const SAMPLE_PRESETS = [
   }
 ];
 
+// Model Cooldown Tracker: Map<`${apiKey.slice(-6)}_${modelName}`, expiryTimestamp>
+const modelCooldownMap = new Map();
+
+export function getApiKeys(customApiKey = null) {
+  if (customApiKey) return [customApiKey.trim()];
+  const raw = process.env.GEMINI_API_KEY || '';
+  return raw
+    .split(',')
+    .map(k => k.trim().replace(/^["']|["']$/g, ''))
+    .filter(Boolean);
+}
+
+function isModelInCooldown(key, model) {
+  const shortKey = key.slice(-6);
+  const expiry = modelCooldownMap.get(`${shortKey}_${model}`);
+  return expiry && Date.now() < expiry;
+}
+
+function setModelCooldown(key, model, durationMs) {
+  const shortKey = key.slice(-6);
+  modelCooldownMap.set(`${shortKey}_${model}`, Date.now() + durationMs);
+}
+
+export const CANDIDATE_VISION_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.6-flash',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite'
+];
+
+export const CANDIDATE_TEXT_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.6-flash',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite'
+];
+
+export async function executeGeminiRequest({
+  requestBody,
+  candidateModels,
+  customApiKey = null,
+  timeoutMs = 7000
+}) {
+  const apiKeys = getApiKeys(customApiKey);
+  if (apiKeys.length === 0) {
+    throw new Error('GEMINI_API_KEY belum dikonfigurasi di server.');
+  }
+
+  let lastError = null;
+  let hasQuotaLimit = false;
+  let hasHighDemand = false;
+
+  for (const apiKey of apiKeys) {
+    const keyHint = apiKey.slice(0, 6) + '...' + apiKey.slice(-4);
+    for (const modelName of candidateModels) {
+      if (isModelInCooldown(apiKey, modelName)) {
+        continue;
+      }
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        if (response.status === 429) {
+          hasQuotaLimit = true;
+          console.warn(`[GeminiService] Model ${modelName} (${keyHint}) hit 429 (Quota Limit). Cooldown 15m.`);
+          setModelCooldown(apiKey, modelName, 15 * 60 * 1000);
+          continue;
+        }
+
+        if (response.status === 503) {
+          hasHighDemand = true;
+          console.warn(`[GeminiService] Model ${modelName} returned 503 (High Demand). Cooldown 2m.`);
+          setModelCooldown(apiKey, modelName, 2 * 60 * 1000);
+          continue;
+        }
+
+        if (response.status === 404) {
+          setModelCooldown(apiKey, modelName, 24 * 60 * 60 * 1000);
+          continue;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          return { data, modelName, apiKey };
+        } else {
+          const errText = await response.text();
+          lastError = new Error(`Gemini API (${modelName}) returned ${response.status}: ${errText.slice(0, 150)}`);
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          hasHighDemand = true;
+          console.warn(`[GeminiService] Model ${modelName} timed out (${timeoutMs}ms). Cooldown 2m.`);
+          setModelCooldown(apiKey, modelName, 2 * 60 * 1000);
+        } else {
+          console.warn(`[GeminiService] Call to ${modelName} failed:`, err.message);
+        }
+        lastError = err;
+      }
+    }
+  }
+
+  if (hasQuotaLimit) {
+    throw new Error('429 RESOURCE_EXHAUSTED: Kuota harian Gemini AI habis.');
+  }
+  if (hasHighDemand) {
+    throw new Error('503 UNAVAILABLE: Server Google Gemini sedang sibuk.');
+  }
+
+  throw lastError || new Error('Semua model Gemini sedang sibuk atau kuota gratisan habis.');
+}
+
 /**
  * Parses receipt image using Google Gemini Vision API.
  * Falls back gracefully to simulation mode if API key is not configured.
@@ -87,9 +215,9 @@ export const SAMPLE_PRESETS = [
  * @returns {Promise<Object>} Structured receipt data
  */
 export async function parseReceiptWithGemini(filePath, mimeType, customApiKey = null) {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+  const apiKeys = getApiKeys(customApiKey);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       success: true,
       mode: 'fallback_mock',
@@ -170,58 +298,13 @@ Do not include markdown backticks or commentary. Only raw JSON.
       }
     };
 
-    // Resilient Model Calling: try gemini-3.6-flash, on 503/429 retry and fallback to gemini-flash-latest
-    const CANDIDATE_MODELS = [
-      'gemini-3-flash-preview',
-      'gemini-3.5-flash',
-      'gemini-flash-lite-latest',
-      'gemini-3.6-flash',
-      'gemini-flash-latest'
-    ];
-    let lastError = null;
-    let response = null;
+    const { data } = await executeGeminiRequest({
+      requestBody,
+      candidateModels: CANDIDATE_VISION_MODELS,
+      customApiKey,
+      timeoutMs: 9000
+    });
 
-    for (const modelName of CANDIDATE_MODELS) {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-      
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-          });
-
-          if (response.status === 503 || response.status === 429) {
-            console.warn(`[GeminiService] Model ${modelName} returned ${response.status} (High Demand, attempt ${attempt + 1}). Retrying...`);
-            await new Promise(r => setTimeout(r, 800));
-            continue;
-          }
-
-          if (response.ok) {
-            break;
-          } else {
-            const errText = await response.text();
-            lastError = new Error(`Gemini API (${modelName}) returned ${response.status}: ${errText}`);
-            break;
-          }
-        } catch (err) {
-          lastError = err;
-          console.warn(`[GeminiService] Call to ${modelName} failed:`, err.message);
-          break;
-        }
-      }
-
-      if (response && response.ok) {
-        break;
-      }
-    }
-
-    if (!response || !response.ok) {
-      throw lastError || new Error('Gagal memproses struk dengan Gemini API.');
-    }
-
-    const data = await response.json();
     const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!candidateText) {
@@ -271,10 +354,15 @@ Do not include markdown backticks or commentary. Only raw JSON.
     };
   } catch (error) {
     console.error('[GeminiService] Error parsing receipt:', error.message);
+    const friendlyError = error.message.includes('429') || error.message.includes('kuota') || error.message.includes('RESOURCE_EXHAUSTED')
+      ? 'Kuota Gemini AI habis untuk hari ini (Limit Free Tier). Silakan tambahkan API key baru di .env atau coba lagi nanti.'
+      : (error.message.includes('503') || error.message.includes('sibuk')
+        ? 'Server Gemini AI sedang sibuk (High Demand). Coba beberapa saat lagi.'
+        : error.message);
     return {
       success: false,
       mode: 'error_fallback',
-      error: error.message,
+      error: friendlyError,
       receipt: SAMPLE_PRESETS[0]
     };
   }
@@ -436,9 +524,9 @@ export const BOT_SYSTEM_INSTRUCTION =
  * Ask Gemini AI a conversational question (for 2-way WhatsApp Chat)
  */
 export async function askGeminiText(prompt, customApiKey = null) {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+  const apiKeys = getApiKeys(customApiKey);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       success: false,
       error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
@@ -460,71 +548,47 @@ export async function askGeminiText(prompt, customApiKey = null) {
     }
   };
 
-  const CANDIDATE_MODELS = [
-    'gemini-3-flash-preview',
-    'gemini-3.5-flash',
-    'gemini-flash-lite-latest',
-    'gemini-3.6-flash',
-    'gemini-flash-latest'
-  ];
+  try {
+    const { data } = await executeGeminiRequest({
+      requestBody,
+      candidateModels: CANDIDATE_TEXT_MODELS,
+      customApiKey,
+      timeoutMs: 6000
+    });
 
-  let lastError = null;
-
-  for (const modelName of CANDIDATE_MODELS) {
-    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (response.status === 503 || response.status === 429) {
-          await new Promise(r => setTimeout(r, 800));
-          continue;
-        }
-
-        if (response.ok) {
-          const data = await response.json();
-          let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) {
-            text = cleanCoolResponse(text);
-            return { success: true, text };
-          }
-        } else {
-          const errText = await response.text();
-          lastError = new Error('Gemini API (' + modelName + '): ' + errText);
-          break;
-        }
-      } catch (err) {
-        lastError = err;
-      }
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (text) {
+      text = cleanCoolResponse(text);
+      return { success: true, text };
     }
-  }
-
-  // Friendly fallback if API key is invalid or quota exceeded
-  if (lastError && (lastError.message.includes('API_KEY_INVALID') || lastError.message.includes('API key not valid'))) {
+    return { success: false, error: 'Tidak ada teks yang dihasilkan.' };
+  } catch (err) {
+    if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid')) {
+      return {
+        success: true,
+        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+      };
+    }
+    if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
+      return {
+        success: true,
+        text: 'kuota gemini free tier hari ini lagi habis nih bro. ntar ke-reset otomatis sama google, atau tambahin api key baru di .env'
+      };
+    }
     return {
-      success: true,
-      text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+      success: false,
+      error: err.message || 'Gagal mendapatkan respon dari Gemini AI.'
     };
   }
-
-  return {
-    success: false,
-    error: lastError?.message || 'Gagal mendapatkan respon dari Gemini AI.'
-  };
 }
-
 
 /**
  * Natural Conversational AI Chat with Multi-turn Context Memory and Group Context Awareness
  */
 export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+  const apiKeys = getApiKeys(customApiKey);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       success: false,
       error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
@@ -575,70 +639,47 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     }
   };
 
-  const CANDIDATE_MODELS = [
-    'gemini-3-flash-preview',
-    'gemini-3.5-flash',
-    'gemini-flash-lite-latest',
-    'gemini-3.6-flash',
-    'gemini-flash-latest'
-  ];
+  try {
+    const { data } = await executeGeminiRequest({
+      requestBody,
+      candidateModels: CANDIDATE_TEXT_MODELS,
+      customApiKey,
+      timeoutMs: 6000
+    });
 
-  let lastError = null;
-
-  for (const modelName of CANDIDATE_MODELS) {
-    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (response.status === 503 || response.status === 429) {
-          await new Promise(r => setTimeout(r, 800));
-          continue;
-        }
-
-        if (response.ok) {
-          const data = await response.json();
-          let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) {
-            text = cleanCoolResponse(text);
-            return { success: true, text };
-          }
-        } else {
-          const errText = await response.text();
-          lastError = new Error('Gemini API (' + modelName + '): ' + errText);
-          break;
-        }
-      } catch (err) {
-        lastError = err;
-      }
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (text) {
+      text = cleanCoolResponse(text);
+      return { success: true, text };
     }
-  }
-
-  // Friendly fallback if API key is invalid
-  if (lastError && (lastError.message.includes('API_KEY_INVALID') || lastError.message.includes('API key not valid'))) {
+    return { success: false, error: 'Tidak ada respon dari model.' };
+  } catch (err) {
+    if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid')) {
+      return {
+        success: true,
+        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+      };
+    }
+    if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
+      return {
+        success: true,
+        text: 'kuota gemini free tier hari ini lagi habis nih bro. ntar ke-reset otomatis sama google, atau tambahin api key baru di .env'
+      };
+    }
     return {
-      success: true,
-      text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+      success: false,
+      error: err.message || 'Gagal memproses percakapan.'
     };
   }
-
-  return {
-    success: false,
-    error: lastError?.message || 'Gagal memproses percakapan.'
-  };
 }
 
 /**
  * Ask Gemini AI to analyze an image with user's conversational question (Vision Q&A)
  */
 export async function askGeminiVision({ filePath, mimeType, prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+  const apiKeys = getApiKeys(customApiKey);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       success: false,
       error: 'GEMINI_API_KEY belum dikonfigurasi di server.'
@@ -676,57 +717,29 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
       }
     };
 
-    const CANDIDATE_MODELS = [
-      'gemini-3-flash-preview',
-      'gemini-3.5-flash',
-      'gemini-flash-lite-latest',
-      'gemini-3.6-flash',
-      'gemini-flash-latest'
-    ];
+    const { data } = await executeGeminiRequest({
+      requestBody,
+      candidateModels: CANDIDATE_VISION_MODELS,
+      customApiKey,
+      timeoutMs: 9000
+    });
 
-    let lastError = null;
-
-    for (const modelName of CANDIDATE_MODELS) {
-      const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + apiKey;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-          });
-
-          if (response.status === 503 || response.status === 429) {
-            await new Promise(r => setTimeout(r, 800));
-            continue;
-          }
-
-          if (response.ok) {
-            const data = await response.json();
-            let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (text) {
-              text = cleanCoolResponse(text);
-              return { success: true, text };
-            }
-          } else {
-            const errText = await response.text();
-            lastError = new Error(`Gemini Vision (${modelName}): ${errText}`);
-            break;
-          }
-        } catch (err) {
-          lastError = err;
-        }
-      }
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (text) {
+      text = cleanCoolResponse(text);
+      return { success: true, text };
     }
-
-    return {
-      success: false,
-      error: lastError?.message || 'Gagal menganalisis foto dengan AI.'
-    };
+    return { success: false, error: 'Tidak ada respon dari model.' };
   } catch (err) {
+    if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
+      return {
+        success: true,
+        text: 'kuota gemini free tier hari ini lagi habis nih bro pas mau baca foto. coba lagi ntar atau tambahin api key baru di .env'
+      };
+    }
     return {
       success: false,
-      error: err.message
+      error: err.message || 'Gagal menganalisis foto dengan AI.'
     };
   }
 }
