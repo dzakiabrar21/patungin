@@ -167,16 +167,16 @@ app.post('/api/scan-receipt', upload.any(), async (req, res) => {
 
 // Start local server if not running in Vercel serverless environment
 if (!process.env.VERCEL) {
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 PatungIn Server berjalan di http://localhost:${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 PatungIn Server berjalan di port ${PORT} (0.0.0.0)`);
     // Initialize WhatsApp Bot
     initWhatsAppBot(PORT);
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       const ALT_PORT = Number(PORT) + 1;
       console.log(`Port ${PORT} terpakai, mencoba port alternatif ${ALT_PORT}...`);
-      app.listen(ALT_PORT, () => {
-        console.log(`🚀 PatungIn Server berjalan di http://localhost:${ALT_PORT}`);
+      app.listen(ALT_PORT, '0.0.0.0', () => {
+        console.log(`🚀 PatungIn Server berjalan di port ${ALT_PORT} (0.0.0.0)`);
         initWhatsAppBot(ALT_PORT);
       });
     } else {

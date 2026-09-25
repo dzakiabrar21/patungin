@@ -9,6 +9,7 @@ function toTitleCase(str) {
 }
 
 import { startTunnel } from 'untun';
+import localtunnel from 'localtunnel';
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
@@ -59,6 +60,7 @@ export function setAppPort(port) {
 export let publicServerIp = null;
 export let publicTunnelUrl = null;
 let tunnelPromise = null;
+let tunnelSetupPromise = null;
 
 async function detectPublicIp() {
   try {
@@ -87,17 +89,39 @@ function getPrimaryNetworkIp() {
 }
 
 async function setupPublicTunnel(port = activeAppPort) {
+  process.env.UNTUN_ACCEPT_CLOUDFLARE_NOTICE = '1';
+
+  // 1. Coba Cloudflare Quick Tunnel via untun (HTTPS trycloudflare.com, langsung buka tanpa warning)
   try {
     console.log(`[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel untuk port ${port}...`);
-    tunnelPromise = startTunnel({ port });
+    tunnelPromise = startTunnel({ port, acceptCloudflareNotice: true });
     const tunnel = await tunnelPromise;
-    publicTunnelUrl = await tunnel.getURL();
-    console.log(`\n🚀 [WhatsAppBot] Cloudflare HTTPS Tunnel Aktif (Langsung Buka, Tanpa Warning): ${publicTunnelUrl}\n`);
-    return publicTunnelUrl;
+    if (tunnel && typeof tunnel.getURL === 'function') {
+      const url = await tunnel.getURL();
+      if (url) {
+        publicTunnelUrl = url;
+        console.log(`\n🚀 [WhatsAppBot] Cloudflare HTTPS Tunnel Aktif: ${publicTunnelUrl}\n`);
+        return publicTunnelUrl;
+      }
+    }
   } catch (err) {
-    console.warn('[WhatsAppBot] Cloudflare tunnel tidak dapat dibuat, menggunakan fallback IP:', err.message);
-    return null;
+    console.warn('[WhatsAppBot] Cloudflare tunnel gagal, mencoba fallback Localtunnel:', err.message);
   }
+
+  // 2. Fallback ke Localtunnel (HTTPS domain .loca.lt, tanpa download binary external)
+  try {
+    console.log(`[WhatsAppBot] Mengaktifkan Localtunnel untuk port ${port}...`);
+    const lt = await localtunnel({ port });
+    if (lt && lt.url) {
+      publicTunnelUrl = lt.url;
+      console.log(`\n🚀 [WhatsAppBot] Localtunnel HTTPS Aktif: ${publicTunnelUrl}\n`);
+      return publicTunnelUrl;
+    }
+  } catch (ltErr) {
+    console.warn('[WhatsAppBot] Localtunnel juga gagal:', ltErr.message);
+  }
+
+  return null;
 }
 
 export async function getAppBaseUrl() {
@@ -107,18 +131,43 @@ export async function getAppBaseUrl() {
   if (publicTunnelUrl) {
     return publicTunnelUrl;
   }
+  if (tunnelSetupPromise) {
+    try {
+      const res = await Promise.race([
+        tunnelSetupPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000))
+      ]);
+      if (res) return res;
+    } catch (_) {}
+  }
   if (tunnelPromise) {
     try {
       const tunnel = await Promise.race([
         tunnelPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4500))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
       ]);
-      if (tunnel) {
-        publicTunnelUrl = await tunnel.getURL();
-        if (publicTunnelUrl) return publicTunnelUrl;
+      if (tunnel && typeof tunnel.getURL === 'function') {
+        const url = await tunnel.getURL();
+        if (url) {
+          publicTunnelUrl = url;
+          return publicTunnelUrl;
+        }
       }
     } catch (_) {}
   }
+  if (publicTunnelUrl) {
+    return publicTunnelUrl;
+  }
+
+  // Coba localtunnel on-demand jika belum ada tunnel aktif
+  try {
+    const lt = await localtunnel({ port: activeAppPort });
+    if (lt && lt.url) {
+      publicTunnelUrl = lt.url;
+      return publicTunnelUrl;
+    }
+  } catch (_) {}
+
   if (publicServerIp) {
     return `http://${publicServerIp}:${activeAppPort}`;
   }
@@ -228,7 +277,7 @@ function getRecentContextText(chatId, excludeCurrentText = '') {
 export async function initWhatsAppBot(port = null) {
   if (port) setAppPort(port);
   detectPublicIp();
-  setupPublicTunnel(activeAppPort);
+  tunnelSetupPromise = setupPublicTunnel(activeAppPort);
   try {
     botStatus = 'connecting';
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
