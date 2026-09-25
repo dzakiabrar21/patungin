@@ -21,6 +21,7 @@ import qrcode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision } from './geminiService.js';
 import sessionStore from './sessionStore.js';
@@ -88,27 +89,75 @@ function getPrimaryNetworkIp() {
   return 'localhost';
 }
 
+let nativeCloudflaredProcess = null;
+
+function startNativeCloudflared(port) {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], {
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      nativeCloudflaredProcess = child;
+      let resolved = false;
+
+      const handleData = (chunk) => {
+        const text = chunk.toString();
+        const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+        if (match && !resolved) {
+          resolved = true;
+          publicTunnelUrl = match[0];
+          console.log(`\n🚀 [WhatsAppBot] Cloudflare Native Tunnel Aktif (Langsung Buka, Tanpa Warning): ${publicTunnelUrl}\n`);
+          resolve(publicTunnelUrl);
+        }
+      };
+
+      child.stdout.on('data', handleData);
+      child.stderr.on('data', handleData);
+      child.on('error', () => {
+        if (!resolved) resolve(null);
+      });
+      child.on('exit', () => {
+        if (!resolved) resolve(null);
+      });
+
+      // Beri batas waktu 12 detik untuk native cloudflared
+      setTimeout(() => {
+        if (!resolved) resolve(null);
+      }, 12000);
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
 async function setupPublicTunnel(port = activeAppPort) {
   process.env.UNTUN_ACCEPT_CLOUDFLARE_NOTICE = '1';
 
-  // 1. Coba Cloudflare Quick Tunnel via untun (HTTPS trycloudflare.com, langsung buka tanpa warning)
+  // 1. Coba Cloudflare native binary jika terinstall di VPS (paling cepat, tanpa popup, tanpa IP)
   try {
-    console.log(`[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel untuk port ${port}...`);
+    console.log(`[WhatsAppBot] Mencoba native Cloudflare Tunnel untuk port ${port}...`);
+    const nativeUrl = await startNativeCloudflared(port);
+    if (nativeUrl) return nativeUrl;
+  } catch (_) {}
+
+  // 2. Coba Cloudflare Quick Tunnel via untun (HTTPS trycloudflare.com, langsung buka tanpa warning)
+  try {
+    console.log(`[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel via untun untuk port ${port}...`);
     tunnelPromise = startTunnel({ port, acceptCloudflareNotice: true });
     const tunnel = await tunnelPromise;
     if (tunnel && typeof tunnel.getURL === 'function') {
       const url = await tunnel.getURL();
       if (url) {
         publicTunnelUrl = url;
-        console.log(`\n🚀 [WhatsAppBot] Cloudflare HTTPS Tunnel Aktif: ${publicTunnelUrl}\n`);
+        console.log(`\n🚀 [WhatsAppBot] Cloudflare Untun Tunnel Aktif: ${publicTunnelUrl}\n`);
         return publicTunnelUrl;
       }
     }
   } catch (err) {
-    console.warn('[WhatsAppBot] Cloudflare tunnel gagal, mencoba fallback Localtunnel:', err.message);
+    console.warn('[WhatsAppBot] Cloudflare untun gagal, mencoba fallback Localtunnel:', err.message);
   }
 
-  // 2. Fallback ke Localtunnel (HTTPS domain .loca.lt, tanpa download binary external)
+  // 3. Fallback ke Localtunnel (HTTPS domain .loca.lt)
   try {
     console.log(`[WhatsAppBot] Mengaktifkan Localtunnel untuk port ${port}...`);
     const lt = await localtunnel({ port });
@@ -746,6 +795,11 @@ async function processBatchReceipts(batch) {
 
     const countDesc = count > 1 ? ` (${r.items?.length || 0} menu dari 2 struk)` : '';
 
+    const isLocaltunnel = sessionUrl.includes('.loca.lt');
+    const localtunnelTip = isLocaltunnel
+      ? `\n🔑 *Catatan:* Jika muncul halaman "Tunnel website ahead", masukkan IP *${publicServerIp || '151.243.222.93'}* di kolom IP Address lalu klik *Continue* (cukup 1x).\n`
+      : '';
+
     const replyText =
 `${titleText}
 🏪 *Toko:* ${storeName}
@@ -754,7 +808,7 @@ async function processBatchReceipts(batch) {
 
 👉 *Buka link ini untuk split bill & atur patungan:*
 ${sessionUrl}
-
+${localtunnelTip}
 💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan dulu nomor bot ini ke kontak WhatsApp kamu ya!`;
 
     await sock.sendMessage(chatId, { text: replyText });
