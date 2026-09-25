@@ -368,33 +368,34 @@ export const sessionStore = {
     const dateStr = r.date || new Date().toLocaleDateString('id-ID');
     const totalFormatted = (Number(r.total) || 0).toLocaleString('id-ID');
 
-    let text = `🧾 *SPLIT BILL — ${merchantName}*\n`;
-    text += `📅 ${dateStr} • 💰 Total: *Rp ${totalFormatted}* (Ditalangi: *${payerName}*)\n`;
-    text += '------------------------------------\n';
+    let text = `🧾 *RINCIAN SPLIT BILL — ${merchantName}*\n`;
+    text += `Tanggal: ${dateStr}\n`;
+    text += `Total Tagihan: Rp ${totalFormatted}\n`;
+    text += `Ditalangi oleh: *${payerName}*\n`;
+    text += '-----------------------------------\n';
 
-    text += '👥 *Porsi Tagihan:*\n';
     activeMembers.forEach(m => {
       const s = shares[m.id];
-      const itemsSummary = (s.items && s.items.length > 0)
-        ? s.items.map(it => {
-            const name = toTitleCase(it.name);
-            const shared = it.isShared ? ' (Patungan)' : '';
-            return `${name}${shared}`;
-          }).join(', ')
-        : 'Menu';
-
-      text += `• *${m.name}* ➔ *Rp ${s.total.toLocaleString('id-ID')}* _(${itemsSummary})_\n`;
+      text += `👤 *${m.name}*\n`;
+      s.items.forEach(it => {
+        const sharedLabel = it.isShared ? ' (Patungan)' : '';
+        text += `  • ${toTitleCase(it.name)}${sharedLabel} : Rp ${Math.round(it.price).toLocaleString('id-ID')}\n`;
+      });
+      if (s.taxPortion > 0) text += `  • Pajak: Rp ${s.taxPortion.toLocaleString('id-ID')}\n`;
+      if (s.servicePortion > 0) text += `  • Service: Rp ${s.servicePortion.toLocaleString('id-ID')}\n`;
+      if (s.discountPortion > 0) text += `  • Diskon: -Rp ${s.discountPortion.toLocaleString('id-ID')}\n`;
+      text += `  *Porsi: Rp ${s.total.toLocaleString('id-ID')}*\n\n`;
     });
 
-    text += '------------------------------------\n';
-    text += `💸 *ARAHAN TRANSFER (ke ${payerName}):*\n`;
+    text += '-----------------------------------\n';
+    text += '💸 *ARAHAN TRANSFER:*\n';
     let transferCount = 0;
     activeMembers.forEach(m => {
       if (m.name.toLowerCase() !== payerName.toLowerCase()) {
         const s = shares[m.id];
         if (s.total > 0) {
           transferCount++;
-          text += `👉 *${m.name}* ➔ *Rp ${s.total.toLocaleString('id-ID')}*\n`;
+          text += `- *${m.name}* ➔ Transfer *Rp ${s.total.toLocaleString('id-ID')}* ke *${payerName}*\n`;
         }
       }
     });
@@ -403,7 +404,12 @@ export const sessionStore = {
       text += '_Semua pesanan dikonsumsi oleh penanggung bill._\n';
     }
 
-    text += '\n✨ _Dihitung otomatis oleh PatungIn Bot_';
+    text += '-----------------------------------\n';
+    text += '📲 *Pilihan Rekening Transfer:*\n';
+    text += `• *Rekening ${payerName}:*\n`;
+    text += `  Transfer ke ${payerName}\n\n`;
+
+    text += '_Dihitung otomatis dengan PatungIn_';
 
     return {
       success: true,

@@ -1335,82 +1335,64 @@ function formatWhatsAppText(shares, balances, transfers) {
   const dateStr = r.date || 'Hari ini';
   const totalFormatted = formatRupiah(r.total);
 
-  let singlePayer = null;
-  let payerHeader = '';
+  let payerName = '';
   if (state.payerMode === 'single') {
-    singlePayer = state.allMembers.find(m => m.id === state.payerId) || active[0];
-    payerHeader = `Ditalangi: *${singlePayer ? singlePayer.name : '-'}*`;
+    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+    payerName = payer ? payer.name : '-';
   } else {
-    payerHeader = `Ditalangi Bersama`;
+    payerName = 'Bersama';
   }
 
-  let text = `🧾 *SPLIT BILL — ${merchant}*\n`;
-  text += `📅 ${dateStr} • 💰 Total: *Rp ${totalFormatted}* (${payerHeader})\n`;
-  text += `------------------------------------\n`;
+  let text = `🧾 *RINCIAN SPLIT BILL — ${merchant}*\n`;
+  text += `Tanggal: ${dateStr}\n`;
+  text += `Total Tagihan: Rp ${totalFormatted}\n`;
+  text += `Ditalangi oleh: *${payerName}*\n`;
+  text += `-----------------------------------\n`;
 
-  // Itemized breakdown per member (Semi-Ringkas)
-  text += `👥 *Porsi Tagihan:*\n`;
+  // Itemized breakdown per member
   active.forEach(m => {
     const s = shares[m.id];
-    const b = balances.find(item => item.id === m.id) || { net: 0, paid: 0 };
-    const itemsSummary = (s.items && s.items.length > 0)
-      ? s.items.map(it => {
-          const name = toTitleCase(it.name);
-          const shared = it.isShared ? ' (Patungan)' : '';
-          return `${name}${shared}`;
-        }).join(', ')
-      : 'Menu';
-
-    let line = `• *${m.name}* ➔ *Rp ${formatRupiah(s.total)}* _(${itemsSummary})_`;
-    if (state.payerMode === 'multi' && b.paid > 0) {
-      line += ` _[sudah talang Rp ${formatRupiah(b.paid)}]_`;
-    }
-    text += `${line}\n`;
+    text += `👤 *${m.name}*\n`;
+    s.items.forEach(it => {
+      const sharedLabel = it.isShared ? ' (Patungan)' : '';
+      text += `  • ${toTitleCase(it.name)}${sharedLabel} : Rp ${formatRupiah(it.price)}\n`;
+    });
+    if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
+    if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
+    if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}\n`;
+    text += `  *Porsi: Rp ${formatRupiah(s.total)}*\n\n`;
   });
 
-  text += `------------------------------------\n`;
+  text += `-----------------------------------\n`;
 
-  // Transfer Directions
+  // Transfer Directions (Siapa bayar ke siapa)
   if (transfers && transfers.length > 0) {
-    if (singlePayer) {
-      text += `💸 *ARAHAN TRANSFER (ke ${singlePayer.name}):*\n`;
-      transfers.forEach(t => {
-        text += `👉 *${t.fromName}* ➔ *Rp ${formatRupiah(t.amount)}*\n`;
-      });
-    } else {
-      text += `💸 *ARAHAN TRANSFER:*\n`;
-      transfers.forEach(t => {
-        text += `👉 *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
-      });
-    }
-    text += `------------------------------------\n`;
+    text += `💸 *ARAHAN TRANSFER:*\n`;
+    transfers.forEach(t => {
+      text += `- *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
+    });
+    text += `-----------------------------------\n`;
   }
 
   // Creditors Bank Accounts
+  text += `📲 *Pilihan Rekening Transfer:*\n`;
   const creditors = (transfers && transfers.length > 0)
     ? [...new Set(transfers.map(t => t.toId))].map(id => state.allMembers.find(m => m.id === id)).filter(Boolean)
-    : (singlePayer ? [singlePayer] : active);
+    : (state.payerMode === 'single' ? [state.allMembers.find(m => m.id === state.payerId)].filter(Boolean) : active);
 
-  let hasBank = false;
-  let bankText = `📲 *Tujuan Rekening / E-Wallet:*\n`;
   creditors.forEach(creditor => {
+    text += `• *Rekening ${creditor.name}:*\n`;
     if (creditor.paymentInfo && creditor.paymentInfo.trim()) {
-      hasBank = true;
-      bankText += `• *${creditor.name}:*\n`;
       const lines = creditor.paymentInfo.split('\n').map(l => l.trim()).filter(Boolean);
       lines.forEach(l => {
-        bankText += `  ${l}\n`;
+        text += `  ${l}\n`;
       });
+    } else {
+      text += `  Transfer ke ${creditor.name}\n`;
     }
   });
 
-  if (hasBank) {
-    text += bankText;
-  } else if (singlePayer) {
-    text += `📲 *Rekening:* Hubungi *${singlePayer.name}* untuk nomor rekening / e-wallet\n`;
-  }
-
-  text += `\n✨ _Dihitung otomatis dengan PatungIn_`;
+  text += `\n_Dihitung otomatis dengan PatungIn_`;
   return text;
 }
 

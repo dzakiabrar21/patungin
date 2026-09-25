@@ -725,8 +725,8 @@ async function processBatchReceipts(batch) {
   try {
     // 1. Send processing indicator
     const statusText = count > 1
-      ? '⏳ *Sedang memindai & menggabungkan 2 struk dengan Gemini AI...* Mohon tunggu sebentar.'
-      : '⏳ *Sedang memindai struk dengan Gemini AI...* Mohon tunggu sebentar.';
+      ? '⏳ *Sedang memindai & menggabungkan 2 struk...* Mohon tunggu sebentar.'
+      : '⏳ *Sedang memindai struk...* Mohon tunggu sebentar.';
 
     await sock.sendMessage(chatId, { text: statusText });
 
@@ -802,14 +802,14 @@ async function processBatchReceipts(batch) {
 
     const replyText =
 `${titleText}
-🏪 *Toko:* ${storeName}
-💰 *Total Tagihan:* Rp ${totalFormatted}
-📦 *Jumlah Menu:* ${r.items?.length || 0} item${countDesc}
+- *Toko:* ${storeName}
+- *Total Tagihan:* Rp ${totalFormatted}
+- *Jumlah Menu:* ${r.items?.length || 0} item${countDesc}
 
 👉 *Buka link ini untuk split bill & atur patungan:*
 ${sessionUrl}
 ${localtunnelTip}
-💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan dulu nomor bot ini ke kontak WhatsApp kamu ya!`;
+💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan dulu nomor ini ke kontak WhatsApp kamu ya!`;
 
     await sock.sendMessage(chatId, { text: replyText });
     console.log(`[WhatsAppBot] Sesi ${session.id} (${count} struk) berhasil dibuat dan dikirim ke ${chatId}`);
