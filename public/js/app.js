@@ -1331,73 +1331,86 @@ function calculateAndRenderFinal() {
 function formatWhatsAppText(shares, balances, transfers) {
   const r = state.receipt;
   const active = getActiveParticipants();
-  let text = `🧾 *RINCIAN SPLIT BILL — ${(r.merchant || 'PatungIn').toUpperCase()}*\n`;
-  text += `Tanggal: ${r.date || 'Hari ini'}\n`;
-  text += `Total Tagihan: Rp ${formatRupiah(r.total)}\n`;
+  const merchant = (r.merchant || 'PatungIn').toUpperCase();
+  const dateStr = r.date || 'Hari ini';
+  const totalFormatted = formatRupiah(r.total);
 
+  let singlePayer = null;
+  let payerHeader = '';
   if (state.payerMode === 'single') {
-    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
-    text += `Ditalangi oleh: *${payer ? payer.name : '-' }*\n`;
+    singlePayer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+    payerHeader = `Ditalangi: *${singlePayer ? singlePayer.name : '-'}*`;
   } else {
-    text += `*Ditalangi Bersama oleh:*\n`;
-    active.forEach(m => {
-      const paid = state.payerAmounts[m.id] || 0;
-      if (paid > 0) {
-        text += `  • ${m.name}: Rp ${formatRupiah(paid)}\n`;
-      }
-    });
+    payerHeader = `Ditalangi Bersama`;
   }
-  text += `------------------------------------\n\n`;
 
-  // Itemized breakdown per member
-  text += `👥 *Porsi Konsumsi Masing-Masing:*\n`;
+  let text = `🧾 *SPLIT BILL — ${merchant}*\n`;
+  text += `📅 ${dateStr} • 💰 Total: *Rp ${totalFormatted}* (${payerHeader})\n`;
+  text += `------------------------------------\n`;
+
+  // Itemized breakdown per member (Semi-Ringkas)
+  text += `👥 *Porsi Tagihan:*\n`;
   active.forEach(m => {
     const s = shares[m.id];
     const b = balances.find(item => item.id === m.id) || { net: 0, paid: 0 };
-    text += `👤 *${m.name}*\n`;
-    s.items.forEach(it => {
-      text += `  • ${toTitleCase(it.name)} ${it.isShared ? '(Patungan)' : ''}: Rp ${formatRupiah(it.price)}\n`;
-    });
-    if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
-    if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
-    if (s.discountPortion > 0) text += `  • Diskon: -Rp ${formatRupiah(s.discountPortion)}\n`;
-    text += `  👉 *Porsi: Rp ${formatRupiah(s.total)}*`;
+    const itemsSummary = (s.items && s.items.length > 0)
+      ? s.items.map(it => {
+          const name = toTitleCase(it.name);
+          const shared = it.isShared ? ' (Patungan)' : '';
+          return `${name}${shared}`;
+        }).join(', ')
+      : 'Menu';
+
+    let line = `• *${m.name}* ➔ *Rp ${formatRupiah(s.total)}* _(${itemsSummary})_`;
     if (state.payerMode === 'multi' && b.paid > 0) {
-      text += ` _(Sudah bayar Rp ${formatRupiah(b.paid)})_`;
+      line += ` _[sudah talang Rp ${formatRupiah(b.paid)}]_`;
     }
-    text += `\n\n`;
+    text += `${line}\n`;
   });
 
   text += `------------------------------------\n`;
 
-  // Transfer Directions (Siapa bayar ke siapa)
+  // Transfer Directions
   if (transfers && transfers.length > 0) {
-    text += `💸 *ARAHAN TRANSFER:*\n`;
-    transfers.forEach(t => {
-      text += `👉 *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
-    });
+    if (singlePayer) {
+      text += `💸 *ARAHAN TRANSFER (ke ${singlePayer.name}):*\n`;
+      transfers.forEach(t => {
+        text += `👉 *${t.fromName}* ➔ *Rp ${formatRupiah(t.amount)}*\n`;
+      });
+    } else {
+      text += `💸 *ARAHAN TRANSFER:*\n`;
+      transfers.forEach(t => {
+        text += `👉 *${t.fromName}* ➔ Transfer *Rp ${formatRupiah(t.amount)}* ke *${t.toName}*\n`;
+      });
+    }
     text += `------------------------------------\n`;
   }
 
   // Creditors Bank Accounts
-  text += `📲 *Pilihan Rekening Transfer:*\n`;
   const creditors = (transfers && transfers.length > 0)
     ? [...new Set(transfers.map(t => t.toId))].map(id => state.allMembers.find(m => m.id === id)).filter(Boolean)
-    : (state.payerMode === 'single' ? [state.allMembers.find(m => m.id === state.payerId)].filter(Boolean) : active);
+    : (singlePayer ? [singlePayer] : active);
 
+  let hasBank = false;
+  let bankText = `📲 *Tujuan Rekening / E-Wallet:*\n`;
   creditors.forEach(creditor => {
-    text += `• *Rekening ${creditor.name}:*\n`;
     if (creditor.paymentInfo && creditor.paymentInfo.trim()) {
+      hasBank = true;
+      bankText += `• *${creditor.name}:*\n`;
       const lines = creditor.paymentInfo.split('\n').map(l => l.trim()).filter(Boolean);
       lines.forEach(l => {
-        text += `  ${l}\n`;
+        bankText += `  ${l}\n`;
       });
-    } else {
-      text += `  (Hubungi ${creditor.name} untuk nomor rekening/e-wallet)\n`;
     }
   });
 
-  text += `\n_Dihitung otomatis dengan PatungIn_`;
+  if (hasBank) {
+    text += bankText;
+  } else if (singlePayer) {
+    text += `📲 *Rekening:* Hubungi *${singlePayer.name}* untuk nomor rekening / e-wallet\n`;
+  }
+
+  text += `\n✨ _Dihitung otomatis dengan PatungIn_`;
   return text;
 }
 
