@@ -262,7 +262,7 @@ function unwrapMessage(m) {
 
 // Memory store for multi-turn conversations: chatId -> { history: [{ role, text }], lastActivity: timestamp }
 const chatMemoryMap = new Map();
-const MEMORY_TIMEOUT_MS = 45 * 60 * 1000; // 45 minutes idle reset
+const MEMORY_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes idle reset
 
 function getChatHistory(chatId) {
   const data = chatMemoryMap.get(chatId);
@@ -281,8 +281,8 @@ function addChatTurn(chatId, role, text) {
     chatMemoryMap.set(chatId, data);
   }
   data.history.push({ role, text });
-  if (data.history.length > 10) {
-    data.history = data.history.slice(-10); // keep last 10 messages for context
+  if (data.history.length > 6) {
+    data.history = data.history.slice(-6); // keep last 6 turns (3 exchanges)
   }
   data.lastActivity = Date.now();
 }
@@ -290,7 +290,8 @@ function addChatTurn(chatId, role, text) {
 // Rolling message buffer to capture ongoing group conversations for context
 // chatId -> [{ sender: 'Rian', text: 'futsal jam berapa?', time: timestamp }]
 const recentGroupChatMap = new Map();
-const MAX_RECENT_CHAT_MESSAGES = 15;
+const MAX_RECENT_CHAT_MESSAGES = 10;
+const RECENT_CHAT_EXPIRY_MS = 15 * 60 * 1000; // 15 menit: obrolan lebih dari 15 menit lalu dianggap sesi lama
 
 function recordRecentMessage(chatId, sender, text) {
   if (!chatId || !text || text.trim().length === 0) return;
@@ -313,14 +314,15 @@ function getRecentContextText(chatId, excludeCurrentText = '') {
   const list = recentGroupChatMap.get(chatId) || [];
   if (list.length === 0) return '';
   
-  // Format as readable timeline
-  const formatted = list
-    .filter(m => m.text !== excludeCurrentText)
-    .slice(-8)
+  const now = Date.now();
+  // Filter hanya chat 15 menit terakhir agar chat dari jam/kemarin tidak masuk ke konteks baru!
+  const activeRecent = list.filter(m => (now - m.time) < RECENT_CHAT_EXPIRY_MS && m.text !== excludeCurrentText);
+  if (activeRecent.length === 0) return '';
+
+  return activeRecent
+    .slice(-6)
     .map(m => `${m.sender}: ${m.text}`)
     .join('\n');
-    
-  return formatted;
 }
 
 export async function initWhatsAppBot(port = null) {
@@ -547,20 +549,29 @@ export async function initWhatsAppBot(port = null) {
             contextInfo?.quotedMessage?.extendedTextMessage?.text ||
             '';
 
-          // Bersihkan teks dari mention (@123456) dan prefix pembuka di awal kalimat
-          let cleanPrompt = text
-            .replace(/@[0-9]+/g, '')
-            .replace(/^(\/tanya|@bot)[,:]?\s*/i, '')
-            .replace(/^(halo|hai|hei|edwin|ed|win|jarvis|vis|jar|bro+|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
-            .trim();
+          // Bersihkan teks dari mention (@123456)
+          let cleanPrompt = text.replace(/@[0-9]+/g, '').trim();
+
+          // Cek apakah pesan HANYA berupa sapaan / memanggil bot (misal: "ed", "edwin", "halo", "bro", "p", "jarvis")
+          const isJustCallingName = /^(\/tanya|@bot|edwin|ed|win|jarvis|vis|jar|bro+|bray|cuy|bang|bot|min|halo|hai|hei|p|oi|uyy?)[!?,.\s]*$/i.test(cleanPrompt);
+
+          if (isJustCallingName) {
+            cleanPrompt = `[Menyapa atau memanggil lu santai: "${text.trim()}"]`;
+          } else {
+            // Jika ada kalimat lanjutannya, bersihkan prefix pembuka
+            cleanPrompt = cleanPrompt
+              .replace(/^(\/tanya|@bot)[,:]?\s*/i, '')
+              .replace(/^(halo|hai|hei|edwin|ed|win|jarvis|vis|jar|bro+|bray|cuy|bang|bot|min)[,:]?\s*/i, '')
+              .trim();
+          }
 
           if (!cleanPrompt) {
             if (hasDirectImage || hasQuotedImage) {
               cleanPrompt = 'Tolong jelasin atau analisis apa yang ada di foto ini santai aja bro.';
             } else {
-              cleanPrompt = quotedText ? `kenapa ngetag gue soal ini: "${quotedText.trim()}"?` : 'kenapa ngetag gue? ada apa?';
+              cleanPrompt = quotedText ? `[Membalas chat: "${quotedText.trim()}"]` : '[Menyapa lu santai]';
             }
-          } else if (quotedText && !cleanPrompt.includes(quotedText)) {
+          } else if (quotedText && !cleanPrompt.includes(quotedText) && !cleanPrompt.startsWith('[')) {
             cleanPrompt = `[Membalas chat: "${quotedText.trim()}"]\n${cleanPrompt}`;
           }
 
