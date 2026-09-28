@@ -161,32 +161,38 @@ html, body {
   position: relative;
 }
 
-/* App Header */
+/* ==========================================================================
+   App Header & Navigation Bar (Gojek-Inspired Clean Design)
+   ========================================================================== */
 .app-header {
   background-color: #ffffff;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #eef0f2;
   position: sticky;
   top: 0;
-  z-index: 40;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  z-index: 50;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
 }
 
 .header-inner {
-  padding: 0.85rem 1rem 0.5rem 1rem;
+  padding: 0.65rem 1rem 0.45rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 52px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .btn-back {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  background: #f4f5f7;
+  border: 1px solid #e5e7eb;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -194,101 +200,203 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.15rem;
-  color: var(--color-text-main);
-  transition: background var(--transition-normal);
+  color: #111827;
+  transition: all var(--transition-normal);
   flex-shrink: 0;
 }
 
-.btn-back:active { background: #e2e8f0; }
+.btn-back:active {
+  background: #e2e8f0;
+  transform: scale(0.94);
+}
+
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 
 .header-title {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  color: var(--color-text-main);
-  line-height: 1.15;
+  color: #111827;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-subtitle {
   font-size: 0.72rem;
-  color: var(--color-text-muted);
-  font-weight: 600;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 175px;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .btn-header-action {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  padding: 0.35rem 0.75rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--color-text-main);
-  cursor: pointer;
-}
-
-.btn-header-action:active { background: #e2e8f0; }
-
-/* Stepper Progress Bar */
-.stepper-bar {
-  padding: 0.4rem 1rem 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.stepper-step {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  opacity: 0.4;
-  transition: opacity var(--transition-normal);
-}
-
-.stepper-step.active { opacity: 1; }
-
-.stepper-step.completed .step-num {
-  background: var(--color-success);
-  color: #ffffff;
-  border-color: var(--color-success);
-}
-
-.step-num {
-  width: 22px;
-  height: 22px;
+  background: #f4f5f7;
+  border: 1px solid #e5e7eb;
   border-radius: 50%;
-  background: var(--color-bg-subtle);
-  border: 1.5px solid var(--color-border);
+  width: 36px;
+  height: 36px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--color-text-main);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-normal);
+  color: #374151;
 }
 
-.stepper-step.active .step-num {
-  background: var(--color-primary);
+.btn-header-action:active {
+  background: #e2e8f0;
+  transform: scale(0.94);
+}
+
+.header-btn-icon {
+  font-size: 1rem;
+}
+
+.header-btn-label {
+  display: none; /* Hide label on mobile to give full breathing room to title */
+}
+
+.icon-badge {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  background: #00aa13; /* Gojek green */
   color: #ffffff;
-  border-color: var(--color-primary);
+  font-size: 0.62rem;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 1.5px solid #ffffff;
 }
 
-.step-text {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--color-text-main);
+.status-indicator-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00aa13;
+  border: 2px solid #ffffff;
 }
 
-.stepper-line {
+/* Stepper Progress Bar - Gojek Segmented Track */
+.stepper-track-wrap {
+  padding: 0.25rem 1rem 0.5rem 1rem;
+  background: #ffffff;
+}
+
+.stepper-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.stepper-step {
   flex: 1;
-  height: 2px;
-  background: var(--color-border);
-  margin: 0 0.35rem;
+  height: 3.5px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.stepper-step.completed {
+  background: #00aa13; /* Gojek green */
+}
+
+.stepper-step.active {
+  background: #00aa13;
+  box-shadow: 0 0 6px rgba(0, 170, 19, 0.35);
+}
+
+.stepper-caption-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.stepper-current-label {
+  font-weight: 700;
+  color: #374151;
+}
+
+/* Gojek Quick Action Chips Sub-Bar */
+.quick-chip-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem 0.65rem 1rem;
+  background: #fafafa;
+  border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #eceff1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-chip-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--transition-normal);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.quick-chip:active {
+  background: #f4f5f7;
+  transform: scale(0.96);
+}
+
+.chip-emoji {
+  font-size: 0.85rem;
+}
+
+.chip-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00aa13;
+  display: inline-block;
 }
 
 /* ==========================================================================
@@ -527,16 +635,10 @@ html, body {
 }
 
 /* ==========================================================================
-   Step Guide Banner
+   Step Guide Banner (Hidden to maintain clean Gojek-style uncluttered layout)
    ========================================================================== */
 .step-guide-banner {
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1rem 1.15rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  display: none !important;
 }
 
 .step-badge-mini {
@@ -561,34 +663,67 @@ html, body {
 }
 
 /* ==========================================================================
-   Step 2 Components (Receipt Detail Review)
+   Step 2 Components (Receipt Detail Review - GoFood Layout)
    ========================================================================== */
 .receipt-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #eef0f2;
   margin-bottom: 0.85rem;
+  gap: 0.75rem;
 }
 
 .merchant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #E8F7ED;
+  color: #00AA13;
   font-size: 0.68rem;
   font-weight: 800;
-  color: var(--color-primary);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
 }
 
 .merchant-title {
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   font-weight: 800;
-  color: var(--color-text-main);
+  color: #111827;
+  line-height: 1.3;
 }
 
 .receipt-date {
   font-size: 0.74rem;
-  color: var(--color-text-muted);
+  color: #6b7280;
+  margin-top: 0.15rem;
+  display: block;
+}
+
+.btn-outline-sm {
+  background: #ffffff;
+  border: 1px solid #00AA13;
+  color: #00AA13;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--transition-normal);
+}
+
+.btn-outline-sm:active {
+  background: #E8F7ED;
+  transform: scale(0.96);
 }
 
 .receipt-items-list {

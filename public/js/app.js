@@ -323,10 +323,22 @@ function loadMembers() {
   // By default, everyone is participating
   state.participatingMemberIds = state.allMembers.map(m => m.id);
   state.payerId = state.participatingMemberIds[0] || 'm1';
+  updateMemberCountBadges();
 }
 
 function saveMembers() {
   localStorage.setItem('patungin_members', JSON.stringify(state.allMembers));
+  updateMemberCountBadges();
+}
+
+function updateMemberCountBadges() {
+  const activeCount = state.participatingMemberIds && state.participatingMemberIds.length > 0
+    ? state.participatingMemberIds.length
+    : (state.allMembers ? state.allMembers.length : 5);
+  const headerBadge = document.getElementById('header-member-count');
+  const chipBadge = document.getElementById('chip-member-count');
+  if (headerBadge) headerBadge.textContent = activeCount;
+  if (chipBadge) chipBadge.textContent = activeCount;
 }
 
 function getActiveParticipants() {
@@ -357,20 +369,28 @@ function goToStep(step) {
     }
   });
 
+  const stepperCaption = document.getElementById('stepper-caption');
+
   if (step === 1) {
     elements.pageTitle.textContent = 'PatungIn';
-    elements.pageSubtitle.textContent = 'Smart Split Bill & Receipt Scanner';
+    elements.pageSubtitle.textContent = 'Smart Split Bill & Scanner';
+    if (stepperCaption) stepperCaption.textContent = 'Langkah 1 dari 4: Upload Struk';
   } else if (step === 2) {
     elements.pageTitle.textContent = 'Cek Tagihan';
-    elements.pageSubtitle.textContent = state.receipt.merchant || 'Konfirmasi rincian menu';
+    const merchantName = state.receipt.merchant || 'Konfirmasi rincian menu';
+    elements.pageSubtitle.textContent = merchantName;
+    elements.pageSubtitle.title = merchantName;
+    if (stepperCaption) stepperCaption.textContent = 'Langkah 2 dari 4: Cek Rincian Menu';
     renderStep2Review();
   } else if (step === 3) {
     elements.pageTitle.textContent = 'Pilih & Bagi';
     elements.pageSubtitle.textContent = 'Pilih yang ikut & penikmat menu';
+    if (stepperCaption) stepperCaption.textContent = 'Langkah 3 dari 4: Bagi Pesanan';
     renderStep3();
   } else if (step === 4) {
     elements.pageTitle.textContent = 'Selesai';
     elements.pageSubtitle.textContent = 'Rekap tagihan siap dikirim';
+    if (stepperCaption) stepperCaption.textContent = 'Langkah 4 dari 4: Siap Kirim WA';
     calculateAndRenderFinal();
   }
 
@@ -501,6 +521,9 @@ function setupEventListeners() {
 
   // Modal 1: Anggota
   elements.btnCircleSettings.addEventListener('click', openCircleModal);
+  const chipCircle = document.getElementById('chip-circle-settings');
+  if (chipCircle) chipCircle.addEventListener('click', openCircleModal);
+
   elements.btnCloseCircleModal.addEventListener('click', closeCircleModal);
   elements.btnSaveCircle.addEventListener('click', saveCircleModalChanges);
   elements.btnResetDefaultCircle.addEventListener('click', resetDefaultCircle);
@@ -518,6 +541,9 @@ function setupEventListeners() {
 
   // Modal 2: Rekening
   elements.btnPaymentSettings.addEventListener('click', openPaymentModal);
+  const chipPayment = document.getElementById('chip-payment-settings');
+  if (chipPayment) chipPayment.addEventListener('click', openPaymentModal);
+
   if (elements.btnOpenRekInline) elements.btnOpenRekInline.addEventListener('click', openPaymentModal);
   elements.btnClosePaymentModal.addEventListener('click', closePaymentModal);
   elements.btnCancelPayment.addEventListener('click', closePaymentModal);
@@ -1577,6 +1603,7 @@ function toggleMemberParticipationInModal(memberId) {
   } else {
     state.participatingMemberIds.push(memberId);
   }
+  updateMemberCountBadges();
   renderCirclePickList();
 }
 

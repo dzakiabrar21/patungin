@@ -35,53 +35,75 @@
   <!-- Mobile App Frame Shell -->
   <div class="app-shell">
 
-    <!-- App Top Navigation Bar -->
+    <!-- App Top Navigation Bar (Gojek-Inspired Clean Mobile Header) -->
     <header class="app-header">
       <div class="header-inner">
         <div class="header-left">
           <button id="btn-header-back" class="btn-back hidden" title="Kembali" aria-label="Kembali">
-            <span class="back-arrow">←</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
           </button>
-          <div>
+          <div class="header-title-box">
             <h1 class="header-title" id="page-title">PatungIn</h1>
             <span class="header-subtitle" id="page-subtitle">Smart Split Bill</span>
           </div>
         </div>
         <div class="header-right">
-          <button id="btn-circle-settings" class="btn-header-action" title="Pilih Siapa yang Ikut Patungan">
-            <span>👥 Anggota</span>
+          <button id="btn-circle-settings" class="btn-header-action" title="Pilih Siapa yang Ikut Patungan" aria-label="Anggota">
+            <span class="header-btn-icon">👥</span>
+            <span class="header-btn-label">Anggota</span>
+            <span class="icon-badge" id="header-member-count">5</span>
           </button>
-          <button id="btn-payment-settings" class="btn-header-action" title="Pengaturan Nomor Rekening & E-Wallet">
-            <span>💳 Rekening</span>
+          <button id="btn-payment-settings" class="btn-header-action" title="Pengaturan Rekening & E-Wallet" aria-label="Rekening">
+            <span class="header-btn-icon">💳</span>
+            <span class="header-btn-label">Rekening</span>
           </button>
-          <a href="/wa-login" target="_blank" class="btn-header-action" title="Status WhatsApp Bot" id="btn-wa-bot-status" style="text-decoration: none;">
-            <span>🤖 Bot WA</span>
+          <a href="/wa-login" target="_blank" class="btn-header-action" title="Status WhatsApp Bot" id="btn-wa-bot-status" style="text-decoration: none;" aria-label="Bot WA">
+            <span class="header-btn-icon">🤖</span>
+            <span class="header-btn-label">Bot WA</span>
+            <span class="status-indicator-dot online"></span>
           </a>
         </div>
       </div>
 
-      <!-- Stepper Progress Bar -->
-      <nav class="stepper-bar" aria-label="Tahapan Split Bill">
-        <div class="stepper-step active" data-step="1">
-          <div class="step-num">1</div>
-          <span class="step-text">Upload</span>
+      <!-- Gojek Segmented Stepper Track -->
+      <div class="stepper-track-wrap">
+        <div class="stepper-bar" aria-label="Tahapan Split Bill">
+          <div class="stepper-step active" data-step="1">
+            <div class="step-segment"></div>
+          </div>
+          <div class="stepper-step" data-step="2">
+            <div class="step-segment"></div>
+          </div>
+          <div class="stepper-step" data-step="3">
+            <div class="step-segment"></div>
+          </div>
+          <div class="stepper-step" data-step="4">
+            <div class="step-segment"></div>
+          </div>
         </div>
-        <div class="stepper-line"></div>
-        <div class="stepper-step" data-step="2">
-          <div class="step-num">2</div>
-          <span class="step-text">Cek</span>
+        <div class="stepper-caption-row">
+          <span class="stepper-current-label" id="stepper-caption">Langkah 1 dari 4: Upload Struk</span>
         </div>
-        <div class="stepper-line"></div>
-        <div class="stepper-step" data-step="3">
-          <div class="step-num">3</div>
-          <span class="step-text">Bagi</span>
-        </div>
-        <div class="stepper-line"></div>
-        <div class="stepper-step" data-step="4">
-          <div class="step-num">4</div>
-          <span class="step-text">Selesai</span>
-        </div>
-      </nav>
+      </div>
+
+      <!-- Gojek Quick Action Chips Sub-Bar -->
+      <div class="quick-chip-bar">
+        <button type="button" class="quick-chip" id="chip-circle-settings">
+          <span class="chip-emoji">👥</span>
+          <span><strong id="chip-member-count">5</strong> Anggota</span>
+        </button>
+        <button type="button" class="quick-chip" id="chip-payment-settings">
+          <span class="chip-emoji">💳</span>
+          <span>Rekening & E-Wallet</span>
+        </button>
+        <a href="/wa-login" target="_blank" class="quick-chip" id="chip-wa-bot-status" style="text-decoration: none;">
+          <span class="chip-emoji">🤖</span>
+          <span>Bot WA</span>
+          <span class="chip-pulse-dot"></span>
+        </a>
+      </div>
     </header>
 
     <!-- Main Stepper Content Views -->
