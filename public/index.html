@@ -35,7 +35,7 @@
   <!-- Mobile App Frame Shell -->
   <div class="app-shell">
 
-    <!-- App Top Navigation Bar (Gojek-Inspired Clean Mobile Header) -->
+    <!-- App Top Navigation Bar -->
     <header class="app-header">
       <div class="header-inner">
         <div class="header-left">
@@ -49,6 +49,43 @@
             <span class="header-subtitle" id="page-subtitle">Smart Split Bill</span>
           </div>
         </div>
+        <div class="header-right">
+          <button id="btn-header-menu" class="btn-hamburger" title="Menu Opsi" aria-label="Menu Opsi" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="7" x2="20" y2="7"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="17" x2="20" y2="17"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dropdown Popup Menu (Garis 3) -->
+      <div id="header-menu-backdrop" class="header-menu-backdrop hidden"></div>
+      <div id="header-dropdown-menu" class="header-dropdown-menu hidden" role="menu">
+        <button type="button" class="dropdown-menu-item" id="menu-item-circle" role="menuitem">
+          <span class="dropdown-item-icon">👥</span>
+          <div class="dropdown-item-info">
+            <span class="dropdown-item-title">Anggota Patungan</span>
+            <span class="dropdown-item-desc"><span id="dropdown-member-count">6</span> orang aktif</span>
+          </div>
+          <span class="dropdown-item-badge" id="dropdown-member-badge">6</span>
+        </button>
+        <button type="button" class="dropdown-menu-item" id="menu-item-payment" role="menuitem">
+          <span class="dropdown-item-icon">💳</span>
+          <div class="dropdown-item-info">
+            <span class="dropdown-item-title">Rekening & E-Wallet</span>
+            <span class="dropdown-item-desc">Atur nomor rekening transfer</span>
+          </div>
+        </button>
+        <a href="/wa-login" target="_blank" class="dropdown-menu-item" id="menu-item-wa" role="menuitem" style="text-decoration: none;">
+          <span class="dropdown-item-icon">🤖</span>
+          <div class="dropdown-item-info">
+            <span class="dropdown-item-title">WhatsApp Bot</span>
+            <span class="dropdown-item-desc">Status koneksi bot & scan QR</span>
+          </div>
+          <span class="menu-online-dot"></span>
+        </a>
       </div>
 
       <!-- Stepper Progress Bar (Numbered Stepper 1 - 4) -->
@@ -73,23 +110,6 @@
           <span class="step-text">Selesai</span>
         </div>
       </nav>
-
-      <!-- Quick Action Chips Sub-Bar (Gambar 2) -->
-      <div class="quick-chip-bar">
-        <button type="button" class="quick-chip" id="chip-circle-settings">
-          <span class="chip-emoji">👥</span>
-          <span><strong id="chip-member-count">6</strong> Anggota</span>
-        </button>
-        <button type="button" class="quick-chip" id="chip-payment-settings">
-          <span class="chip-emoji">💳</span>
-          <span>Rekening & E-Wallet</span>
-        </button>
-        <a href="/wa-login" target="_blank" class="quick-chip" id="chip-wa-bot-status" style="text-decoration: none;">
-          <span class="chip-emoji">🤖</span>
-          <span>Bot WA</span>
-          <span class="chip-pulse-dot"></span>
-        </a>
-      </div>
     </header>
 
     <!-- Main Stepper Content Views -->

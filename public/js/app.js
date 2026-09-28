@@ -334,11 +334,11 @@ function saveMembers() {
 function updateMemberCountBadges() {
   const activeCount = state.participatingMemberIds && state.participatingMemberIds.length > 0
     ? state.participatingMemberIds.length
-    : (state.allMembers ? state.allMembers.length : 5);
-  const headerBadge = document.getElementById('header-member-count');
-  const chipBadge = document.getElementById('chip-member-count');
-  if (headerBadge) headerBadge.textContent = activeCount;
-  if (chipBadge) chipBadge.textContent = activeCount;
+    : (state.allMembers ? state.allMembers.length : 6);
+  const dropdownCount = document.getElementById('dropdown-member-count');
+  const dropdownBadge = document.getElementById('dropdown-member-badge');
+  if (dropdownCount) dropdownCount.textContent = activeCount;
+  if (dropdownBadge) dropdownBadge.textContent = activeCount;
 }
 
 function getActiveParticipants() {
@@ -519,11 +519,65 @@ function setupEventListeners() {
   elements.btnEditService.addEventListener('click', () => promptEditCharge('service', 'Service Charge'));
   elements.btnEditDiscount.addEventListener('click', () => promptEditCharge('discount', 'Diskon Promo'));
 
+  // Top Hamburger Menu & Dropdown Popup
+  const btnMenu = document.getElementById('btn-header-menu');
+  const dropdownMenu = document.getElementById('header-dropdown-menu');
+  const menuBackdrop = document.getElementById('header-menu-backdrop');
+
+  function closeHeaderDropdown() {
+    if (dropdownMenu) dropdownMenu.classList.add('hidden');
+    if (menuBackdrop) menuBackdrop.classList.add('hidden');
+    if (btnMenu) btnMenu.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleHeaderDropdown() {
+    if (!dropdownMenu) return;
+    const isHidden = dropdownMenu.classList.contains('hidden');
+    if (isHidden) {
+      dropdownMenu.classList.remove('hidden');
+      if (menuBackdrop) menuBackdrop.classList.remove('hidden');
+      if (btnMenu) btnMenu.setAttribute('aria-expanded', 'true');
+    } else {
+      closeHeaderDropdown();
+    }
+  }
+
+  if (btnMenu) {
+    btnMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHeaderDropdown();
+    });
+  }
+
+  if (menuBackdrop) {
+    menuBackdrop.addEventListener('click', closeHeaderDropdown);
+  }
+
+  const menuItemCircle = document.getElementById('menu-item-circle');
+  if (menuItemCircle) {
+    menuItemCircle.addEventListener('click', () => {
+      closeHeaderDropdown();
+      openCircleModal();
+    });
+  }
+
+  const menuItemPayment = document.getElementById('menu-item-payment');
+  if (menuItemPayment) {
+    menuItemPayment.addEventListener('click', () => {
+      closeHeaderDropdown();
+      openPaymentModal();
+    });
+  }
+
+  const menuItemWa = document.getElementById('menu-item-wa');
+  if (menuItemWa) {
+    menuItemWa.addEventListener('click', () => {
+      closeHeaderDropdown();
+    });
+  }
+
   // Modal 1: Anggota
   if (elements.btnCircleSettings) elements.btnCircleSettings.addEventListener('click', openCircleModal);
-  const chipCircle = document.getElementById('chip-circle-settings');
-  if (chipCircle) chipCircle.addEventListener('click', openCircleModal);
-
   elements.btnCloseCircleModal.addEventListener('click', closeCircleModal);
   elements.btnSaveCircle.addEventListener('click', saveCircleModalChanges);
   elements.btnResetDefaultCircle.addEventListener('click', resetDefaultCircle);
@@ -541,9 +595,6 @@ function setupEventListeners() {
 
   // Modal 2: Rekening
   if (elements.btnPaymentSettings) elements.btnPaymentSettings.addEventListener('click', openPaymentModal);
-  const chipPayment = document.getElementById('chip-payment-settings');
-  if (chipPayment) chipPayment.addEventListener('click', openPaymentModal);
-
   if (elements.btnOpenRekInline) elements.btnOpenRekInline.addEventListener('click', openPaymentModal);
   elements.btnClosePaymentModal.addEventListener('click', closePaymentModal);
   elements.btnCancelPayment.addEventListener('click', closePaymentModal);
