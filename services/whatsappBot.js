@@ -447,7 +447,7 @@ export async function initWhatsAppBot(port = null) {
           if (batch) {
             batch.images.push({ m, rawMsg });
             if (batch.timer) clearTimeout(batch.timer);
-            if (batch.images.length >= 2) {
+            if (batch.images.length >= 6) {
               imageBatchMap.delete(chatId);
               processBatchReceipts(batch);
               continue;
@@ -463,7 +463,7 @@ export async function initWhatsAppBot(port = null) {
             imageBatchMap.set(chatId, batch);
           }
 
-          // Debounce 2.5 seconds to catch 2nd photo in WhatsApp album
+          // Debounce 2.5 seconds to catch additional photos in WhatsApp album
           batch.timer = setTimeout(() => {
             imageBatchMap.delete(chatId);
             processBatchReceipts(batch);
@@ -479,7 +479,7 @@ export async function initWhatsAppBot(port = null) {
           console.log(`[WhatsAppBot] 📷 Foto struk ke-${batch.images.length} diterima dalam album yang sama!`);
 
           if (batch.timer) clearTimeout(batch.timer);
-          if (batch.images.length >= 2) {
+          if (batch.images.length >= 6) {
             imageBatchMap.delete(chatId);
             processBatchReceipts(batch);
             continue;
@@ -496,7 +496,7 @@ export async function initWhatsAppBot(port = null) {
         if (isTrigger && !hasImage) {
           if (msgId) processedMessages.add(msgId);
           await sock.sendMessage(chatId, {
-            text: '📸 *PatungIn Bot:* Silakan kirim *1 atau 2 foto struk* dengan caption */bunted* untuk memindai dan membuat link split bill!'
+            text: '📸 *PatungIn Bot:* Silakan kirim *foto struk (bisa 1 atau beberapa struk sekaligus)* dengan caption */bunted* untuk memindai dan membuat link split bill!'
           });
           continue;
         }
@@ -727,23 +727,23 @@ ${statusLines.join('\n\n')}
 }
 
 /**
- * Handle processing of 1 or 2 receipts from WhatsApp
+ * Handle processing of 1 to 6 receipts from WhatsApp
  */
 async function processBatchReceipts(batch) {
   const { images, chatId, isGroup } = batch;
-  const count = Math.min(images.length, 2);
+  const count = Math.min(images.length, 6);
 
   try {
     // 1. Send processing indicator
     const statusText = count > 1
-      ? '⏳ *Sedang memindai & menggabungkan 2 struk...* Mohon tunggu sebentar.'
+      ? `⏳ *Sedang memindai & menggabungkan ${count} struk...* Mohon tunggu sebentar.`
       : '⏳ *Sedang memindai struk...* Mohon tunggu sebentar.';
 
     await sock.sendMessage(chatId, { text: statusText });
 
     // 2. Download media buffers and save to temp files
     const files = await Promise.all(
-      images.slice(0, 2).map(async (item, idx) => {
+      images.slice(0, count).map(async (item, idx) => {
         const downloadMsg = {
           key: item.m.key,
           message: item.rawMsg
@@ -794,17 +794,17 @@ async function processBatchReceipts(batch) {
       receipt: r
     });
 
-    const storeName = r.merchant && r.merchant !== 'Merchant' ? r.merchant : (count > 1 ? 'Gabungan 2 Struk' : 'Struk Belanja');
+    const storeName = r.merchant && r.merchant !== 'Merchant' ? r.merchant : (count > 1 ? `Gabungan ${count} Struk` : 'Struk Belanja');
     const totalFormatted = (r.total || 0).toLocaleString('id-ID');
     const baseUrl = await getAppBaseUrl();
     const sessionUrl = `${baseUrl}/?bill=${session.id}`;
 
     // 6. Reply to group with interactive link
     const titleText = count > 1
-      ? '🧾 *2 STRUK BERHASIL DIPINDAI & DIGABUNGKAN!*'
+      ? `🧾 *${count} STRUK BERHASIL DIPINDAI & DIGABUNGKAN!*`
       : '🧾 *STRUK BERHASIL DIPINDAI!*';
 
-    const countDesc = count > 1 ? ` (${r.items?.length || 0} menu dari 2 struk)` : '';
+    const countDesc = count > 1 ? ` (${r.items?.length || 0} menu dari ${count} struk)` : '';
 
     const isLocaltunnel = sessionUrl.includes('.loca.lt');
     const localtunnelTip = isLocaltunnel

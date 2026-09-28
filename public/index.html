@@ -117,7 +117,7 @@
               </div>
               <div>
                 <h3 class="action-card-title">Pindai Foto Struk</h3>
-                <p class="action-card-desc">Bisa pilih 1 atau 2 foto struk</p>
+                <p class="action-card-desc">Bisa pilih 1 atau beberapa foto struk sekaligus</p>
               </div>
             </div>
             <div class="action-card-right">
@@ -137,11 +137,11 @@
             <!-- List of selected receipt items -->
             <div class="selected-receipts-list" id="selected-receipts-list"></div>
 
-            <!-- Add 2nd receipt button (shown if only 1 selected) -->
+            <!-- Add more receipt button (shown if under max limit) -->
             <div id="add-second-receipt-box" style="margin-top: 0.65rem; position: relative;">
-              <input type="file" id="file-input-second" accept="image/*" style="display: none;">
+              <input type="file" id="file-input-second" accept="image/*" multiple style="display: none;">
               <button type="button" class="btn-dashed-action" id="btn-trigger-second-file">
-                <span>+ Tambah Struk ke-2 (Opsional)</span>
+                <span id="btn-trigger-second-text">+ Tambah Foto Struk Lainnya</span>
               </button>
             </div>
 

@@ -1820,9 +1820,10 @@ function showToast(msg, type = 'info') {
 document.addEventListener('DOMContentLoaded', init);
 
 // ==========================================================================
-// CLEAN & INTUITIVE RECEIPT UPLOAD LOGIC (Supports 1 or 2 Receipts)
+// CLEAN & INTUITIVE RECEIPT UPLOAD LOGIC (Supports Multiple Receipts)
 // ==========================================================================
-let selectedReceiptFiles = []; // Array of File objects (max 2)
+const MAX_RECEIPTS = 6;
+let selectedReceiptFiles = []; // Array of File objects
 
 function isValidImageFile(file) {
   if (!file) return false;
@@ -1860,7 +1861,7 @@ function setupCleanUploadListeners() {
     fileInput.addEventListener('change', (e) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        const picked = Array.from(files).filter(isValidImageFile).slice(0, 2);
+        const picked = Array.from(files).filter(isValidImageFile).slice(0, MAX_RECEIPTS);
         if (picked.length > 0) {
           selectedReceiptFiles = picked;
           renderReceiptsPreview();
@@ -1878,10 +1879,11 @@ function setupCleanUploadListeners() {
 
   if (fileInputSecond) {
     fileInputSecond.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        if (isValidImageFile(file) && selectedReceiptFiles.length < 2) {
-          selectedReceiptFiles.push(file);
+      if (e.target.files && e.target.files.length > 0) {
+        const remainingSlots = MAX_RECEIPTS - selectedReceiptFiles.length;
+        const moreFiles = Array.from(e.target.files).filter(isValidImageFile).slice(0, remainingSlots);
+        if (moreFiles.length > 0) {
+          selectedReceiptFiles.push(...moreFiles);
           renderReceiptsPreview();
         }
       }
@@ -1928,7 +1930,7 @@ function renderReceiptsPreview() {
     } catch (_) {
       thumbUrl = '';
     }
-    const label = idx === 0 ? 'Struk #1' : 'Struk #2';
+    const label = `Struk #${idx + 1}`;
 
     row.innerHTML = `
       <div class="selected-receipt-left">
@@ -1948,13 +1950,21 @@ function renderReceiptsPreview() {
     listContainer.appendChild(row);
   });
 
-  // Toggle "Add 2nd receipt" box
-  if (selectedReceiptFiles.length < 2) {
+  // Toggle "Add more receipts" box
+  const btnTriggerText = document.getElementById('btn-trigger-second-text') || addSecondBox?.querySelector('span');
+  if (selectedReceiptFiles.length < MAX_RECEIPTS) {
     addSecondBox.classList.remove('hidden');
-    scanBtnText.textContent = 'Pindai Struk Sekarang →';
+    if (btnTriggerText) {
+      btnTriggerText.textContent = `+ Tambah Struk #${selectedReceiptFiles.length + 1} (Maks ${MAX_RECEIPTS})`;
+    }
   } else {
     addSecondBox.classList.add('hidden');
-    scanBtnText.textContent = '✨ Pindai 2 Struk →';
+  }
+
+  if (selectedReceiptFiles.length === 1) {
+    scanBtnText.textContent = 'Pindai Struk Sekarang →';
+  } else {
+    scanBtnText.textContent = `✨ Pindai ${selectedReceiptFiles.length} Struk Sekaligus →`;
   }
 
   // Ensure card is visible in mobile viewport
@@ -1991,13 +2001,13 @@ async function executeReceiptScan() {
   elements.spinnerStatus.textContent = 'Menyiapkan foto struk...';
 
   try {
-    // Compress large mobile photos to avoid Vercel 4.5MB payload limit
+    // Compress large mobile photos to avoid payload limits
     const compressedFiles = await Promise.all(
       selectedReceiptFiles.map(f => compressImageIfNeeded(f))
     );
 
     elements.spinnerStatus.textContent = compressedFiles.length > 1
-      ? 'Memindai 2 struk dengan AI...'
+      ? `Memindai & menggabungkan ${compressedFiles.length} struk dengan AI...`
       : 'Memindai struk dengan AI...';
 
     const formData = new FormData();
@@ -2044,7 +2054,7 @@ async function executeReceiptScan() {
 
       state.receipt = r;
       if (selectedReceiptFiles.length > 1) {
-        showToast('2 Struk berhasil digabungkan oleh AI! ✓', 'success');
+        showToast(`${selectedReceiptFiles.length} Struk berhasil digabungkan oleh AI! ✓`, 'success');
       } else {
         showToast('Struk berhasil dipindai oleh AI! ✓', 'success');
       }
