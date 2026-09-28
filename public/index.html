@@ -52,47 +52,46 @@
         <div class="header-right">
           <button id="btn-circle-settings" class="btn-header-action" title="Pilih Siapa yang Ikut Patungan" aria-label="Anggota">
             <span class="header-btn-icon">👥</span>
-            <span class="header-btn-label">Anggota</span>
-            <span class="icon-badge" id="header-member-count">5</span>
+            <span class="icon-badge" id="header-member-count">6</span>
           </button>
           <button id="btn-payment-settings" class="btn-header-action" title="Pengaturan Rekening & E-Wallet" aria-label="Rekening">
             <span class="header-btn-icon">💳</span>
-            <span class="header-btn-label">Rekening</span>
           </button>
           <a href="/wa-login" target="_blank" class="btn-header-action" title="Status WhatsApp Bot" id="btn-wa-bot-status" style="text-decoration: none;" aria-label="Bot WA">
             <span class="header-btn-icon">🤖</span>
-            <span class="header-btn-label">Bot WA</span>
             <span class="status-indicator-dot online"></span>
           </a>
         </div>
       </div>
 
-      <!-- Gojek Segmented Stepper Track -->
-      <div class="stepper-track-wrap">
-        <div class="stepper-bar" aria-label="Tahapan Split Bill">
-          <div class="stepper-step active" data-step="1">
-            <div class="step-segment"></div>
-          </div>
-          <div class="stepper-step" data-step="2">
-            <div class="step-segment"></div>
-          </div>
-          <div class="stepper-step" data-step="3">
-            <div class="step-segment"></div>
-          </div>
-          <div class="stepper-step" data-step="4">
-            <div class="step-segment"></div>
-          </div>
+      <!-- Stepper Progress Bar (Numbered Stepper 1 - 4) -->
+      <nav class="stepper-bar" aria-label="Tahapan Split Bill">
+        <div class="stepper-step active" data-step="1">
+          <div class="step-num">1</div>
+          <span class="step-text">Upload</span>
         </div>
-        <div class="stepper-caption-row">
-          <span class="stepper-current-label" id="stepper-caption">Langkah 1 dari 4: Upload Struk</span>
+        <div class="stepper-line"></div>
+        <div class="stepper-step" data-step="2">
+          <div class="step-num">2</div>
+          <span class="step-text">Cek</span>
         </div>
-      </div>
+        <div class="stepper-line"></div>
+        <div class="stepper-step" data-step="3">
+          <div class="step-num">3</div>
+          <span class="step-text">Bagi</span>
+        </div>
+        <div class="stepper-line"></div>
+        <div class="stepper-step" data-step="4">
+          <div class="step-num">4</div>
+          <span class="step-text">Selesai</span>
+        </div>
+      </nav>
 
-      <!-- Gojek Quick Action Chips Sub-Bar -->
+      <!-- Quick Action Chips Sub-Bar (Gambar 2) -->
       <div class="quick-chip-bar">
         <button type="button" class="quick-chip" id="chip-circle-settings">
           <span class="chip-emoji">👥</span>
-          <span><strong id="chip-member-count">5</strong> Anggota</span>
+          <span><strong id="chip-member-count">6</strong> Anggota</span>
         </button>
         <button type="button" class="quick-chip" id="chip-payment-settings">
           <span class="chip-emoji">💳</span>

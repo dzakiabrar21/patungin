@@ -302,48 +302,70 @@ html, body {
   border: 2px solid #ffffff;
 }
 
-/* Stepper Progress Bar - Gojek Segmented Track */
-.stepper-track-wrap {
-  padding: 0.25rem 1rem 0.5rem 1rem;
-  background: #ffffff;
-}
-
+/* Stepper Progress Bar (Numbered Stepper 1 - 4) */
 .stepper-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  width: 100%;
-}
-
-.stepper-step {
-  flex: 1;
-  height: 3.5px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.stepper-step.completed {
-  background: #00aa13; /* Gojek green */
-}
-
-.stepper-step.active {
-  background: #00aa13;
-  box-shadow: 0 0 6px rgba(0, 170, 19, 0.35);
-}
-
-.stepper-caption-row {
+  padding: 0.5rem 1rem 0.65rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
+  background: #ffffff;
 }
 
-.stepper-current-label {
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  opacity: 0.4;
+  transition: opacity var(--transition-normal);
+}
+
+.stepper-step.active {
+  opacity: 1;
+}
+
+.stepper-step.completed {
+  opacity: 0.85;
+}
+
+.stepper-step.completed .step-num {
+  background: var(--color-success);
+  color: #ffffff;
+  border-color: var(--color-success);
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-bg-subtle);
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  transition: all var(--transition-normal);
+}
+
+.stepper-step.active .step-num {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 6px rgba(0, 129, 167, 0.35);
+}
+
+.step-text {
+  font-size: 0.75rem;
   font-weight: 700;
-  color: #374151;
+  color: var(--color-text-main);
+}
+
+.stepper-line {
+  flex: 1;
+  height: 2px;
+  background: var(--color-border);
+  margin: 0 0.45rem;
 }
 
 /* Gojek Quick Action Chips Sub-Bar */
@@ -635,10 +657,16 @@ html, body {
 }
 
 /* ==========================================================================
-   Step Guide Banner (Hidden to maintain clean Gojek-style uncluttered layout)
+   Step Guide Banner
    ========================================================================== */
 .step-guide-banner {
-  display: none !important;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .step-badge-mini {
