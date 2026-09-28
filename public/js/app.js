@@ -520,7 +520,7 @@ function setupEventListeners() {
   elements.btnEditDiscount.addEventListener('click', () => promptEditCharge('discount', 'Diskon Promo'));
 
   // Modal 1: Anggota
-  elements.btnCircleSettings.addEventListener('click', openCircleModal);
+  if (elements.btnCircleSettings) elements.btnCircleSettings.addEventListener('click', openCircleModal);
   const chipCircle = document.getElementById('chip-circle-settings');
   if (chipCircle) chipCircle.addEventListener('click', openCircleModal);
 
@@ -540,7 +540,7 @@ function setupEventListeners() {
   });
 
   // Modal 2: Rekening
-  elements.btnPaymentSettings.addEventListener('click', openPaymentModal);
+  if (elements.btnPaymentSettings) elements.btnPaymentSettings.addEventListener('click', openPaymentModal);
   const chipPayment = document.getElementById('chip-payment-settings');
   if (chipPayment) chipPayment.addEventListener('click', openPaymentModal);
 

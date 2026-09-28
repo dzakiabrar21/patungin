@@ -214,27 +214,24 @@ html, body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .header-title {
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 800;
   color: #111827;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .header-subtitle {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   color: #6b7280;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 175px;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+  word-break: break-word;
 }
 
 .header-right {
@@ -704,18 +701,16 @@ html, body {
 }
 
 .merchant-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: #E8F7ED;
-  color: #00AA13;
-  font-size: 0.68rem;
+  display: inline-block;
+  color: var(--color-primary);
+  font-size: 0.7rem;
   font-weight: 800;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.35rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  background: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 .merchant-title {
