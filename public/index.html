@@ -279,14 +279,11 @@
           <!-- PANEL A: Klaim Pesanan Saya (Self-Claim Mode) -->
           <div id="panel-self-claim" class="collab-panel hidden">
             
-            <!-- Step A1: Siapa Nama Kamu? -->
-            <div class="card card-padded claim-identity-card">
-              <div class="claim-card-title-row">
-                <span class="claim-step-pill">1</span>
-                <div>
-                  <h4 class="card-title-clean">Siapa Nama Kamu?</h4>
-                  <p class="card-desc-clean">Pilih nama kamu agar pesanan tercatat atas namamu</p>
-                </div>
+            <!-- Step A1: Siapa Nama Kamu? (Simple & Clean Look) -->
+            <div class="card card-padded claim-identity-card-simple">
+              <div class="claim-identity-simple-head">
+                <span class="claim-label-simple">Pilih nama kamu:</span>
+                <span class="claim-active-pill" id="self-claim-active-badge">Klaim sebagai: <strong id="self-claim-active-name">-</strong></span>
               </div>
 
               <!-- List of Member Chips to Select -->
@@ -297,32 +294,24 @@
               <!-- Input for new name -->
               <div class="self-claim-custom-name-box hidden" id="self-claim-custom-box">
                 <input type="text" id="input-self-claim-name" class="input-text-compact" placeholder="Ketik nama panggilanmu..." maxlength="20">
-                <button type="button" id="btn-self-claim-name-confirm" class="btn-primary-sm">Pilih Nama</button>
-              </div>
-
-              <div id="self-claim-selected-alert" class="selected-member-alert hidden">
-                <span>Nama aktif: <strong id="self-claim-active-name">-</strong></span>
-                <button type="button" id="btn-change-self-member" class="btn-link-action btn-xs">Ganti Nama</button>
+                <button type="button" id="btn-self-claim-name-confirm" class="btn-primary-sm">Pilih</button>
               </div>
             </div>
 
-            <!-- Step A2: Centang Makanan / Minuman Kamu -->
+            <!-- Step A2: Daftar Menu (Layout Sama Seperti Biasa) -->
             <div class="card card-padded claim-items-card">
-              <div class="card-header-clean">
-                <div class="claim-card-title-row">
-                  <span class="claim-step-pill">2</span>
-                  <div>
-                    <h4 class="card-title-clean">Pilih Menu yang Kamu Pesan</h4>
-                    <p class="card-desc-clean">Tap menu untuk mencentang (bisa patungan bareng)</p>
-                  </div>
+              <div class="card-header-clean" style="margin-bottom: 0.65rem;">
+                <div>
+                  <h4 class="card-title-clean">Pilih Menu Kamu</h4>
+                  <p class="card-desc-clean">Tap menu atau nama kamu untuk memilih pesanan</p>
                 </div>
                 <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims">
                   🔄 Sync
                 </button>
               </div>
 
-              <!-- Checklist of items -->
-              <div class="self-claim-items-list" id="self-claim-items-list">
+              <!-- Checklist of items using regular assignment-card style -->
+              <div class="assignment-items-list" id="self-claim-items-list">
                 <!-- Injected via JS -->
               </div>
             </div>
@@ -339,7 +328,7 @@
               </button>
             </div>
 
-            <!-- Post-Claim Confirmation & Host Transfer Info -->
+            <!-- Post-Claim Confirmation (Tanpa Bagian Rekening Transfer) -->
             <div class="card card-padded claim-success-card hidden" id="claim-success-card">
               <div class="claim-success-header">
                 <div class="success-icon-badge" style="width: 32px; height: 32px; font-size: 1.1rem;">✓</div>
@@ -353,12 +342,11 @@
                 <!-- Injected with my items & subtotal -->
               </div>
 
-              <!-- Rekening Tujuan Transfer Host -->
-              <div class="claim-host-payment-box" id="claim-host-payment-box">
-                <!-- Injected with host's payment details if available -->
-              </div>
+              <p style="font-size: 0.76rem; color: #64748b; text-align: center; margin: 0.25rem 0 0.75rem 0;">
+                📲 Rincian & nomor rekening pembayaran akan dikirim ke grup WhatsApp setelah semua selesai.
+              </p>
 
-              <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim" style="margin-top: 0.75rem;">
+              <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim">
                 ✏️ Ubah Pesanan Saya
               </button>
             </div>

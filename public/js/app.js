@@ -2399,19 +2399,18 @@ function selectOrCreateSelfMember(name, id = null) {
   } catch (_) {}
 
   renderSelfClaimMode();
-  showToast(`Kamu memilih nama: ${member.name} 👤`, 'info');
+  showToast(`Klaim sebagai: ${member.name} 👤`, 'info');
 }
 
 function renderSelfClaimMode() {
   const memberChipsContainer = document.getElementById('self-claim-member-chips');
   const itemsContainer = document.getElementById('self-claim-items-list');
-  const selectedAlert = document.getElementById('self-claim-selected-alert');
   const activeNameEl = document.getElementById('self-claim-active-name');
   const customBox = document.getElementById('self-claim-custom-box');
 
   if (!memberChipsContainer || !itemsContainer) return;
 
-  // 1. Render Member Selection Chips
+  // 1. Render Member Selection Chips (Simple & Compact)
   memberChipsContainer.innerHTML = '';
   state.allMembers.forEach(member => {
     const isSelected = state.selfClaim.activeMemberId === member.id;
@@ -2429,11 +2428,11 @@ function renderSelfClaimMode() {
     memberChipsContainer.appendChild(chip);
   });
 
-  // "+ Nama Lain" chip
+  // "+ Nama" chip
   const addChip = document.createElement('button');
   addChip.type = 'button';
   addChip.className = 'member-select-chip btn-add-chip';
-  addChip.innerHTML = '<span>+ Nama Lain</span>';
+  addChip.innerHTML = '<span>+ Nama</span>';
   addChip.addEventListener('click', () => {
     if (customBox) {
       customBox.classList.toggle('hidden');
@@ -2443,12 +2442,9 @@ function renderSelfClaimMode() {
   });
   memberChipsContainer.appendChild(addChip);
 
-  // Active member alert
-  if (state.selfClaim.activeMemberId) {
-    if (selectedAlert) selectedAlert.classList.remove('hidden');
-    if (activeNameEl) activeNameEl.textContent = state.selfClaim.activeMemberName;
-  } else {
-    if (selectedAlert) selectedAlert.classList.add('hidden');
+  // Active member label
+  if (activeNameEl) {
+    activeNameEl.textContent = state.selfClaim.activeMemberName || '(Pilih nama)';
   }
 
   // 2. Sync selectedIndices with state.receipt.items for active member
@@ -2461,7 +2457,7 @@ function renderSelfClaimMode() {
     });
   }
 
-  // 3. Render Item Cards
+  // 3. Render Item Cards (Layout Sama Kaya Yang Biasa)
   itemsContainer.innerHTML = '';
   if (!state.receipt.items || state.receipt.items.length === 0) {
     itemsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 1.5rem;">Tidak ada menu dalam tagihan ini.</div>';
@@ -2474,41 +2470,67 @@ function renderSelfClaimMode() {
   state.receipt.items.forEach((item, idx) => {
     const isMine = state.selfClaim.selectedIndices.has(idx);
     const assignedIds = Array.isArray(item.assignedTo) ? item.assignedTo : [];
-    
-    // Other members who claimed this
-    const otherMembers = assignedIds.filter(id => id !== state.selfClaim.activeMemberId);
-    const otherNames = otherMembers.map(id => memberMap.get(id) || 'Teman');
 
-    let statusHtml = '';
-    if (isMine) {
-      if (otherNames.length > 0) {
-        statusHtml = `<span class="claim-status-pill shared">👥 Patungan bareng ${escapeHtml(otherNames.join(', '))}</span>`;
-      } else {
-        statusHtml = `<span class="claim-status-pill mine">✓ Pesanan Kamu</span>`;
-      }
-    } else {
-      if (otherNames.length > 0) {
-        statusHtml = `<span class="claim-status-pill other">👤 Dipesan oleh ${escapeHtml(otherNames.join(', '))}</span>`;
-      } else {
-        statusHtml = `<span class="claim-status-pill unclaimed">⚠️ Belum ada yang klaim</span>`;
-      }
-    }
+    // Other members who claimed this item
+    const otherMembers = assignedIds
+      .filter(id => id !== state.selfClaim.activeMemberId)
+      .map(id => memberMap.get(id) || 'Teman');
 
     const card = document.createElement('div');
-    card.className = 'claim-item-card' + (isMine ? ' is-claimed' : '');
+    card.className = 'assignment-card' + (isMine ? ' my-claimed-card' : '');
+    card.style.cursor = 'pointer';
+
     card.innerHTML = `
-      <div class="claim-item-left">
-        <div class="claim-checkbox-indicator">${isMine ? '✓' : ''}</div>
-        <div class="claim-item-details">
-          <span class="claim-item-name">${item.qty}x ${escapeHtml(item.name)}</span>
-          <div class="claim-item-meta">
-            <span class="claim-item-price">Rp ${formatRupiah(item.total)}</span>
-            ${statusHtml}
-          </div>
+      <div class="assignment-head">
+        <div>
+          <span class="qty-badge">${item.qty}x</span>
+          <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
         </div>
+        <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
       </div>
+      <div class="assignment-chips-row" id="claim-chips-${idx}"></div>
     `;
 
+    const chipsRow = card.querySelector(`#claim-chips-${idx}`);
+
+    // Render other members who already claimed this item
+    otherMembers.forEach(otherName => {
+      const otherChip = document.createElement('div');
+      otherChip.className = 'btn-member-chip other-claimed';
+      otherChip.title = `${otherName} memesan menu ini`;
+      otherChip.innerHTML = `
+        <span class="chip-avatar-mini">${escapeHtml(otherName.charAt(0).toUpperCase())}</span>
+        <span>${escapeHtml(otherName)}</span>
+      `;
+      chipsRow.appendChild(otherChip);
+    });
+
+    // Render active user's chip
+    const activeName = state.selfClaim.activeMemberName || 'Saya';
+    const selfChip = document.createElement('button');
+    selfChip.type = 'button';
+    selfChip.className = 'btn-member-chip' + (isMine ? ' active' : '');
+    selfChip.innerHTML = `
+      <span class="chip-avatar-mini">${escapeHtml(activeName.charAt(0).toUpperCase())}</span>
+      <span>${escapeHtml(activeName)}</span>
+      ${isMine ? '<span class="check-icon">✓</span>' : ''}
+    `;
+
+    selfChip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSelfClaimItem(idx);
+    });
+    chipsRow.appendChild(selfChip);
+
+    // If nobody has claimed yet, subtle text
+    if (assignedIds.length === 0) {
+      const emptyNote = document.createElement('span');
+      emptyNote.className = 'unclaimed-hint-text';
+      emptyNote.textContent = '(Belum ada yang pesan)';
+      chipsRow.appendChild(emptyNote);
+    }
+
+    // Tapping the card also toggles claim for this item
     card.addEventListener('click', () => {
       toggleSelfClaimItem(idx);
     });
@@ -2653,7 +2675,6 @@ async function saveSelfClaim() {
 function renderClaimSuccessCard() {
   const card = document.getElementById('claim-success-card');
   const breakdownBox = document.getElementById('claim-my-breakdown');
-  const hostPaymentBox = document.getElementById('claim-host-payment-box');
   const successDesc = document.getElementById('claim-success-text');
 
   if (!card) return;
@@ -2679,7 +2700,7 @@ function renderClaimSuccessCard() {
         const line = document.createElement('div');
         line.className = 'claim-breakdown-line';
         line.innerHTML = `
-          <span>${it.qty}x ${escapeHtml(it.name)}${assignedCount > 1 ? ' (Patungan)' : ''}</span>
+          <span>${it.qty}x ${escapeHtml(it.name)}${assignedCount > 1 ? ' (Barengan)' : ''}</span>
           <strong>Rp ${formatRupiah(Math.round(portion))}</strong>
         `;
         breakdownBox.appendChild(line);
@@ -2723,36 +2744,6 @@ function renderClaimSuccessCard() {
       <strong style="color: #00aa13; font-size: 1.05rem;">Rp ${formatRupiah(grandTotal)}</strong>
     `;
     breakdownBox.appendChild(totalLine);
-  }
-
-  // Host Payment Info
-  if (hostPaymentBox) {
-    const payerName = state.activeSession.createdByName || 'Penanggung Bill';
-    const payerMember = state.allMembers.find(m => m.name.toLowerCase() === payerName.toLowerCase()) || state.allMembers[0];
-    const paymentText = payerMember?.paymentInfo || state.activeSession.paymentInfo || `Transfer ke ${payerName}`;
-
-    hostPaymentBox.innerHTML = `
-      <div class="payment-box-title">💳 Rekening Tujuan Transfer</div>
-      <p style="margin: 0.15rem 0 0.35rem 0; font-size: 0.78rem; color: #475569;">
-        Silakan transfer porsimu ke <strong>${escapeHtml(payerName)}</strong>:
-      </p>
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-        <span style="font-weight: 700; color: #0f172a; font-family: monospace; font-size: 0.86rem; word-break: break-all;">${escapeHtml(paymentText)}</span>
-        <button type="button" class="btn-link-action btn-xs" id="btn-copy-claim-rek" style="flex-shrink: 0;">Salin</button>
-      </div>
-    `;
-
-    const btnCopyRek = hostPaymentBox.querySelector('#btn-copy-claim-rek');
-    if (btnCopyRek) {
-      btnCopyRek.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(paymentText);
-          showToast('Nomor rekening berhasil disalin!', 'success');
-        } catch (_) {
-          showToast('Gagal menyalin otomatis', 'error');
-        }
-      });
-    }
   }
 
   card.classList.remove('hidden');
