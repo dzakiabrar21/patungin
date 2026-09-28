@@ -252,118 +252,253 @@
         <!-- STEP 3: Pilih Siapa yang Ikut & Bagi Pesanan -->
         <section id="step-3-view" class="step-view hidden">
           
-          <div class="step-guide-banner">
-            <span class="step-badge-mini">Langkah 3 dari 4</span>
-            <h3 class="step-guide-title">Pilih Orang & Bagi Tagihan</h3>
-            <p class="step-guide-desc">Tentukan siapa saja yang ikut di struk ini, lalu pilih penikmat tiap menu.</p>
+          <!-- WhatsApp / Web Collaborative Session Banner -->
+          <div id="group-session-banner" class="group-session-banner hidden">
+            <div class="group-session-left">
+              <span class="group-session-icon">👥</span>
+              <div>
+                <span class="group-session-title" id="group-session-title">Sesi Grup WhatsApp</span>
+                <span class="group-session-sub" id="group-session-sub">Semua anggota di grup dapat klaim pesanan masing-masing</span>
+              </div>
+            </div>
+            <div class="group-session-badge" id="group-session-sync-status">🟢 Live Sync</div>
           </div>
 
-          <!-- CARD 1: Siapa Saja yang Ikut Patungan? -->
-          <div class="card card-padded">
-            <div class="card-header-clean">
-              <div>
-                <h4 class="card-title-clean">1. Siapa Saja yang Ikut Patungan?</h4>
-                <p class="card-desc-clean">Centang teman yang ikut serta di tagihan ini</p>
+          <!-- Collaborative Mode Segmented Switcher (Visible in Session Mode) -->
+          <div id="collab-tabs-container" class="collab-tabs-container hidden">
+            <button type="button" class="collab-tab active" id="tab-self-claim">
+              <span class="tab-emoji">🙋</span>
+              <span class="tab-label">Klaim Pesanan Saya</span>
+            </button>
+            <button type="button" class="collab-tab" id="tab-host-manage">
+              <span class="tab-emoji">⚙️</span>
+              <span class="tab-label">Atur Semua (Host)</span>
+            </button>
+          </div>
+
+          <!-- PANEL A: Klaim Pesanan Saya (Self-Claim Mode) -->
+          <div id="panel-self-claim" class="collab-panel hidden">
+            
+            <!-- Step A1: Siapa Nama Kamu? -->
+            <div class="card card-padded claim-identity-card">
+              <div class="claim-card-title-row">
+                <span class="claim-step-pill">1</span>
+                <div>
+                  <h4 class="card-title-clean">Siapa Nama Kamu?</h4>
+                  <p class="card-desc-clean">Pilih nama kamu agar pesanan tercatat atas namamu</p>
+                </div>
+              </div>
+
+              <!-- List of Member Chips to Select -->
+              <div class="self-claim-member-chips" id="self-claim-member-chips">
+                <!-- Injected via JS -->
+              </div>
+
+              <!-- Input for new name -->
+              <div class="self-claim-custom-name-box hidden" id="self-claim-custom-box">
+                <input type="text" id="input-self-claim-name" class="input-text-compact" placeholder="Ketik nama panggilanmu..." maxlength="20">
+                <button type="button" id="btn-self-claim-name-confirm" class="btn-primary-sm">Pilih Nama</button>
+              </div>
+
+              <div id="self-claim-selected-alert" class="selected-member-alert hidden">
+                <span>Nama aktif: <strong id="self-claim-active-name">-</strong></span>
+                <button type="button" id="btn-change-self-member" class="btn-link-action btn-xs">Ganti Nama</button>
               </div>
             </div>
 
-            <!-- Participant Selection Chips -->
-            <div class="participants-selection-grid" id="participants-toggle-list">
-              <!-- Injected via JS -->
-            </div>
-
-            <!-- Quick Add Friend Form -->
-            <div class="quick-add-member-row">
-              <input type="text" id="input-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
-              <button type="button" id="btn-quick-add" class="btn-primary-sm">+ Tambah</button>
-            </div>
-
-            <!-- Payer Selection (Who paid the bill) -->
-            <div class="payer-selection-box">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
-                <label class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
-                <button type="button" id="btn-open-rek-inline" class="btn-link-action" style="font-size: 0.72rem;">Atur No. Rekening</button>
+            <!-- Step A2: Centang Makanan / Minuman Kamu -->
+            <div class="card card-padded claim-items-card">
+              <div class="card-header-clean">
+                <div class="claim-card-title-row">
+                  <span class="claim-step-pill">2</span>
+                  <div>
+                    <h4 class="card-title-clean">Pilih Menu yang Kamu Pesan</h4>
+                    <p class="card-desc-clean">Tap menu untuk mencentang (bisa patungan bareng)</p>
+                  </div>
+                </div>
+                <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims">
+                  🔄 Sync
+                </button>
               </div>
 
-              <!-- Payer Mode Segmented Switch -->
-              <div class="payer-mode-segmented">
-                <button type="button" class="btn-segment active" id="btn-payer-mode-single">1 Orang</button>
-                <button type="button" class="btn-segment" id="btn-payer-mode-multi">Banyak Orang (Multi)</button>
+              <!-- Checklist of items -->
+              <div class="self-claim-items-list" id="self-claim-items-list">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Step A3: Sticky Live Summary & Submit Button -->
+            <div class="self-claim-summary-card" id="self-claim-summary-card">
+              <div class="self-claim-summary-info">
+                <span class="self-claim-summary-title">Estimasi Porsi Kamu</span>
+                <strong class="self-claim-summary-amount" id="self-claim-summary-amount">Rp 0</strong>
+                <span class="self-claim-summary-items" id="self-claim-summary-items">0 menu dipilih (termasuk pajak/service)</span>
+              </div>
+              <button type="button" class="btn-primary" id="btn-submit-self-claim">
+                <span id="btn-submit-claim-text">💾 Simpan Pesanan Saya</span>
+              </button>
+            </div>
+
+            <!-- Post-Claim Confirmation & Host Transfer Info -->
+            <div class="card card-padded claim-success-card hidden" id="claim-success-card">
+              <div class="claim-success-header">
+                <div class="success-icon-badge" style="width: 32px; height: 32px; font-size: 1.1rem;">✓</div>
+                <div>
+                  <h4 class="card-title-clean" style="color: #047857;">Pesanan Kamu Tersimpan!</h4>
+                  <p class="card-desc-clean">Porsi tagihan kamu sudah tercatat di sistem</p>
+                </div>
               </div>
 
-              <!-- Mode 1: Single Payer -->
-              <div id="single-payer-container">
-                <select id="step3-payer-select" class="select-clean">
-                  <!-- Injected via JS with active participants -->
+              <div class="claim-breakdown-box" id="claim-my-breakdown">
+                <!-- Injected with my items & subtotal -->
+              </div>
+
+              <!-- Rekening Tujuan Transfer Host -->
+              <div class="claim-host-payment-box" id="claim-host-payment-box">
+                <!-- Injected with host's payment details if available -->
+              </div>
+
+              <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim" style="margin-top: 0.75rem;">
+                ✏️ Ubah Pesanan Saya
+              </button>
+            </div>
+
+            <!-- Switch to Host view prompt -->
+            <div class="switch-to-host-hint">
+              <span>Mau atur pesanan teman lain atau lihat rekap?</span>
+              <button type="button" id="btn-switch-to-host-link" class="btn-link-action">Buka Mode Pengaturan (Host) →</button>
+            </div>
+
+          </div>
+
+          <!-- PANEL B: Atur Semua (Host Mode & Manual Assignment) -->
+          <div id="panel-host-manage" class="collab-panel">
+
+            <div class="step-guide-banner">
+              <span class="step-badge-mini">Langkah 3 dari 4</span>
+              <h3 class="step-guide-title">Atur Pesanan & Bagi Tagihan</h3>
+              <p class="step-guide-desc">Pantau pesanan yang sudah diklaim dan tentukan menu yang belum dipilih.</p>
+            </div>
+
+            <!-- Quick Share Session Link Bar -->
+            <div class="share-session-quickbar" id="share-session-quickbar">
+              <div class="share-quickbar-info">
+                <span class="share-quickbar-title">🔗 Ajak Teman Klaim Sendiri</span>
+                <span class="share-quickbar-desc">Bagikan link ke grup agar mereka bisa pilih makanannya</span>
+              </div>
+              <button type="button" class="btn-outline-sm" id="btn-copy-session-link">
+                <span id="btn-copy-link-text">Salin Link</span>
+              </button>
+            </div>
+
+            <!-- CARD 1: Siapa Saja yang Ikut Patungan? -->
+            <div class="card card-padded">
+              <div class="card-header-clean">
+                <div>
+                  <h4 class="card-title-clean">1. Siapa Saja yang Ikut Patungan?</h4>
+                  <p class="card-desc-clean">Centang teman yang ikut serta di tagihan ini</p>
+                </div>
+              </div>
+
+              <!-- Participant Selection Chips -->
+              <div class="participants-selection-grid" id="participants-toggle-list">
+                <!-- Injected via JS -->
+              </div>
+
+              <!-- Quick Add Friend Form -->
+              <div class="quick-add-member-row">
+                <input type="text" id="input-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
+                <button type="button" id="btn-quick-add" class="btn-primary-sm">+ Tambah</button>
+              </div>
+
+              <!-- Payer Selection (Who paid the bill) -->
+              <div class="payer-selection-box">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+                  <label class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+                  <button type="button" id="btn-open-rek-inline" class="btn-link-action" style="font-size: 0.72rem;">Atur No. Rekening</button>
+                </div>
+
+                <!-- Payer Mode Segmented Switch -->
+                <div class="payer-mode-segmented">
+                  <button type="button" class="btn-segment active" id="btn-payer-mode-single">1 Orang</button>
+                  <button type="button" class="btn-segment" id="btn-payer-mode-multi">Banyak Orang (Multi)</button>
+                </div>
+
+                <!-- Mode 1: Single Payer -->
+                <div id="single-payer-container">
+                  <select id="step3-payer-select" class="select-clean">
+                    <!-- Injected via JS with active participants -->
+                  </select>
+                </div>
+
+                <!-- Mode 2: Multi Payers -->
+                <div id="multi-payer-container" class="hidden">
+                  <p class="multi-payer-helper">Masukkan jumlah uang yang dibayarkan oleh masing-masing orang:</p>
+                  <div id="multi-payer-inputs-list" class="multi-payer-inputs-list">
+                    <!-- Injected via JS -->
+                  </div>
+                  <div class="multi-payer-status-bar" id="multi-payer-status-bar">
+                    <div class="status-bar-text">
+                      <span>Total Bayar: <strong id="multi-paid-total">Rp 0</strong> / Struk: <strong id="multi-receipt-total">Rp 0</strong></span>
+                      <span id="multi-paid-diff" class="paid-diff-pill diff-match">Pas ✓</span>
+                    </div>
+                    <button type="button" id="btn-split-payers-equal" class="btn-outline-sm">Bagi Rata Bayar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD 2: Tentukan Siapa yang Pesan Tiap Menu -->
+            <div class="card card-padded">
+              <div class="card-header-clean">
+                <div>
+                  <h4 class="card-title-clean">2. Tentukan Pesanan Masing-Masing</h4>
+                  <p class="card-desc-clean">Menu yang sudah diklaim otomatis terisi nama teman</p>
+                </div>
+                <div id="unclaimed-warning-pill" class="badge-warning hidden">
+                  Ada menu belum dipilih
+                </div>
+              </div>
+
+              <div class="assignment-items-list" id="items-container">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- CARD 3: Pengaturan Pembagian (Pajak & Pembulatan) -->
+            <div class="card card-padded options-card">
+              <div class="option-row">
+                <label class="option-label" for="tax-split-mode">Metode Pajak:</label>
+                <select id="tax-split-mode" class="select-clean-sm">
+                  <option value="proportional" selected>Proporsional (Sesuai Porsi Menu)</option>
+                  <option value="equal">Bagi Rata</option>
                 </select>
               </div>
-
-              <!-- Mode 2: Multi Payers -->
-              <div id="multi-payer-container" class="hidden">
-                <p class="multi-payer-helper">Masukkan jumlah uang yang dibayarkan oleh masing-masing orang:</p>
-                <div id="multi-payer-inputs-list" class="multi-payer-inputs-list">
-                  <!-- Injected via JS -->
-                </div>
-                <div class="multi-payer-status-bar" id="multi-payer-status-bar">
-                  <div class="status-bar-text">
-                    <span>Total Bayar: <strong id="multi-paid-total">Rp 0</strong> / Struk: <strong id="multi-receipt-total">Rp 0</strong></span>
-                    <span id="multi-paid-diff" class="paid-diff-pill diff-match">Pas ✓</span>
-                  </div>
-                  <button type="button" id="btn-split-payers-equal" class="btn-outline-sm">Bagi Rata Bayar</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- CARD 2: Tentukan Siapa yang Pesan Tiap Menu -->
-          <div class="card card-padded">
-            <div class="card-header-clean">
-              <div>
-                <h4 class="card-title-clean">2. Tentukan Pesanan Masing-Masing</h4>
-                <p class="card-desc-clean">Tap nama untuk memilih siapa yang memesan menu tersebut</p>
-              </div>
-              <div id="unclaimed-warning-pill" class="badge-warning hidden">
-                Ada menu belum dipilih
+              <div class="option-row">
+                <label class="option-label" for="rounding-mode">Pembulatan:</label>
+                <select id="rounding-mode" class="select-clean-sm">
+                  <option value="none" selected>Tanpa Pembulatan</option>
+                  <option value="500">Rp 500 Terdekat</option>
+                  <option value="1000">Rp 1.000 Terdekat</option>
+                </select>
               </div>
             </div>
 
-            <div class="assignment-items-list" id="items-container">
-              <!-- Injected via JS -->
+            <!-- CARD 4: Estimasi Patungan Sementara (Real-time) -->
+            <div class="card card-padded">
+              <h4 class="card-title-clean">Estimasi Sementara</h4>
+              <div class="shares-grid-responsive" id="preview-shares-grid">
+                <!-- Injected via JS -->
+              </div>
             </div>
-          </div>
 
-          <!-- CARD 3: Pengaturan Pembagian (Pajak & Pembulatan) -->
-          <div class="card card-padded options-card">
-            <div class="option-row">
-              <label class="option-label" for="tax-split-mode">Metode Pajak:</label>
-              <select id="tax-split-mode" class="select-clean-sm">
-                <option value="proportional" selected>Proporsional (Sesuai Porsi Menu)</option>
-                <option value="equal">Bagi Rata</option>
-              </select>
+            <div class="step-actions-footer">
+              <button type="button" class="btn-outline" id="btn-back-to-2">← Cek Struk</button>
+              <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-4">
+                <span>Buat Rincian Tagihan ✨</span>
+              </button>
             </div>
-            <div class="option-row">
-              <label class="option-label" for="rounding-mode">Pembulatan:</label>
-              <select id="rounding-mode" class="select-clean-sm">
-                <option value="none" selected>Tanpa Pembulatan</option>
-                <option value="500">Rp 500 Terdekat</option>
-                <option value="1000">Rp 1.000 Terdekat</option>
-              </select>
-            </div>
-          </div>
 
-          <!-- CARD 4: Estimasi Patungan Sementara (Real-time) -->
-          <div class="card card-padded">
-            <h4 class="card-title-clean">Estimasi Sementara</h4>
-            <div class="shares-grid-responsive" id="preview-shares-grid">
-              <!-- Injected via JS -->
-            </div>
-          </div>
-
-          <div class="step-actions-footer">
-            <button type="button" class="btn-outline" id="btn-back-to-2">← Cek Struk</button>
-            <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-4">
-              <span>Buat Rincian Tagihan ✨</span>
-            </button>
           </div>
 
         </section>

@@ -817,10 +817,10 @@ async function processBatchReceipts(batch) {
 - *Total Tagihan:* Rp ${totalFormatted}
 - *Jumlah Menu:* ${r.items?.length || 0} item${countDesc}
 
-👉 *Buka link ini untuk split bill & atur patungan:*
-${sessionUrl}
+🍽️ *Semua orang di grup bisa klik link ini untuk klaim pesanan masing-masing:*
+👉 ${sessionUrl}
 ${localtunnelTip}
-💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan dulu nomor ini ke kontak WhatsApp kamu ya!`;
+💡 *Tips:* Kalau link belum berwarna biru / belum bisa diklik, simpan nomor bot ini ke kontak WhatsApp ya!`;
 
     await sock.sendMessage(chatId, { text: replyText });
     console.log(`[WhatsAppBot] Sesi ${session.id} (${count} struk) berhasil dibuat dan dikirim ke ${chatId}`);

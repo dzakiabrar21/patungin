@@ -144,7 +144,15 @@ const state = {
   presets: [],
   taxSplitMode: 'proportional', // 'proportional' | 'equal'
   roundingMode: 'none', // 'none' | '500' | '1000'
-  apiKey: localStorage.getItem('gemini_api_key') || ''
+  apiKey: localStorage.getItem('gemini_api_key') || '',
+  selfClaim: {
+    activeMemberId: null,
+    activeMemberName: '',
+    selectedIndices: new Set()
+  },
+  activeCollabTab: 'self-claim', // 'self-claim' | 'host-manage'
+  sessionPollTimer: null,
+  isSavingClaim: false
 };
 
 // DOM Elements
@@ -604,6 +612,61 @@ function setupEventListeners() {
   elements.btnCloseApiModal.addEventListener('click', closeApiKeyModal);
   elements.btnSaveApiKey.addEventListener('click', saveApiKey);
   elements.btnClearApiKey.addEventListener('click', clearApiKey);
+
+  // Collaborative Session Listeners (Klaim Mandiri & Host Management)
+  const tabSelfClaim = document.getElementById('tab-self-claim');
+  const tabHostManage = document.getElementById('tab-host-manage');
+  if (tabSelfClaim) tabSelfClaim.addEventListener('click', () => switchCollabTab('self-claim'));
+  if (tabHostManage) tabHostManage.addEventListener('click', () => switchCollabTab('host-manage'));
+
+  const btnSubmitClaim = document.getElementById('btn-submit-self-claim');
+  if (btnSubmitClaim) btnSubmitClaim.addEventListener('click', saveSelfClaim);
+
+  const btnRefreshClaims = document.getElementById('btn-refresh-claims');
+  if (btnRefreshClaims) btnRefreshClaims.addEventListener('click', () => pollSessionNow(true));
+
+  const btnChangeMember = document.getElementById('btn-change-self-member');
+  if (btnChangeMember) btnChangeMember.addEventListener('click', () => {
+    state.selfClaim.activeMemberId = null;
+    state.selfClaim.activeMemberName = '';
+    renderSelfClaimMode();
+  });
+
+  const btnReEditClaim = document.getElementById('btn-re-edit-claim');
+  if (btnReEditClaim) btnReEditClaim.addEventListener('click', () => {
+    const successCard = document.getElementById('claim-success-card');
+    if (successCard) successCard.classList.add('hidden');
+    renderSelfClaimMode();
+  });
+
+  const btnSwitchToHost = document.getElementById('btn-switch-to-host-link');
+  if (btnSwitchToHost) btnSwitchToHost.addEventListener('click', () => switchCollabTab('host-manage'));
+
+  const btnCopyLink = document.getElementById('btn-copy-session-link');
+  if (btnCopyLink) btnCopyLink.addEventListener('click', copyOrShareSessionLink);
+
+  const btnConfirmName = document.getElementById('btn-self-claim-name-confirm');
+  const inputSelfName = document.getElementById('input-self-claim-name');
+  if (btnConfirmName && inputSelfName) {
+    const handleAddCustomSelfName = () => {
+      const name = inputSelfName.value.trim();
+      if (!name) {
+        showToast('Ketik nama panggilanmu terlebih dahulu', 'warning');
+        return;
+      }
+      selectOrCreateSelfMember(name);
+      inputSelfName.value = '';
+      const box = document.getElementById('self-claim-custom-box');
+      if (box) box.classList.add('hidden');
+    };
+    btnConfirmName.addEventListener('click', handleAddCustomSelfName);
+    inputSelfName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddCustomSelfName();
+      }
+    });
+  }
 }
 
 // Quick Add Member in Step 3
@@ -2202,37 +2265,8 @@ async function checkAndLoadSessionFromUrl() {
     elements.spinnerOverlay.classList.add('hidden');
 
     if (data.success && data.session) {
-      state.activeSession = data.session;
-      state.receipt = data.session.receipt;
-
-      // Show group session banner
-      const banner = document.getElementById('group-session-banner');
-      const titleEl = document.getElementById('group-session-title');
-      if (banner && titleEl) {
-        titleEl.textContent = `Sesi Grup: ${data.session.groupName || 'Grup WhatsApp'}`;
-        banner.classList.remove('hidden');
-      }
-
-      // Show "Kirim ke Grup WA" button in Step 4
-      const btnSendWa = document.getElementById('btn-send-to-wa-group');
-      if (btnSendWa) {
-        btnSendWa.classList.remove('hidden');
-      }
-
-      // Assign items to members if needed
-      const active = getActiveParticipants();
-      const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
-
-      if (Array.isArray(state.receipt.items)) {
-        state.receipt.items.forEach((item, idx) => {
-          if (!item.assignedTo || item.assignedTo.length === 0) {
-            item.assignedTo = [activeIds[idx % activeIds.length]];
-          }
-        });
-      }
-
+      applyLoadedSession(data.session);
       showToast(`Tagihan dari "${data.session.groupName || 'Grup WA'}" berhasil dimuat! 📋`, 'success');
-      goToStep(2);
     } else {
       showToast(data.error || 'Sesi tagihan tidak ditemukan.', 'error');
     }
@@ -2240,6 +2274,597 @@ async function checkAndLoadSessionFromUrl() {
     elements.spinnerOverlay.classList.add('hidden');
     console.error('Error loading session:', err);
     showToast('Gagal memuat sesi tagihan dari server.', 'error');
+  }
+}
+
+function applyLoadedSession(session) {
+  state.activeSession = session;
+  state.receipt = session.receipt;
+
+  if (Array.isArray(session.allMembers) && session.allMembers.length > 0) {
+    state.allMembers = session.allMembers;
+    state.participatingMemberIds = session.allMembers.map(m => m.id);
+  }
+
+  // Ensure items have assignedTo array, but DO NOT round-robin pre-assign!
+  if (Array.isArray(state.receipt.items)) {
+    state.receipt.items.forEach(it => {
+      it.assignedTo = Array.isArray(it.assignedTo) ? it.assignedTo : [];
+    });
+  }
+
+  // Update banners & tabs
+  const banner = document.getElementById('group-session-banner');
+  const titleEl = document.getElementById('group-session-title');
+  const subEl = document.getElementById('group-session-sub');
+  const tabsContainer = document.getElementById('collab-tabs-container');
+
+  if (banner && titleEl) {
+    titleEl.textContent = `Sesi Grup: ${session.groupName || 'Grup WhatsApp'}`;
+    if (subEl) subEl.textContent = 'Semua anggota dapat klaim pesanan masing-masing di bawah';
+    banner.classList.remove('hidden');
+  }
+
+  if (tabsContainer) {
+    tabsContainer.classList.remove('hidden');
+  }
+
+  const btnSendWa = document.getElementById('btn-send-to-wa-group');
+  if (btnSendWa) {
+    btnSendWa.classList.remove('hidden');
+  }
+
+  // Restore saved self-claim member from localStorage
+  const savedMemberId = localStorage.getItem('patungin_self_member_id');
+  const savedMemberName = localStorage.getItem('patungin_self_member_name');
+  if (savedMemberId && state.allMembers.some(m => m.id === savedMemberId)) {
+    state.selfClaim.activeMemberId = savedMemberId;
+    state.selfClaim.activeMemberName = state.allMembers.find(m => m.id === savedMemberId).name;
+  } else if (savedMemberName) {
+    const found = state.allMembers.find(m => m.name.toLowerCase() === savedMemberName.toLowerCase());
+    if (found) {
+      state.selfClaim.activeMemberId = found.id;
+      state.selfClaim.activeMemberName = found.name;
+    }
+  }
+
+  // Default to Self-Claim tab for mobile group members
+  switchCollabTab('self-claim');
+
+  // Go directly to Step 3
+  goToStep(3);
+
+  // Start background live sync polling
+  startSessionPolling();
+}
+
+function switchCollabTab(mode) {
+  state.activeCollabTab = mode;
+  const tabSelf = document.getElementById('tab-self-claim');
+  const tabHost = document.getElementById('tab-host-manage');
+  const panelSelf = document.getElementById('panel-self-claim');
+  const panelHost = document.getElementById('panel-host-manage');
+
+  if (tabSelf && tabHost) {
+    tabSelf.classList.toggle('active', mode === 'self-claim');
+    tabHost.classList.toggle('active', mode === 'host-manage');
+  }
+
+  if (panelSelf && panelHost) {
+    panelSelf.classList.toggle('hidden', mode !== 'self-claim');
+    panelHost.classList.toggle('hidden', mode !== 'host-manage');
+  }
+
+  if (mode === 'self-claim') {
+    renderSelfClaimMode();
+  } else {
+    renderStep3();
+  }
+}
+
+function selectOrCreateSelfMember(name, id = null) {
+  const cleanName = (name || '').trim();
+  if (!cleanName) return;
+
+  let member = null;
+  if (id) {
+    member = state.allMembers.find(m => m.id === id);
+  }
+  if (!member) {
+    member = state.allMembers.find(m => m.name.toLowerCase() === cleanName.toLowerCase());
+  }
+
+  if (!member) {
+    // Create new member and add to session
+    const newId = 'm_' + Date.now();
+    member = {
+      id: newId,
+      name: cleanName,
+      initial: cleanName.charAt(0).toUpperCase(),
+      paymentInfo: 'Transfer ke ' + cleanName
+    };
+    state.allMembers.push(member);
+    if (!state.participatingMemberIds.includes(newId)) {
+      state.participatingMemberIds.push(newId);
+    }
+    saveMembers();
+  }
+
+  state.selfClaim.activeMemberId = member.id;
+  state.selfClaim.activeMemberName = member.name;
+
+  try {
+    localStorage.setItem('patungin_self_member_id', member.id);
+    localStorage.setItem('patungin_self_member_name', member.name);
+  } catch (_) {}
+
+  renderSelfClaimMode();
+  showToast(`Kamu memilih nama: ${member.name} 👤`, 'info');
+}
+
+function renderSelfClaimMode() {
+  const memberChipsContainer = document.getElementById('self-claim-member-chips');
+  const itemsContainer = document.getElementById('self-claim-items-list');
+  const selectedAlert = document.getElementById('self-claim-selected-alert');
+  const activeNameEl = document.getElementById('self-claim-active-name');
+  const customBox = document.getElementById('self-claim-custom-box');
+
+  if (!memberChipsContainer || !itemsContainer) return;
+
+  // 1. Render Member Selection Chips
+  memberChipsContainer.innerHTML = '';
+  state.allMembers.forEach(member => {
+    const isSelected = state.selfClaim.activeMemberId === member.id;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'member-select-chip' + (isSelected ? ' active' : '');
+    chip.innerHTML = `
+      <span>👤</span>
+      <span>${escapeHtml(member.name)}</span>
+      ${isSelected ? '<span>✓</span>' : ''}
+    `;
+    chip.addEventListener('click', () => {
+      selectOrCreateSelfMember(member.name, member.id);
+    });
+    memberChipsContainer.appendChild(chip);
+  });
+
+  // "+ Nama Lain" chip
+  const addChip = document.createElement('button');
+  addChip.type = 'button';
+  addChip.className = 'member-select-chip btn-add-chip';
+  addChip.innerHTML = '<span>+ Nama Lain</span>';
+  addChip.addEventListener('click', () => {
+    if (customBox) {
+      customBox.classList.toggle('hidden');
+      const input = document.getElementById('input-self-claim-name');
+      if (input && !customBox.classList.contains('hidden')) input.focus();
+    }
+  });
+  memberChipsContainer.appendChild(addChip);
+
+  // Active member alert
+  if (state.selfClaim.activeMemberId) {
+    if (selectedAlert) selectedAlert.classList.remove('hidden');
+    if (activeNameEl) activeNameEl.textContent = state.selfClaim.activeMemberName;
+  } else {
+    if (selectedAlert) selectedAlert.classList.add('hidden');
+  }
+
+  // 2. Sync selectedIndices with state.receipt.items for active member
+  if (state.selfClaim.activeMemberId && state.receipt.items) {
+    state.selfClaim.selectedIndices.clear();
+    state.receipt.items.forEach((item, idx) => {
+      if (Array.isArray(item.assignedTo) && item.assignedTo.includes(state.selfClaim.activeMemberId)) {
+        state.selfClaim.selectedIndices.add(idx);
+      }
+    });
+  }
+
+  // 3. Render Item Cards
+  itemsContainer.innerHTML = '';
+  if (!state.receipt.items || state.receipt.items.length === 0) {
+    itemsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 1.5rem;">Tidak ada menu dalam tagihan ini.</div>';
+    updateSelfClaimLiveEstimate();
+    return;
+  }
+
+  const memberMap = new Map(state.allMembers.map(m => [m.id, m.name]));
+
+  state.receipt.items.forEach((item, idx) => {
+    const isMine = state.selfClaim.selectedIndices.has(idx);
+    const assignedIds = Array.isArray(item.assignedTo) ? item.assignedTo : [];
+    
+    // Other members who claimed this
+    const otherMembers = assignedIds.filter(id => id !== state.selfClaim.activeMemberId);
+    const otherNames = otherMembers.map(id => memberMap.get(id) || 'Teman');
+
+    let statusHtml = '';
+    if (isMine) {
+      if (otherNames.length > 0) {
+        statusHtml = `<span class="claim-status-pill shared">👥 Patungan bareng ${escapeHtml(otherNames.join(', '))}</span>`;
+      } else {
+        statusHtml = `<span class="claim-status-pill mine">✓ Pesanan Kamu</span>`;
+      }
+    } else {
+      if (otherNames.length > 0) {
+        statusHtml = `<span class="claim-status-pill other">👤 Dipesan oleh ${escapeHtml(otherNames.join(', '))}</span>`;
+      } else {
+        statusHtml = `<span class="claim-status-pill unclaimed">⚠️ Belum ada yang klaim</span>`;
+      }
+    }
+
+    const card = document.createElement('div');
+    card.className = 'claim-item-card' + (isMine ? ' is-claimed' : '');
+    card.innerHTML = `
+      <div class="claim-item-left">
+        <div class="claim-checkbox-indicator">${isMine ? '✓' : ''}</div>
+        <div class="claim-item-details">
+          <span class="claim-item-name">${item.qty}x ${escapeHtml(item.name)}</span>
+          <div class="claim-item-meta">
+            <span class="claim-item-price">Rp ${formatRupiah(item.total)}</span>
+            ${statusHtml}
+          </div>
+        </div>
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      toggleSelfClaimItem(idx);
+    });
+
+    itemsContainer.appendChild(card);
+  });
+
+  updateSelfClaimLiveEstimate();
+}
+
+function toggleSelfClaimItem(idx) {
+  if (!state.selfClaim.activeMemberId) {
+    showToast('Pilih nama kamu terlebih dahulu di bagian atas!', 'warning');
+    const chipContainer = document.getElementById('self-claim-member-chips');
+    if (chipContainer) chipContainer.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  if (state.selfClaim.selectedIndices.has(idx)) {
+    state.selfClaim.selectedIndices.delete(idx);
+  } else {
+    state.selfClaim.selectedIndices.add(idx);
+  }
+
+  // Update item.assignedTo locally
+  const item = state.receipt.items[idx];
+  if (item) {
+    item.assignedTo = Array.isArray(item.assignedTo) ? item.assignedTo : [];
+    if (state.selfClaim.selectedIndices.has(idx)) {
+      if (!item.assignedTo.includes(state.selfClaim.activeMemberId)) {
+        item.assignedTo.push(state.selfClaim.activeMemberId);
+      }
+    } else {
+      item.assignedTo = item.assignedTo.filter(id => id !== state.selfClaim.activeMemberId);
+    }
+  }
+
+  // Re-render UI
+  renderSelfClaimMode();
+}
+
+function updateSelfClaimLiveEstimate() {
+  const amountEl = document.getElementById('self-claim-summary-amount');
+  const itemsCountEl = document.getElementById('self-claim-summary-items');
+  if (!amountEl) return;
+
+  const count = state.selfClaim.selectedIndices.size;
+  if (count === 0) {
+    amountEl.textContent = 'Rp 0';
+    if (itemsCountEl) itemsCountEl.textContent = '0 menu dipilih';
+    return;
+  }
+
+  // Calculate personal subtotal
+  let personalSubtotal = 0;
+  let totalReceiptItemsSubtotal = 0;
+
+  state.receipt.items.forEach((it, idx) => {
+    const itemTotal = Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0));
+    totalReceiptItemsSubtotal += itemTotal;
+
+    if (state.selfClaim.selectedIndices.has(idx)) {
+      const assignedCount = Math.max(1, (it.assignedTo || []).length || 1);
+      personalSubtotal += (itemTotal / assignedCount);
+    }
+  });
+
+  const tax = Number(state.receipt.tax) || 0;
+  const service = Number(state.receipt.service) || 0;
+  const discount = Number(state.receipt.discount) || 0;
+
+  const ratio = totalReceiptItemsSubtotal > 0 ? (personalSubtotal / totalReceiptItemsSubtotal) : 0;
+  const personalTax = Math.round(tax * ratio);
+  const personalService = Math.round(service * ratio);
+  const personalDiscount = Math.round(discount * ratio);
+  const personalGrandTotal = Math.max(0, Math.round(personalSubtotal + personalTax + personalService - personalDiscount));
+
+  amountEl.textContent = `Rp ${formatRupiah(personalGrandTotal)}`;
+  if (itemsCountEl) itemsCountEl.textContent = `${count} menu dipilih (termasuk pajak & service)`;
+}
+
+async function saveSelfClaim() {
+  if (!state.activeSession || !state.activeSession.id) {
+    showToast('Sesi tagihan tidak aktif.', 'error');
+    return;
+  }
+
+  if (!state.selfClaim.activeMemberId || !state.selfClaim.activeMemberName) {
+    showToast('Silakan pilih nama kamu terlebih dahulu di bagian atas!', 'warning');
+    const chipContainer = document.getElementById('self-claim-member-chips');
+    if (chipContainer) chipContainer.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  const btnSubmit = document.getElementById('btn-submit-self-claim');
+  const btnText = document.getElementById('btn-submit-claim-text');
+  if (btnSubmit) btnSubmit.disabled = true;
+  if (btnText) btnText.textContent = '⏳ Menyimpan ke server...';
+
+  state.isSavingClaim = true;
+
+  try {
+    const itemIndices = Array.from(state.selfClaim.selectedIndices);
+    const res = await fetch(`/api/bill/${state.activeSession.id}/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        memberId: state.selfClaim.activeMemberId,
+        memberName: state.selfClaim.activeMemberName,
+        itemIndices,
+        isIndividualClaim: true
+      })
+    });
+
+    const data = await res.json();
+    state.isSavingClaim = false;
+
+    if (btnSubmit) btnSubmit.disabled = false;
+    if (btnText) btnText.textContent = '💾 Simpan Pesanan Saya';
+
+    if (data.success && data.session) {
+      state.activeSession = data.session;
+      state.receipt = data.session.receipt;
+      if (Array.isArray(data.session.allMembers)) {
+        state.allMembers = data.session.allMembers;
+      }
+
+      showToast('Pesanan kamu berhasil disimpan! 📋✓', 'success');
+      renderClaimSuccessCard();
+    } else {
+      showToast(data.error || 'Gagal menyimpan pesanan.', 'error');
+    }
+  } catch (err) {
+    state.isSavingClaim = false;
+    if (btnSubmit) btnSubmit.disabled = false;
+    if (btnText) btnText.textContent = '💾 Simpan Pesanan Saya';
+    console.error('Error saving self claim:', err);
+    showToast('Gagal terhubung ke server untuk menyimpan pesanan.', 'error');
+  }
+}
+
+function renderClaimSuccessCard() {
+  const card = document.getElementById('claim-success-card');
+  const breakdownBox = document.getElementById('claim-my-breakdown');
+  const hostPaymentBox = document.getElementById('claim-host-payment-box');
+  const successDesc = document.getElementById('claim-success-text');
+
+  if (!card) return;
+
+  if (successDesc) {
+    successDesc.textContent = `Porsi untuk ${state.selfClaim.activeMemberName} berhasil dicatat.`;
+  }
+
+  if (breakdownBox) {
+    breakdownBox.innerHTML = '';
+    let personalSubtotal = 0;
+    let totalItemsSubtotal = 0;
+
+    state.receipt.items.forEach((it, idx) => {
+      const itemTotal = Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0));
+      totalItemsSubtotal += itemTotal;
+
+      if (state.selfClaim.selectedIndices.has(idx)) {
+        const assignedCount = Math.max(1, (it.assignedTo || []).length || 1);
+        const portion = itemTotal / assignedCount;
+        personalSubtotal += portion;
+
+        const line = document.createElement('div');
+        line.className = 'claim-breakdown-line';
+        line.innerHTML = `
+          <span>${it.qty}x ${escapeHtml(it.name)}${assignedCount > 1 ? ' (Patungan)' : ''}</span>
+          <strong>Rp ${formatRupiah(Math.round(portion))}</strong>
+        `;
+        breakdownBox.appendChild(line);
+      }
+    });
+
+    const tax = Number(state.receipt.tax) || 0;
+    const service = Number(state.receipt.service) || 0;
+    const discount = Number(state.receipt.discount) || 0;
+    const ratio = totalItemsSubtotal > 0 ? (personalSubtotal / totalItemsSubtotal) : 0;
+    const pTax = Math.round(tax * ratio);
+    const pService = Math.round(service * ratio);
+    const pDiscount = Math.round(discount * ratio);
+    const grandTotal = Math.max(0, Math.round(personalSubtotal + pTax + pService - pDiscount));
+
+    if (pTax > 0) {
+      const line = document.createElement('div');
+      line.className = 'claim-breakdown-line';
+      line.innerHTML = `<span>Pajak (PB1)</span><strong>Rp ${formatRupiah(pTax)}</strong>`;
+      breakdownBox.appendChild(line);
+    }
+
+    if (pService > 0) {
+      const line = document.createElement('div');
+      line.className = 'claim-breakdown-line';
+      line.innerHTML = `<span>Service Charge</span><strong>Rp ${formatRupiah(pService)}</strong>`;
+      breakdownBox.appendChild(line);
+    }
+
+    if (pDiscount > 0) {
+      const line = document.createElement('div');
+      line.className = 'claim-breakdown-line';
+      line.innerHTML = `<span>Diskon Promo</span><strong style="color: #ef4444;">-Rp ${formatRupiah(pDiscount)}</strong>`;
+      breakdownBox.appendChild(line);
+    }
+
+    const totalLine = document.createElement('div');
+    totalLine.className = 'claim-breakdown-line total-line';
+    totalLine.innerHTML = `
+      <span>Total Bayar Kamu</span>
+      <strong style="color: #00aa13; font-size: 1.05rem;">Rp ${formatRupiah(grandTotal)}</strong>
+    `;
+    breakdownBox.appendChild(totalLine);
+  }
+
+  // Host Payment Info
+  if (hostPaymentBox) {
+    const payerName = state.activeSession.createdByName || 'Penanggung Bill';
+    const payerMember = state.allMembers.find(m => m.name.toLowerCase() === payerName.toLowerCase()) || state.allMembers[0];
+    const paymentText = payerMember?.paymentInfo || state.activeSession.paymentInfo || `Transfer ke ${payerName}`;
+
+    hostPaymentBox.innerHTML = `
+      <div class="payment-box-title">💳 Rekening Tujuan Transfer</div>
+      <p style="margin: 0.15rem 0 0.35rem 0; font-size: 0.78rem; color: #475569;">
+        Silakan transfer porsimu ke <strong>${escapeHtml(payerName)}</strong>:
+      </p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+        <span style="font-weight: 700; color: #0f172a; font-family: monospace; font-size: 0.86rem; word-break: break-all;">${escapeHtml(paymentText)}</span>
+        <button type="button" class="btn-link-action btn-xs" id="btn-copy-claim-rek" style="flex-shrink: 0;">Salin</button>
+      </div>
+    `;
+
+    const btnCopyRek = hostPaymentBox.querySelector('#btn-copy-claim-rek');
+    if (btnCopyRek) {
+      btnCopyRek.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(paymentText);
+          showToast('Nomor rekening berhasil disalin!', 'success');
+        } catch (_) {
+          showToast('Gagal menyalin otomatis', 'error');
+        }
+      });
+    }
+  }
+
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+function startSessionPolling() {
+  if (state.sessionPollTimer) clearInterval(state.sessionPollTimer);
+  state.sessionPollTimer = setInterval(() => {
+    pollSessionNow(false);
+  }, 4500);
+}
+
+async function pollSessionNow(showToastOnSuccess = false) {
+  if (!state.activeSession || !state.activeSession.id) return;
+  if (state.isSavingClaim) return;
+  if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/bill/${state.activeSession.id}`);
+    const data = await res.json();
+    if (data.success && data.session) {
+      const isUpdated = data.session.updatedAt !== state.activeSession.updatedAt;
+      if (isUpdated || showToastOnSuccess) {
+        state.activeSession = data.session;
+        state.receipt = data.session.receipt;
+        if (Array.isArray(data.session.allMembers)) {
+          state.allMembers = data.session.allMembers;
+        }
+
+        if (state.activeCollabTab === 'self-claim') {
+          renderSelfClaimMode();
+        } else if (state.currentStep === 3) {
+          renderStep3();
+        }
+
+        if (showToastOnSuccess) {
+          showToast('Status klaim menu tersinkronisasi! 🔄', 'info');
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+async function copyOrShareSessionLink() {
+  const btn = document.getElementById('btn-copy-session-link');
+  const btnText = document.getElementById('btn-copy-link-text');
+
+  // If already in a session
+  if (state.activeSession && state.activeSession.id) {
+    const sessionUrl = `${window.location.origin}/?bill=${state.activeSession.id}`;
+    try {
+      await navigator.clipboard.writeText(sessionUrl);
+      showToast('Link sesi berhasil disalin! Bagikan ke grup WA 📋✓', 'success');
+      if (btnText) btnText.textContent = 'Tersalin ✓';
+      setTimeout(() => { if (btnText) btnText.textContent = 'Salin Link'; }, 2000);
+    } catch (_) {
+      prompt('Salin link berikut:', sessionUrl);
+    }
+    return;
+  }
+
+  // Otherwise, create a new session on the server from current receipt
+  if (!state.receipt || !state.receipt.items || state.receipt.items.length === 0) {
+    showToast('Belum ada data struk untuk dibagikan.', 'warning');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = 'Membuat link...';
+
+  try {
+    const active = getActiveParticipants();
+    const currentPayer = active.find(m => m.id === state.payerId) || active[0];
+
+    const res = await fetch('/api/bill/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receipt: state.receipt,
+        allMembers: state.allMembers,
+        payer: currentPayer,
+        groupName: state.receipt.merchant ? `Struk ${state.receipt.merchant}` : 'Sesi Patungan',
+        paymentInfo: currentPayer?.paymentInfo || null
+      })
+    });
+
+    const data = await res.json();
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Salin Link';
+
+    if (data.success && data.session) {
+      applyLoadedSession(data.session);
+      const sessionUrl = `${window.location.origin}/?bill=${data.session.id}`;
+      window.history.pushState({}, '', `/?bill=${data.session.id}`);
+
+      try {
+        await navigator.clipboard.writeText(sessionUrl);
+        showToast('Link sesi patungan berhasil dibuat & disalin! 📋✓', 'success');
+      } catch (_) {
+        prompt('Salin link berikut:', sessionUrl);
+      }
+    } else {
+      showToast(data.error || 'Gagal membuat sesi patungan.', 'error');
+    }
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Salin Link';
+    console.error('Error creating session:', err);
+    showToast('Gagal terhubung ke server.', 'error');
   }
 }
 
@@ -2399,3 +3024,11 @@ function openSendFallbackModal(messageText, errorMsg) {
     };
   }
 }
+
+// Initialize Application on ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+

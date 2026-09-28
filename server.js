@@ -70,6 +70,29 @@ app.get('/api/wa/status', (req, res) => {
 });
 
 // Bill Session Endpoints (Hybrid WA + Web)
+app.post('/api/bill/create', (req, res) => {
+  try {
+    const { receipt, allMembers, payer, groupName, createdByName, paymentInfo } = req.body;
+    if (!receipt || !receipt.items) {
+      return res.status(400).json({ success: false, error: 'Data struk tidak valid.' });
+    }
+
+    const session = sessionStore.createSession({
+      groupName: groupName || 'Sesi Patungan',
+      createdByName: createdByName || (payer ? payer.name : 'Host'),
+      receipt,
+      allMembers: allMembers || [],
+      payer: payer || null,
+      paymentInfo: paymentInfo || null
+    });
+
+    return res.json({ success: true, session });
+  } catch (err) {
+    console.error('Error creating bill session:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/api/bill/:id', (req, res) => {
   const session = sessionStore.getSession(req.params.id);
   if (!session) {
@@ -87,10 +110,28 @@ app.post('/api/bill/:id/claim', (req, res) => {
     return res.status(404).json({ success: false, error: 'Sesi tagihan tidak ditemukan.' });
   }
 
+  // Individual member claim (Self-Claim mode from phone)
+  if (req.body.itemIndices !== undefined || (req.body.memberName && req.body.isIndividualClaim)) {
+    const result = sessionStore.setMemberClaims(req.params.id, {
+      memberId: req.body.memberId,
+      memberName: req.body.memberName,
+      itemIndices: req.body.itemIndices || []
+    });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  }
+
+  // Full session update (Host mode / settings)
   const updated = sessionStore.updateSession(req.params.id, {
     receipt: req.body.receipt || session.receipt,
     allMembers: req.body.allMembers || session.allMembers,
-    roundingMode: req.body.roundingMode || session.roundingMode
+    payer: req.body.payer !== undefined ? req.body.payer : session.payer,
+    multiPayers: req.body.multiPayers !== undefined ? req.body.multiPayers : session.multiPayers,
+    roundingMode: req.body.roundingMode || session.roundingMode,
+    taxSplitMode: req.body.taxSplitMode || session.taxSplitMode,
+    paymentInfo: req.body.paymentInfo !== undefined ? req.body.paymentInfo : session.paymentInfo
   });
 
   return res.json({ success: true, session: updated });

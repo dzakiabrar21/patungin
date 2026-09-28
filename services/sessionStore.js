@@ -285,6 +285,63 @@ export const sessionStore = {
   },
 
   /**
+   * Set or update claims for a specific member from web self-claim UI
+   */
+  setMemberClaims(sessionId, { memberId, memberName, itemIndices }) {
+    const session = this.getSession(sessionId);
+    if (!session || !session.receipt || !session.receipt.items) {
+      return { success: false, error: 'Sesi atau daftar menu tidak ditemukan.' };
+    }
+
+    session.allMembers = session.allMembers || [];
+    let member = null;
+    if (memberId) {
+      member = session.allMembers.find(m => m.id === memberId);
+    }
+    if (!member && memberName) {
+      const cleanName = memberName.trim();
+      member = session.allMembers.find(m => m.name.toLowerCase() === cleanName.toLowerCase());
+      if (!member) {
+        member = {
+          id: memberId || ('m-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6)),
+          name: cleanName
+        };
+        session.allMembers.push(member);
+      }
+    }
+
+    if (!member) {
+      return { success: false, error: 'Nama anggota wajib dipilih atau diisi.' };
+    }
+
+    const items = session.receipt.items;
+    const targetIndices = new Set((itemIndices || []).map(Number));
+
+    items.forEach((item, idx) => {
+      item.assignedTo = Array.isArray(item.assignedTo) ? item.assignedTo : [];
+      const hasMember = item.assignedTo.includes(member.id);
+      const shouldHave = targetIndices.has(idx);
+
+      if (shouldHave && !hasMember) {
+        item.assignedTo.push(member.id);
+      } else if (!shouldHave && hasMember) {
+        item.assignedTo = item.assignedTo.filter(id => id !== member.id);
+      }
+    });
+
+    const updated = this.updateSession(sessionId, {
+      receipt: session.receipt,
+      allMembers: session.allMembers
+    });
+
+    return {
+      success: true,
+      member,
+      session: updated
+    };
+  },
+
+  /**
    * Calculate final split bill and generate WhatsApp breakdown message
    */
   calculateFinalBill(sessionId, defaultPayerName = null) {
