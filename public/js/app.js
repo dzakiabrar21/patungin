@@ -645,25 +645,21 @@ function setupEventListeners() {
   const btnCopyLink = document.getElementById('btn-copy-session-link');
   if (btnCopyLink) btnCopyLink.addEventListener('click', copyOrShareSessionLink);
 
-  const btnConfirmName = document.getElementById('btn-self-claim-name-confirm');
-  const inputSelfName = document.getElementById('input-self-claim-name');
-  if (btnConfirmName && inputSelfName) {
-    const handleAddCustomSelfName = () => {
-      const name = inputSelfName.value.trim();
-      if (!name) {
-        showToast('Ketik nama panggilanmu terlebih dahulu', 'warning');
-        return;
-      }
-      selectOrCreateSelfMember(name);
-      inputSelfName.value = '';
-      const box = document.getElementById('self-claim-custom-box');
-      if (box) box.classList.add('hidden');
-    };
-    btnConfirmName.addEventListener('click', handleAddCustomSelfName);
-    inputSelfName.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddCustomSelfName();
+  const btnChangeClaimName = document.getElementById('btn-change-claim-name');
+  if (btnChangeClaimName) {
+    btnChangeClaimName.addEventListener('click', openClaimNameModal);
+  }
+
+  const formClaimName = document.getElementById('form-claim-name');
+  if (formClaimName) {
+    formClaimName.addEventListener('submit', handleClaimNameSubmit);
+  }
+
+  const modalClaimName = document.getElementById('modal-claim-name');
+  if (modalClaimName) {
+    modalClaimName.addEventListener('click', (e) => {
+      if (e.target === modalClaimName && state.selfClaim.activeMemberName) {
+        closeClaimNameModal();
       }
     });
   }
@@ -2344,11 +2340,51 @@ function applyLoadedSession(session) {
   // Default to Self-Claim tab for mobile group members
   switchCollabTab('self-claim');
 
+  // If no name has been chosen yet, trigger the popup modal automatically
+  if (!state.selfClaim.activeMemberName) {
+    setTimeout(() => {
+      openClaimNameModal();
+    }, 350);
+  }
+
   // Go directly to Step 3
   goToStep(3);
 
   // Start background live sync polling
   startSessionPolling();
+}
+
+function openClaimNameModal() {
+  const modal = document.getElementById('modal-claim-name');
+  const input = document.getElementById('input-claim-modal-name');
+  if (!modal || !input) return;
+
+  input.value = state.selfClaim.activeMemberName || '';
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 100);
+}
+
+function closeClaimNameModal() {
+  const modal = document.getElementById('modal-claim-name');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleClaimNameSubmit(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById('input-claim-modal-name');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    showToast('Ketik nama panggilanmu terlebih dahulu', 'warning');
+    input.focus();
+    return;
+  }
+
+  selectOrCreateSelfMember(name);
+  closeClaimNameModal();
 }
 
 function switchCollabTab(mode) {
@@ -2370,6 +2406,11 @@ function switchCollabTab(mode) {
 
   if (mode === 'self-claim') {
     renderSelfClaimMode();
+    if (!state.selfClaim.activeMemberName) {
+      setTimeout(() => {
+        openClaimNameModal();
+      }, 200);
+    }
   } else {
     renderStep3();
   }
@@ -2416,51 +2457,25 @@ function selectOrCreateSelfMember(name, id = null) {
 }
 
 function renderSelfClaimMode() {
-  const memberChipsContainer = document.getElementById('self-claim-member-chips');
   const itemsContainer = document.getElementById('self-claim-items-list');
   const activeNameEl = document.getElementById('self-claim-active-name');
-  const customBox = document.getElementById('self-claim-custom-box');
+  const avatarCircleEl = document.getElementById('self-claim-avatar-circle');
 
-  if (!memberChipsContainer || !itemsContainer) return;
+  if (!itemsContainer) return;
 
-  // 1. Render Member Selection Chips (Simple & Compact)
-  memberChipsContainer.innerHTML = '';
-  state.allMembers.forEach(member => {
-    const isSelected = state.selfClaim.activeMemberId === member.id;
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'member-select-chip' + (isSelected ? ' active' : '');
-    chip.innerHTML = `
-      <span>👤</span>
-      <span>${escapeHtml(member.name)}</span>
-      ${isSelected ? '<span>✓</span>' : ''}
-    `;
-    chip.addEventListener('click', () => {
-      selectOrCreateSelfMember(member.name, member.id);
-    });
-    memberChipsContainer.appendChild(chip);
-  });
-
-  // "+ Nama" chip
-  const addChip = document.createElement('button');
-  addChip.type = 'button';
-  addChip.className = 'member-select-chip btn-add-chip';
-  addChip.innerHTML = '<span>+ Nama</span>';
-  addChip.addEventListener('click', () => {
-    if (customBox) {
-      customBox.classList.toggle('hidden');
-      const input = document.getElementById('input-self-claim-name');
-      if (input && !customBox.classList.contains('hidden')) input.focus();
-    }
-  });
-  memberChipsContainer.appendChild(addChip);
-
-  // Active member label
+  // Active member label in top bar
   if (activeNameEl) {
-    activeNameEl.textContent = state.selfClaim.activeMemberName || '(Pilih nama)';
+    activeNameEl.textContent = state.selfClaim.activeMemberName || '(Belum isi nama)';
+  }
+  if (avatarCircleEl) {
+    if (state.selfClaim.activeMemberName) {
+      avatarCircleEl.textContent = state.selfClaim.activeMemberName.charAt(0).toUpperCase();
+    } else {
+      avatarCircleEl.textContent = '👤';
+    }
   }
 
-  // 2. Sync selectedIndices with state.receipt.items for active member
+  // Sync selectedIndices with state.receipt.items for active member
   if (state.selfClaim.activeMemberId && state.receipt.items) {
     state.selfClaim.selectedIndices.clear();
     state.receipt.items.forEach((item, idx) => {
@@ -2470,7 +2485,7 @@ function renderSelfClaimMode() {
     });
   }
 
-  // 3. Render Item Cards (Layout Sama Kaya Yang Biasa)
+  // Render Item Cards
   itemsContainer.innerHTML = '';
   if (!state.receipt.items || state.receipt.items.length === 0) {
     itemsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 1.5rem;">Tidak ada menu dalam tagihan ini.</div>';
@@ -2484,7 +2499,7 @@ function renderSelfClaimMode() {
     const isMine = state.selfClaim.selectedIndices.has(idx);
     const assignedIds = Array.isArray(item.assignedTo) ? item.assignedTo : [];
 
-    // Other members who claimed this item
+    // Other members who already claimed this item
     const otherMembers = assignedIds
       .filter(id => id !== state.selfClaim.activeMemberId)
       .map(id => memberMap.get(id) || 'Teman');
@@ -2495,15 +2510,20 @@ function renderSelfClaimMode() {
     const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
 
     const card = document.createElement('div');
-    card.className = 'assignment-card' + (isMine ? ' my-claimed-card' : '');
+    card.className = 'assignment-card claim-selectable-card' + (isMine ? ' my-claimed-card' : '');
     card.style.cursor = 'pointer';
 
     card.innerHTML = `
       <div class="assignment-head">
-        <div>
-          <span class="qty-badge">${item.qty}x</span>
-          <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
-          ${unitPriceHtml}
+        <div class="assignment-head-left">
+          <div class="claim-check-box ${isMine ? 'checked' : ''}">
+            <span class="claim-check-mark">${isMine ? '✓' : ''}</span>
+          </div>
+          <div>
+            <span class="qty-badge">${item.qty}x</span>
+            <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
+            ${unitPriceHtml}
+          </div>
         </div>
         <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
       </div>
@@ -2512,7 +2532,7 @@ function renderSelfClaimMode() {
 
     const chipsRow = card.querySelector(`#claim-chips-${idx}`);
 
-    // Render other members who already claimed this item
+    // 1. Render other members who already claimed this item
     otherMembers.forEach(otherName => {
       const otherChip = document.createElement('div');
       otherChip.className = 'btn-member-chip other-claimed';
@@ -2524,32 +2544,18 @@ function renderSelfClaimMode() {
       chipsRow.appendChild(otherChip);
     });
 
-    // Render active user's chip
-    const activeName = state.selfClaim.activeMemberName || 'Saya';
-    const selfChip = document.createElement('button');
-    selfChip.type = 'button';
-    selfChip.className = 'btn-member-chip' + (isMine ? ' active' : '');
-    selfChip.innerHTML = `
-      <span class="chip-avatar-mini">${escapeHtml(activeName.charAt(0).toUpperCase())}</span>
-      <span>${escapeHtml(activeName)}</span>
-      ${isMine ? '<span class="check-icon">✓</span>' : ''}
-    `;
-
-    selfChip.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleSelfClaimItem(idx);
-    });
-    chipsRow.appendChild(selfChip);
-
-    // If nobody has claimed yet, subtle text
-    if (assignedIds.length === 0) {
-      const emptyNote = document.createElement('span');
-      emptyNote.className = 'unclaimed-hint-text';
-      emptyNote.textContent = '(Belum ada yang pesan)';
-      chipsRow.appendChild(emptyNote);
+    // 2. Render badge for current user ONLY if they selected this item
+    if (isMine) {
+      const myChip = document.createElement('div');
+      myChip.className = 'btn-member-chip my-claimed-badge';
+      myChip.innerHTML = `
+        <span class="check-icon">✓</span>
+        <span>Pesanan Kamu</span>
+      `;
+      chipsRow.appendChild(myChip);
     }
 
-    // Tapping the card also toggles claim for this item
+    // Tapping the card toggles claim for this item
     card.addEventListener('click', () => {
       toggleSelfClaimItem(idx);
     });
@@ -2561,10 +2567,9 @@ function renderSelfClaimMode() {
 }
 
 function toggleSelfClaimItem(idx) {
-  if (!state.selfClaim.activeMemberId) {
-    showToast('Pilih nama kamu terlebih dahulu di bagian atas!', 'warning');
-    const chipContainer = document.getElementById('self-claim-member-chips');
-    if (chipContainer) chipContainer.scrollIntoView({ behavior: 'smooth' });
+  if (!state.selfClaim.activeMemberName || !state.selfClaim.activeMemberId) {
+    showToast('Ketik nama kamu terlebih dahulu!', 'warning');
+    openClaimNameModal();
     return;
   }
 
@@ -2614,9 +2619,8 @@ async function saveSelfClaim() {
   }
 
   if (!state.selfClaim.activeMemberId || !state.selfClaim.activeMemberName) {
-    showToast('Silakan pilih nama kamu terlebih dahulu di bagian atas!', 'warning');
-    const chipContainer = document.getElementById('self-claim-member-chips');
-    if (chipContainer) chipContainer.scrollIntoView({ behavior: 'smooth' });
+    showToast('Ketik nama kamu terlebih dahulu!', 'warning');
+    openClaimNameModal();
     return;
   }
 

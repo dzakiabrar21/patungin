@@ -279,31 +279,26 @@
           <!-- PANEL A: Klaim Pesanan Saya (Self-Claim Mode) -->
           <div id="panel-self-claim" class="collab-panel hidden">
             
-            <!-- Step A1: Siapa Nama Kamu? (Simple & Clean Look) -->
-            <div class="card card-padded claim-identity-card-simple">
-              <div class="claim-identity-simple-head">
-                <span class="claim-label-simple">Pilih nama kamu:</span>
-                <span class="claim-active-pill" id="self-claim-active-badge">Klaim sebagai: <strong id="self-claim-active-name">-</strong></span>
+            <!-- Step A1: Bar Identitas Klaim (Simpel, Tanpa List Nama Panjang) -->
+            <div class="self-claim-user-bar" id="self-claim-user-bar">
+              <div class="self-claim-user-left">
+                <span class="self-claim-avatar-circle" id="self-claim-avatar-circle">👤</span>
+                <div class="self-claim-user-text">
+                  <span class="self-claim-user-label">Klaim sebagai:</span>
+                  <strong class="self-claim-user-name" id="self-claim-active-name">(Belum isi nama)</strong>
+                </div>
               </div>
-
-              <!-- List of Member Chips to Select -->
-              <div class="self-claim-member-chips" id="self-claim-member-chips">
-                <!-- Injected via JS -->
-              </div>
-
-              <!-- Input for new name -->
-              <div class="self-claim-custom-name-box hidden" id="self-claim-custom-box">
-                <input type="text" id="input-self-claim-name" class="input-text-compact" placeholder="Ketik nama panggilanmu..." maxlength="20">
-                <button type="button" id="btn-self-claim-name-confirm" class="btn-primary-sm">Pilih</button>
-              </div>
+              <button type="button" class="btn-change-claim-name" id="btn-change-claim-name">
+                ✏️ Ganti Nama
+              </button>
             </div>
 
-            <!-- Step A2: Daftar Menu (Layout Sama Seperti Biasa) -->
+            <!-- Step A2: Daftar Menu (Layout Bersih) -->
             <div class="card card-padded claim-items-card">
               <div class="card-header-clean" style="margin-bottom: 0.65rem;">
                 <div>
                   <h4 class="card-title-clean">Pilih Menu Kamu</h4>
-                  <p class="card-desc-clean">Tap menu atau nama kamu untuk memilih pesanan</p>
+                  <p class="card-desc-clean">Tap menu makanan yang kamu pesan untuk memilih</p>
                 </div>
                 <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims">
                   🔄 Sync
@@ -578,6 +573,28 @@
   </div>
 
   <!-- MODALS -->
+
+  <!-- MODAL: Ketik Nama untuk Klaim Pesanan (Pop-up sebelum klaim) -->
+  <div id="modal-claim-name" class="modal-backdrop hidden">
+    <div class="modal-card modal-claim-name-card">
+      <div class="modal-claim-name-content">
+        <div class="modal-claim-avatar-circle">👋</div>
+        <h3 class="modal-title" style="margin: 0.5rem 0 0.25rem 0; text-align: center; font-size: 1.25rem;">Siapa Nama Kamu?</h3>
+        <p class="modal-desc" style="text-align: center; margin-bottom: 1.25rem; font-size: 0.85rem; color: #64748b;">
+          Ketik nama panggilanmu untuk memilih menu yang kamu pesan di tagihan ini.
+        </p>
+        
+        <form id="form-claim-name" onsubmit="event.preventDefault();">
+          <div class="form-group" style="margin-bottom: 1.15rem;">
+            <input type="text" id="input-claim-modal-name" class="input-text" placeholder="Ketik nama panggilanmu..." maxlength="25" autocomplete="name" required style="font-size: 1.1rem; text-align: center; font-weight: 700; padding: 0.85rem; border-radius: 12px;">
+          </div>
+          <button type="submit" id="btn-submit-claim-name-modal" class="btn-primary btn-block" style="padding: 0.85rem; font-size: 0.95rem; font-weight: 700; border-radius: 12px;">
+            Mulai Klaim Pesanan →
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL 1: Pilih Anggota yang Ikut Patungan -->
   <div id="modal-circle-settings" class="modal-backdrop hidden">

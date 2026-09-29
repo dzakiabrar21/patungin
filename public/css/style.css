@@ -2591,52 +2591,139 @@ html, body {
   font-weight: 600;
 }
 
-/* Member Chips in Self-Claim Mode */
-.self-claim-member-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.member-select-chip {
+/* Self Claim User Identity Bar (Clean & Minimal) */
+.self-claim-user-bar {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.65rem 0.95rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.self-claim-user-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.self-claim-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.self-claim-user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.self-claim-user-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.self-claim-user-name {
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.btn-change-claim-name {
   background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 9999px;
-  font-size: 0.82rem;
-  font-weight: 700;
+  border: 1px solid #cbd5e1;
   color: #334155;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-change-claim-name:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* Claim Check Box on Item Card */
+.assignment-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.claim-check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
-.member-select-chip:hover {
-  border-color: #cbd5e1;
-  background: #f1f5f9;
-}
-
-.member-select-chip.active {
-  background: #ecfdf5;
+.claim-check-box.checked {
+  background: #10b981;
   border-color: #10b981;
-  color: #065f46;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  color: #ffffff;
 }
 
-.member-select-chip.btn-add-chip {
-  border-style: dashed;
-  color: #0284c7;
-  border-color: #bae6fd;
-  background: #f0f9ff;
+.claim-check-mark {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.self-claim-custom-name-box {
+.btn-member-chip.my-claimed-badge {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Modal Ketik Nama Klaim */
+.modal-claim-name-card {
+  max-width: 380px;
+  border-radius: 20px;
+  padding: 1.5rem 1.25rem 1.25rem 1.25rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modal-claim-avatar-circle {
+  width: 52px;
+  height: 52px;
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
+  border-radius: 50%;
+  font-size: 1.6rem;
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.65rem;
   align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem auto;
 }
 
 /* Self Claim Cards (Using Regular Assignment Card Layout) */
