@@ -1669,6 +1669,42 @@ html, body {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
   }
+
+  /* Centered Dialog Modals on Mobile Viewports */
+  #modal-claim-name.modal-backdrop,
+  #modal-confirm-unclaimed.modal-backdrop {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.25rem !important;
+  }
+
+  #modal-claim-name .modal-card,
+  #modal-claim-name .modal-claim-name-card,
+  #modal-confirm-unclaimed .modal-card {
+    border-radius: 20px !important;
+    margin: auto !important;
+    width: 100% !important;
+    max-width: 360px !important;
+    max-height: 88vh !important;
+    animation: popModalCenter 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .collab-tab {
+    font-size: 0.82rem;
+    padding: 0.6rem 0.45rem;
+  }
+}
+
+@keyframes popModalCenter {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 360px) {
+  .collab-tab {
+    font-size: 0.76rem;
+    padding: 0.55rem 0.3rem;
+  }
 }
 
 /* ==========================================================================
@@ -2524,14 +2560,15 @@ html, body {
   white-space: nowrap;
 }
 
-/* Collaborative Mode Tabs */
+/* Collaborative Mode Tabs (Modern Sleek Segmented Switcher) */
 .collab-tabs-container {
   display: flex;
   background: #f1f5f9;
-  padding: 0.3rem;
-  border-radius: 14px;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  margin-bottom: 1.15rem;
+  border: 1px solid #e2e8f0;
 }
 
 .collab-tab {
@@ -2539,26 +2576,30 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
   padding: 0.65rem 0.75rem;
   border: none;
   background: transparent;
-  border-radius: 10px;
-  font-size: 0.86rem;
-  font-weight: 700;
+  border-radius: 9px;
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  font-weight: 600;
   color: #64748b;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.collab-tab:hover:not(.active) {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .collab-tab.active {
   background: #ffffff;
   color: #0f172a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.collab-tab .tab-emoji {
-  font-size: 1.05rem;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* Simple & Clean Claim Identity */
@@ -2704,13 +2745,16 @@ html, body {
   pointer-events: none;
 }
 
-/* Modal Ketik Nama Klaim */
+/* Modal Ketik Nama Klaim (Always Centered) */
 .modal-claim-name-card {
-  max-width: 380px;
-  border-radius: 20px;
-  padding: 1.5rem 1.25rem 1.25rem 1.25rem;
+  max-width: 360px;
+  width: 90%;
+  margin: auto;
+  border-radius: 20px !important;
+  padding: 1.6rem 1.35rem 1.4rem 1.35rem;
   text-align: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
 
 .modal-claim-avatar-circle {

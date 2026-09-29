@@ -661,10 +661,15 @@ function setupEventListeners() {
     formClaimName.addEventListener('submit', handleClaimNameSubmit);
   }
 
+  const btnCloseClaimName = document.getElementById('btn-close-claim-name-modal');
+  if (btnCloseClaimName) {
+    btnCloseClaimName.addEventListener('click', closeClaimNameModal);
+  }
+
   const modalClaimName = document.getElementById('modal-claim-name');
   if (modalClaimName) {
     modalClaimName.addEventListener('click', (e) => {
-      if (e.target === modalClaimName && state.selfClaim.activeMemberName) {
+      if (e.target === modalClaimName) {
         closeClaimNameModal();
       }
     });
@@ -1426,12 +1431,8 @@ function calculateAndRenderFinal() {
     row.className = 'final-member-row' + (b.net > 0 ? ' is-payer' : '');
 
     let statusText = '';
-    if (b.net > 0) {
-      statusText = `<span style="color: #059669; font-weight: 800;">(Surplus: +Rp ${formatRupiah(b.net)})</span>`;
-    } else if (b.net < 0) {
+    if (b.net < 0) {
       statusText = `<span style="color: #dc2626; font-weight: 700;">(Transfer: Rp ${formatRupiah(-b.net)})</span>`;
-    } else {
-      statusText = `<span style="color: #64748b;">(Pas)</span>`;
     }
 
     row.innerHTML = `
@@ -1439,7 +1440,7 @@ function calculateAndRenderFinal() {
         <div class="avatar-initial-badge">${escapeHtml(s.member.initial)}</div>
         <div>
           <span class="final-row-name">${escapeHtml(b.name)}</span>
-          <div class="final-row-sub">Porsi: Rp ${formatRupiah(b.consumed)} ${statusText}</div>
+          <div class="final-row-sub">Porsi: Rp ${formatRupiah(b.consumed)}${statusText ? ' ' + statusText : ''}</div>
         </div>
       </div>
       <div style="text-align: right;">

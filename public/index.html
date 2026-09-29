@@ -255,12 +255,10 @@
           <!-- Collaborative Mode Segmented Switcher (Visible in Session Mode) -->
           <div id="collab-tabs-container" class="collab-tabs-container hidden">
             <button type="button" class="collab-tab active" id="tab-self-claim">
-              <span class="tab-emoji">🙋</span>
-              <span class="tab-label">Klaim Pesanan Saya</span>
+              <span>Klaim Pesanan Saya</span>
             </button>
             <button type="button" class="collab-tab" id="tab-host-manage">
-              <span class="tab-emoji">⚙️</span>
-              <span class="tab-label">Atur Semua (Host)</span>
+              <span>Atur Semua</span>
             </button>
           </div>
 
@@ -303,7 +301,7 @@
             <div class="self-claim-action-bar" id="self-claim-summary-card">
               <div class="self-claim-count-info">
                 <span class="self-claim-count-text" id="self-claim-summary-items">0 menu dipilih</span>
-                <span class="self-claim-helper-text">Pilihanmu otomatis diteruskan ke Host</span>
+                <span class="self-claim-helper-text">Pilihanmu otomatis tersimpan</span>
               </div>
               <button type="button" class="btn-primary btn-claim-submit" id="btn-submit-self-claim">
                 <span id="btn-submit-claim-text">💾 Simpan Pesanan Saya</span>
@@ -332,7 +330,7 @@
             <!-- Switch to Host view prompt -->
             <div class="switch-to-host-hint">
               <span>Mau atur pesanan teman lain atau lihat rekap?</span>
-              <button type="button" id="btn-switch-to-host-link" class="btn-link-action">Buka Mode Pengaturan (Host) →</button>
+              <button type="button" id="btn-switch-to-host-link" class="btn-link-action">Buka Mode Pengaturan →</button>
             </div>
 
           </div>
@@ -340,15 +338,10 @@
           <!-- PANEL B: Atur Semua (Host Mode & Manual Assignment) -->
           <div id="panel-host-manage" class="collab-panel">
 
-            <div class="step-guide-banner" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
-              <div>
-                <span class="step-badge-mini">Langkah 3 dari 4</span>
-                <h3 class="step-guide-title">Atur Pesanan & Bagi Tagihan</h3>
-                <p class="step-guide-desc">Pantau pesanan yang sudah diklaim dan tentukan menu yang belum dipilih.</p>
-              </div>
-              <button type="button" class="btn-link-action btn-xs" id="btn-sync-host" style="background: #ffffff; color: #047857; border: 1px solid #a7f3d0; padding: 0.35rem 0.65rem; border-radius: 8px; font-weight: 700; white-space: nowrap; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
-                🔄 Sync
-              </button>
+            <div class="step-guide-banner">
+              <span class="step-badge-mini">Langkah 3 dari 4</span>
+              <h3 class="step-guide-title">Atur Pesanan & Bagi Tagihan</h3>
+              <p class="step-guide-desc">Pantau pesanan yang sudah diklaim dan tentukan menu yang belum dipilih.</p>
             </div>
 
             <!-- CARD 1: Siapa Saja yang Ikut Patungan? -->
@@ -555,7 +548,8 @@
 
   <!-- MODAL: Ketik Nama untuk Klaim Pesanan (Pop-up sebelum klaim) -->
   <div id="modal-claim-name" class="modal-backdrop hidden">
-    <div class="modal-card modal-claim-name-card">
+    <div class="modal-card modal-claim-name-card" style="position: relative;">
+      <button type="button" class="btn-close-modal" id="btn-close-claim-name-modal" aria-label="Tutup" style="position: absolute; top: 12px; right: 14px; font-size: 1.15rem; color: #94a3b8; cursor: pointer; border: none; background: transparent; padding: 4px 8px;">✕</button>
       <div class="modal-claim-name-content">
         <div class="modal-claim-avatar-circle">👋</div>
         <h3 class="modal-title" style="margin: 0.5rem 0 0.25rem 0; text-align: center; font-size: 1.25rem;">Siapa Nama Kamu?</h3>
