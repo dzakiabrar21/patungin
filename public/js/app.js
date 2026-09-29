@@ -819,10 +819,17 @@ function renderStep2Review() {
 function createReviewItemRow(item) {
   const row = document.createElement('div');
   row.className = 'receipt-row-item';
+
+  const unitPrice = (item.price && Number(item.price) > 0)
+    ? Number(item.price)
+    : Math.round(Number(item.total || 0) / Math.max(1, Number(item.qty || 1)));
+  const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
+
   row.innerHTML = `
     <div class="row-item-left">
       <span class="qty-badge">${item.qty}x</span>
       <span class="item-name-text">${escapeHtml(item.name)}</span>
+      ${unitPriceHtml}
     </div>
     <div class="row-item-right">
       <span>Rp ${formatRupiah(item.total)}</span>
@@ -1009,6 +1016,11 @@ function createAssignmentCard(item, active) {
   const card = document.createElement('div');
   card.className = 'assignment-card';
 
+  const unitPrice = (item.price && Number(item.price) > 0)
+    ? Number(item.price)
+    : Math.round(Number(item.total || 0) / Math.max(1, Number(item.qty || 1)));
+  const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
+
   const isAllClaimed = active.length > 0 && item.assignedTo.length === active.length;
   let splitNote = '';
   if (item.assignedTo.length > 1) {
@@ -1021,6 +1033,7 @@ function createAssignmentCard(item, active) {
       <div>
         <span class="qty-badge">${item.qty}x</span>
         <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
+        ${unitPriceHtml}
         ${splitNote}
       </div>
       <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
@@ -2461,7 +2474,7 @@ function renderSelfClaimMode() {
   itemsContainer.innerHTML = '';
   if (!state.receipt.items || state.receipt.items.length === 0) {
     itemsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 1.5rem;">Tidak ada menu dalam tagihan ini.</div>';
-    updateSelfClaimLiveEstimate();
+    updateSelfClaimCount();
     return;
   }
 
@@ -2476,6 +2489,11 @@ function renderSelfClaimMode() {
       .filter(id => id !== state.selfClaim.activeMemberId)
       .map(id => memberMap.get(id) || 'Teman');
 
+    const unitPrice = (item.price && Number(item.price) > 0)
+      ? Number(item.price)
+      : Math.round(Number(item.total || 0) / Math.max(1, Number(item.qty || 1)));
+    const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
+
     const card = document.createElement('div');
     card.className = 'assignment-card' + (isMine ? ' my-claimed-card' : '');
     card.style.cursor = 'pointer';
@@ -2485,6 +2503,7 @@ function renderSelfClaimMode() {
         <div>
           <span class="qty-badge">${item.qty}x</span>
           <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
+          ${unitPriceHtml}
         </div>
         <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
       </div>
@@ -2538,7 +2557,7 @@ function renderSelfClaimMode() {
     itemsContainer.appendChild(card);
   });
 
-  updateSelfClaimLiveEstimate();
+  updateSelfClaimCount();
 }
 
 function toggleSelfClaimItem(idx) {
@@ -2572,44 +2591,20 @@ function toggleSelfClaimItem(idx) {
   renderSelfClaimMode();
 }
 
-function updateSelfClaimLiveEstimate() {
-  const amountEl = document.getElementById('self-claim-summary-amount');
+function updateSelfClaimCount() {
   const itemsCountEl = document.getElementById('self-claim-summary-items');
-  if (!amountEl) return;
+  if (!itemsCountEl) return;
 
   const count = state.selfClaim.selectedIndices.size;
   if (count === 0) {
-    amountEl.textContent = 'Rp 0';
-    if (itemsCountEl) itemsCountEl.textContent = '0 menu dipilih';
-    return;
+    itemsCountEl.textContent = '0 menu dipilih';
+  } else {
+    itemsCountEl.textContent = `${count} menu dipilih`;
   }
+}
 
-  // Calculate personal subtotal
-  let personalSubtotal = 0;
-  let totalReceiptItemsSubtotal = 0;
-
-  state.receipt.items.forEach((it, idx) => {
-    const itemTotal = Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0));
-    totalReceiptItemsSubtotal += itemTotal;
-
-    if (state.selfClaim.selectedIndices.has(idx)) {
-      const assignedCount = Math.max(1, (it.assignedTo || []).length || 1);
-      personalSubtotal += (itemTotal / assignedCount);
-    }
-  });
-
-  const tax = Number(state.receipt.tax) || 0;
-  const service = Number(state.receipt.service) || 0;
-  const discount = Number(state.receipt.discount) || 0;
-
-  const ratio = totalReceiptItemsSubtotal > 0 ? (personalSubtotal / totalReceiptItemsSubtotal) : 0;
-  const personalTax = Math.round(tax * ratio);
-  const personalService = Math.round(service * ratio);
-  const personalDiscount = Math.round(discount * ratio);
-  const personalGrandTotal = Math.max(0, Math.round(personalSubtotal + personalTax + personalService - personalDiscount));
-
-  amountEl.textContent = `Rp ${formatRupiah(personalGrandTotal)}`;
-  if (itemsCountEl) itemsCountEl.textContent = `${count} menu dipilih (termasuk pajak & service)`;
+function updateSelfClaimLiveEstimate() {
+  updateSelfClaimCount();
 }
 
 async function saveSelfClaim() {
@@ -2675,75 +2670,54 @@ async function saveSelfClaim() {
 function renderClaimSuccessCard() {
   const card = document.getElementById('claim-success-card');
   const breakdownBox = document.getElementById('claim-my-breakdown');
-  const successDesc = document.getElementById('claim-success-text');
+  const memberText = document.getElementById('claim-success-member-text');
 
   if (!card) return;
 
-  if (successDesc) {
-    successDesc.textContent = `Porsi untuk ${state.selfClaim.activeMemberName} berhasil dicatat.`;
+  if (memberText) {
+    memberText.textContent = `Tercatat untuk: ${state.selfClaim.activeMemberName || 'Saya'}`;
   }
 
   if (breakdownBox) {
     breakdownBox.innerHTML = '';
-    let personalSubtotal = 0;
-    let totalItemsSubtotal = 0;
 
+    const selectedItems = [];
     state.receipt.items.forEach((it, idx) => {
-      const itemTotal = Number(it.total) || (Number(it.qty || 1) * Number(it.price || 0));
-      totalItemsSubtotal += itemTotal;
-
       if (state.selfClaim.selectedIndices.has(idx)) {
-        const assignedCount = Math.max(1, (it.assignedTo || []).length || 1);
-        const portion = itemTotal / assignedCount;
-        personalSubtotal += portion;
-
-        const line = document.createElement('div');
-        line.className = 'claim-breakdown-line';
-        line.innerHTML = `
-          <span>${it.qty}x ${escapeHtml(it.name)}${assignedCount > 1 ? ' (Barengan)' : ''}</span>
-          <strong>Rp ${formatRupiah(Math.round(portion))}</strong>
-        `;
-        breakdownBox.appendChild(line);
+        selectedItems.push(it);
       }
     });
 
-    const tax = Number(state.receipt.tax) || 0;
-    const service = Number(state.receipt.service) || 0;
-    const discount = Number(state.receipt.discount) || 0;
-    const ratio = totalItemsSubtotal > 0 ? (personalSubtotal / totalItemsSubtotal) : 0;
-    const pTax = Math.round(tax * ratio);
-    const pService = Math.round(service * ratio);
-    const pDiscount = Math.round(discount * ratio);
-    const grandTotal = Math.max(0, Math.round(personalSubtotal + pTax + pService - pDiscount));
+    if (selectedItems.length === 0) {
+      breakdownBox.innerHTML = `
+        <div style="text-align: center; color: #64748b; font-size: 0.82rem; padding: 0.5rem 0;">
+          Kamu belum memilih menu apapun.
+        </div>
+      `;
+    } else {
+      const header = document.createElement('div');
+      header.className = 'claim-saved-header';
+      header.innerHTML = `<span>Daftar Menu Kamu:</span><span class="saved-count-pill">${selectedItems.length} menu</span>`;
+      breakdownBox.appendChild(header);
 
-    if (pTax > 0) {
-      const line = document.createElement('div');
-      line.className = 'claim-breakdown-line';
-      line.innerHTML = `<span>Pajak (PB1)</span><strong>Rp ${formatRupiah(pTax)}</strong>`;
-      breakdownBox.appendChild(line);
+      selectedItems.forEach(it => {
+        const unitPrice = (it.price && Number(it.price) > 0)
+          ? Number(it.price)
+          : Math.round(Number(it.total || 0) / Math.max(1, Number(it.qty || 1)));
+
+        const row = document.createElement('div');
+        row.className = 'claim-saved-item-row';
+        row.innerHTML = `
+          <div class="claim-saved-item-left">
+            <span class="saved-check">✓</span>
+            <span class="qty-badge-mini">${it.qty}x</span>
+            <span class="saved-item-name">${escapeHtml(it.name)}</span>
+          </div>
+          ${it.qty > 1 ? `<span class="unit-price-pill">@ Rp ${formatRupiah(unitPrice)}</span>` : ''}
+        `;
+        breakdownBox.appendChild(row);
+      });
     }
-
-    if (pService > 0) {
-      const line = document.createElement('div');
-      line.className = 'claim-breakdown-line';
-      line.innerHTML = `<span>Service Charge</span><strong>Rp ${formatRupiah(pService)}</strong>`;
-      breakdownBox.appendChild(line);
-    }
-
-    if (pDiscount > 0) {
-      const line = document.createElement('div');
-      line.className = 'claim-breakdown-line';
-      line.innerHTML = `<span>Diskon Promo</span><strong style="color: #ef4444;">-Rp ${formatRupiah(pDiscount)}</strong>`;
-      breakdownBox.appendChild(line);
-    }
-
-    const totalLine = document.createElement('div');
-    totalLine.className = 'claim-breakdown-line total-line';
-    totalLine.innerHTML = `
-      <span>Total Bayar Kamu</span>
-      <strong style="color: #00aa13; font-size: 1.05rem;">Rp ${formatRupiah(grandTotal)}</strong>
-    `;
-    breakdownBox.appendChild(totalLine);
   }
 
   card.classList.remove('hidden');

@@ -316,35 +316,38 @@
               </div>
             </div>
 
-            <!-- Step A3: Sticky Live Summary & Submit Button -->
-            <div class="self-claim-summary-card" id="self-claim-summary-card">
-              <div class="self-claim-summary-info">
-                <span class="self-claim-summary-title">Estimasi Porsi Kamu</span>
-                <strong class="self-claim-summary-amount" id="self-claim-summary-amount">Rp 0</strong>
-                <span class="self-claim-summary-items" id="self-claim-summary-items">0 menu dipilih (termasuk pajak/service)</span>
+            <!-- Step A3: Submit Button Bar (Simpel, Tanpa Total Rupiah) -->
+            <div class="self-claim-action-bar" id="self-claim-summary-card">
+              <div class="self-claim-count-info">
+                <span class="self-claim-count-text" id="self-claim-summary-items">0 menu dipilih</span>
+                <span class="self-claim-helper-text">Pilihanmu otomatis diteruskan ke Host</span>
               </div>
-              <button type="button" class="btn-primary" id="btn-submit-self-claim">
+              <button type="button" class="btn-primary btn-claim-submit" id="btn-submit-self-claim">
                 <span id="btn-submit-claim-text">💾 Simpan Pesanan Saya</span>
               </button>
             </div>
 
-            <!-- Post-Claim Confirmation (Tanpa Bagian Rekening Transfer) -->
+            <!-- Post-Claim Confirmation (Daftar Menu Tersimpan, Tanpa Total Rupiah) -->
             <div class="card card-padded claim-success-card hidden" id="claim-success-card">
               <div class="claim-success-header">
-                <div class="success-icon-badge" style="width: 32px; height: 32px; font-size: 1.1rem;">✓</div>
+                <div class="success-icon-badge" style="width: 36px; height: 36px; font-size: 1.2rem; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800;">✓</div>
                 <div>
-                  <h4 class="card-title-clean" style="color: #047857;">Pesanan Kamu Tersimpan!</h4>
-                  <p class="card-desc-clean">Porsi tagihan kamu sudah tercatat di sistem</p>
+                  <h4 class="card-title-clean" style="color: #047857; margin-bottom: 0.15rem;">Pesanan Berhasil Disimpan!</h4>
+                  <p class="card-desc-clean" id="claim-success-member-text">Tercatat untuk pilihan kamu</p>
                 </div>
               </div>
 
               <div class="claim-breakdown-box" id="claim-my-breakdown">
-                <!-- Injected with my items & subtotal -->
+                <!-- Injected via JS: Daftar menu yang dipilih (tanpa total rupiah) -->
               </div>
 
-              <p style="font-size: 0.76rem; color: #64748b; text-align: center; margin: 0.25rem 0 0.75rem 0;">
-                📲 Rincian & nomor rekening pembayaran akan dikirim ke grup WhatsApp setelah semua selesai.
-              </p>
+              <div class="claim-host-notice-box">
+                <div class="notice-icon-circle">💬</div>
+                <div class="notice-text-content">
+                  <strong>Pilihan sudah masuk ke Host</strong>
+                  <p>Host akan memeriksa seluruh pesanan dan membagikan rincian final beserta nomor rekening pembayaran langsung ke grup WhatsApp.</p>
+                </div>
+              </div>
 
               <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim">
                 ✏️ Ubah Pesanan Saya
