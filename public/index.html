@@ -252,18 +252,6 @@
         <!-- STEP 3: Pilih Siapa yang Ikut & Bagi Pesanan -->
         <section id="step-3-view" class="step-view hidden">
           
-          <!-- WhatsApp / Web Collaborative Session Banner -->
-          <div id="group-session-banner" class="group-session-banner hidden">
-            <div class="group-session-left">
-              <span class="group-session-icon">👥</span>
-              <div>
-                <span class="group-session-title" id="group-session-title">Sesi Grup WhatsApp</span>
-                <span class="group-session-sub" id="group-session-sub">Semua anggota di grup dapat klaim pesanan masing-masing</span>
-              </div>
-            </div>
-            <div class="group-session-badge" id="group-session-sync-status">🟢 Live Sync</div>
-          </div>
-
           <!-- Collaborative Mode Segmented Switcher (Visible in Session Mode) -->
           <div id="collab-tabs-container" class="collab-tabs-container hidden">
             <button type="button" class="collab-tab active" id="tab-self-claim">
@@ -336,14 +324,6 @@
                 <!-- Injected via JS: Daftar menu yang dipilih (tanpa total rupiah) -->
               </div>
 
-              <div class="claim-host-notice-box">
-                <div class="notice-icon-circle">💬</div>
-                <div class="notice-text-content">
-                  <strong>Pilihan sudah masuk ke Host</strong>
-                  <p>Host akan memeriksa seluruh pesanan dan membagikan rincian final beserta nomor rekening pembayaran langsung ke grup WhatsApp.</p>
-                </div>
-              </div>
-
               <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim">
                 ✏️ Ubah Pesanan Saya
               </button>
@@ -360,20 +340,14 @@
           <!-- PANEL B: Atur Semua (Host Mode & Manual Assignment) -->
           <div id="panel-host-manage" class="collab-panel">
 
-            <div class="step-guide-banner">
-              <span class="step-badge-mini">Langkah 3 dari 4</span>
-              <h3 class="step-guide-title">Atur Pesanan & Bagi Tagihan</h3>
-              <p class="step-guide-desc">Pantau pesanan yang sudah diklaim dan tentukan menu yang belum dipilih.</p>
-            </div>
-
-            <!-- Quick Share Session Link Bar -->
-            <div class="share-session-quickbar" id="share-session-quickbar">
-              <div class="share-quickbar-info">
-                <span class="share-quickbar-title">🔗 Ajak Teman Klaim Sendiri</span>
-                <span class="share-quickbar-desc">Bagikan link ke grup agar mereka bisa pilih makanannya</span>
+            <div class="step-guide-banner" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
+              <div>
+                <span class="step-badge-mini">Langkah 3 dari 4</span>
+                <h3 class="step-guide-title">Atur Pesanan & Bagi Tagihan</h3>
+                <p class="step-guide-desc">Pantau pesanan yang sudah diklaim dan tentukan menu yang belum dipilih.</p>
               </div>
-              <button type="button" class="btn-outline-sm" id="btn-copy-session-link">
-                <span id="btn-copy-link-text">Salin Link</span>
+              <button type="button" class="btn-link-action btn-xs" id="btn-sync-host" style="background: #ffffff; color: #047857; border: 1px solid #a7f3d0; padding: 0.35rem 0.65rem; border-radius: 8px; font-weight: 700; white-space: nowrap; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+                🔄 Sync
               </button>
             </div>
 
@@ -441,8 +415,13 @@
                   <h4 class="card-title-clean">2. Tentukan Pesanan Masing-Masing</h4>
                   <p class="card-desc-clean">Menu yang sudah diklaim otomatis terisi nama teman</p>
                 </div>
-                <div id="unclaimed-warning-pill" class="badge-warning hidden">
-                  Ada menu belum dipilih
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <button type="button" class="btn-link-action btn-xs" id="btn-sync-host-items" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 0.25rem 0.6rem; border-radius: 8px; font-weight: 700;">
+                    🔄 Sync
+                  </button>
+                  <div id="unclaimed-warning-pill" class="badge-warning hidden">
+                    Ada menu belum dipilih
+                  </div>
                 </div>
               </div>
 

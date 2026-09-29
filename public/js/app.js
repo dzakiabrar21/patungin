@@ -625,6 +625,12 @@ function setupEventListeners() {
   const btnRefreshClaims = document.getElementById('btn-refresh-claims');
   if (btnRefreshClaims) btnRefreshClaims.addEventListener('click', () => pollSessionNow(true));
 
+  const btnSyncHost = document.getElementById('btn-sync-host');
+  if (btnSyncHost) btnSyncHost.addEventListener('click', () => pollSessionNow(true));
+
+  const btnSyncHostItems = document.getElementById('btn-sync-host-items');
+  if (btnSyncHostItems) btnSyncHostItems.addEventListener('click', () => pollSessionNow(true));
+
   const btnChangeMember = document.getElementById('btn-change-self-member');
   if (btnChangeMember) btnChangeMember.addEventListener('click', () => {
     state.selfClaim.activeMemberId = null;
@@ -725,13 +731,8 @@ function loadPresetAndProceed(presetId) {
   const active = getActiveParticipants();
   const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
 
-  data.items.forEach((item, idx) => {
-    const n = item.name.toLowerCase();
-    if (n.includes('shared') || n.includes('platter') || n.includes('nasi') || n.includes('pitcher')) {
-      item.assignedTo = [...activeIds];
-    } else {
-      item.assignedTo = [activeIds[idx % activeIds.length]];
-    }
+  data.items.forEach(item => {
+    item.assignedTo = [];
   });
 
   state.receipt = data;
@@ -1022,6 +1023,8 @@ function createAssignmentCard(item, active) {
   if (item.assignedTo.length > 1) {
     const perPerson = Math.round(item.total / item.assignedTo.length);
     splitNote = `<span class="split-portion-note">(@ Rp ${formatRupiah(perPerson)} / org)</span>`;
+  } else if (item.assignedTo.length === 0) {
+    splitNote = `<span class="unclaimed-status-pill">Belum diklaim</span>`;
   }
 
   card.innerHTML = `
@@ -1636,7 +1639,7 @@ function saveCustomItem() {
     price: Math.round(price / qty),
     total: price,
     sourceStore: targetStore,
-    assignedTo: [activeIds[0] || 'm1']
+    assignedTo: []
   };
 
   state.receipt.items.push(newItem);
@@ -2170,8 +2173,8 @@ async function executeReceiptScan() {
       const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
 
       if (Array.isArray(r.items)) {
-        r.items.forEach((item, idx) => {
-          item.assignedTo = [activeIds[idx % activeIds.length]];
+        r.items.forEach(item => {
+          item.assignedTo = [];
         });
       }
 
@@ -2736,9 +2739,17 @@ function startSessionPolling() {
 }
 
 async function pollSessionNow(showToastOnSuccess = false) {
-  if (!state.activeSession || !state.activeSession.id) return;
+  if (!state.activeSession || !state.activeSession.id) {
+    const billId = new URLSearchParams(window.location.search).get('bill');
+    if (billId) {
+      state.activeSession = { id: billId };
+    } else {
+      if (showToastOnSuccess) showToast('Belum ada sesi tagihan aktif.', 'warning');
+      return;
+    }
+  }
   if (state.isSavingClaim) return;
-  if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+  if (!showToastOnSuccess && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
     return;
   }
 
@@ -2756,16 +2767,22 @@ async function pollSessionNow(showToastOnSuccess = false) {
 
         if (state.activeCollabTab === 'self-claim') {
           renderSelfClaimMode();
-        } else if (state.currentStep === 3) {
+        } else {
           renderStep3();
         }
 
         if (showToastOnSuccess) {
-          showToast('Status klaim menu tersinkronisasi! 🔄', 'info');
+          showToast('Status klaim menu berhasil diperbarui! 🔄', 'success');
         }
       }
+    } else if (showToastOnSuccess) {
+      showToast(data.error || 'Gagal memuat status klaim terbaru.', 'error');
     }
-  } catch (_) {}
+  } catch (_) {
+    if (showToastOnSuccess) {
+      showToast('Gagal terhubung ke server untuk sinkronisasi.', 'error');
+    }
+  }
 }
 
 async function copyOrShareSessionLink() {
