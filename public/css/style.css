@@ -3065,4 +3065,468 @@ body.dark-mode .unclaimed-status-pill {
   background: rgba(217, 119, 6, 0.25);
 }
 
+/* ==========================================================================
+   Receipt Upload Step — Figma-matched presentation
+   ========================================================================== */
+.app-shell:has(#step-1-view.active) {
+  --upload-bg: #f8fafc;
+  --upload-surface: #ffffff;
+  --upload-ink: #1e293b;
+  --upload-body: #334155;
+  --upload-muted: #94a3b8;
+  --upload-faint: #cad5e2;
+  --upload-cyan: #00aed6;
+  --upload-cyan-deep: #0090b3;
+  --upload-idle: #f1f5f9;
+  --upload-border: #e2e8f0;
+  --upload-tip-bg: #fffbeb;
+  --upload-tip-border: #fef3c6;
+  --upload-tip-text: #bb4d00;
+  --upload-tip-accent: #ffb900;
+  --upload-hero-tag: #a4f4cf;
+  --upload-header-line: #f1f5f9;
+  --upload-radius: 16px;
+
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--upload-bg);
+}
+
+.app-shell:has(#step-1-view.active) .app-header {
+  height: 146px;
+  flex: 0 0 146px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--upload-header-line);
+  box-shadow: none;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.app-shell:has(#step-1-view.active) .header-inner {
+  position: relative;
+  min-height: 70px;
+  height: 70px;
+  padding: 0 18px;
+  justify-content: center;
+}
+
+.app-shell:has(#step-1-view.active) .header-left {
+  position: static;
+  width: 100%;
+  flex: none;
+  justify-content: center;
+}
+
+.app-shell:has(#step-1-view.active) .header-title-box {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 112px);
+  flex: none;
+  align-items: center;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.app-shell:has(#step-1-view.active) .header-title {
+  color: var(--upload-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 19px;
+  letter-spacing: -0.01em;
+}
+
+.app-shell:has(#step-1-view.active) .header-subtitle {
+  margin-top: 1px;
+  color: var(--upload-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.app-shell:has(#step-1-view.active) .header-right {
+  position: absolute;
+  top: 21px;
+  right: 18px;
+}
+
+.app-shell:has(#step-1-view.active) .btn-hamburger {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--upload-idle);
+  color: var(--upload-body);
+}
+
+.app-shell:has(#step-1-view.active) .btn-hamburger img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.app-shell:has(#step-1-view.active) .stepper-bar {
+  height: 76px;
+  padding: 17px 24px 0;
+  align-items: flex-start;
+  background: var(--upload-surface);
+}
+
+.app-shell:has(#step-1-view.active) .stepper-step {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 1;
+}
+
+.app-shell:has(#step-1-view.active) .step-num {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: var(--upload-idle);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-1-view.active) .stepper-step.active .step-num {
+  background: var(--upload-cyan);
+  color: var(--upload-surface);
+  box-shadow: 0 4px 12px rgba(0, 174, 214, 0.24);
+}
+
+.app-shell:has(#step-1-view.active) .step-text {
+  color: var(--upload-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+}
+
+.app-shell:has(#step-1-view.active) .stepper-step.active .step-text {
+  color: var(--upload-cyan);
+}
+
+.app-shell:has(#step-1-view.active) .stepper-line {
+  height: 2px;
+  margin: 13px 4px 0;
+  background: var(--upload-border);
+}
+
+.app-shell:has(#step-1-view.active) .main-content {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  padding: 20px 16px 0;
+  background: var(--upload-bg);
+}
+
+.app-shell:has(#step-1-view.active) .content-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 398px;
+  margin: 0 auto;
+}
+
+.app-shell:has(#step-1-view.active) #step-1-view {
+  position: relative;
+  flex: 1;
+  gap: 16px;
+}
+
+.app-shell:has(#step-1-view.active) .hero-card {
+  position: relative;
+  min-height: 158px;
+  padding: 20px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--upload-radius);
+  background: linear-gradient(118deg, #00aed6 0%, #0097bd 100%);
+  box-shadow: none;
+  color: var(--upload-surface);
+}
+
+.app-shell:has(#step-1-view.active) .hero-card::before,
+.app-shell:has(#step-1-view.active) .hero-card::after {
+  position: absolute;
+  content: "";
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.app-shell:has(#step-1-view.active) .hero-card::before {
+  top: -4px;
+  right: -16px;
+  width: 104px;
+  height: 104px;
+}
+
+.app-shell:has(#step-1-view.active) .hero-card::after {
+  right: -1px;
+  bottom: 8px;
+  width: 56px;
+  height: 56px;
+}
+
+.app-shell:has(#step-1-view.active) .hero-tag {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin: 0 0 4px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--upload-hero-tag);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.55px;
+  line-height: 17px;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-1-view.active) .hero-heading {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px;
+  color: var(--upload-surface);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 25px;
+  letter-spacing: -0.02em;
+}
+
+.app-shell:has(#step-1-view.active) .hero-desc {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  color: #b3edf8;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 19.5px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card {
+  min-height: clamp(250px, 32dvh, 306px);
+  padding: 24px 16px;
+  justify-content: center;
+  border: 2px dashed var(--upload-border);
+  border-radius: var(--upload-radius);
+  background: var(--upload-surface);
+  box-shadow: none;
+  text-align: center;
+}
+
+.app-shell:has(#step-1-view.active) .action-card:hover,
+.app-shell:has(#step-1-view.active) .action-card.dragover {
+  border-color: var(--upload-cyan);
+  background: var(--upload-surface);
+}
+
+.app-shell:has(#step-1-view.active) .upload-dropzone-content {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.app-shell:has(#step-1-view.active) .upload-camera-tile {
+  display: flex;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--upload-idle);
+}
+
+.app-shell:has(#step-1-view.active) .upload-camera-tile img {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card-title {
+  color: var(--upload-body);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 23px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card-desc {
+  margin-top: 1px;
+  color: var(--upload-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-file-limit {
+  display: block;
+  margin-top: 2px;
+  color: var(--upload-faint);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card-right {
+  position: relative;
+  z-index: 15;
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file {
+  min-height: 41px;
+  padding: 0 24px;
+  border-radius: 12px;
+  background: var(--upload-cyan);
+  color: var(--upload-surface);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file:hover {
+  background: var(--upload-cyan-deep);
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file:active {
+  transform: scale(0.98);
+}
+
+.app-shell:has(#step-1-view.active) #receipts-preview-card {
+  padding: 16px;
+  border: 1px solid var(--upload-border);
+  border-radius: var(--upload-radius);
+  background: var(--upload-surface);
+  box-shadow: none;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip {
+  display: flex;
+  min-height: 65px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--upload-tip-border);
+  border-radius: 12px;
+  background: var(--upload-tip-bg);
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip-icon {
+  flex: 0 0 auto;
+  color: var(--upload-tip-accent);
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip p {
+  color: var(--upload-tip-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 19.5px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip strong {
+  font-weight: 700;
+}
+
+.app-shell:has(#step-1-view.active) .upload-scan-footer {
+  position: sticky;
+  z-index: 30;
+  bottom: 0;
+  display: flex;
+  min-height: 74px;
+  flex: 0 0 74px;
+  align-items: center;
+  margin: auto -16px 0;
+  padding: 8px 16px 7px;
+  border-top: 1px solid var(--upload-header-line);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.app-shell:has(#step-1-view.active) .upload-scan-button {
+  min-height: 51px;
+  border-radius: 12px;
+  background: var(--upload-idle);
+  color: var(--upload-muted);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.app-shell:has(#step-1-view.active) .upload-scan-button > img {
+  display: block;
+  width: 6px;
+  height: 10px;
+  transition: filter 180ms ease;
+}
+
+.app-shell:has(#step-1-view.active) #step-1-view:has(#receipts-preview-card:not(.hidden)) .upload-scan-button {
+  background: var(--upload-cyan);
+  color: var(--upload-surface);
+}
+
+.app-shell:has(#step-1-view.active) #step-1-view:has(#receipts-preview-card:not(.hidden)) .upload-scan-button > img {
+  display: none;
+}
+
+.app-shell:has(#step-1-view.active) .upload-scan-button:focus-visible,
+.app-shell:has(#step-1-view.active) #btn-browse-file:focus-visible {
+  outline: 3px solid rgba(0, 174, 214, 0.32);
+  outline-offset: 3px;
+}
+
+.app-shell:has(#step-1-view.active) .loading-overlay {
+  border-radius: var(--upload-radius);
+}
+
+@media (max-width: 360px) {
+  .app-shell:has(#step-1-view.active) .stepper-bar {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .app-shell:has(#step-1-view.active) .stepper-line {
+    margin-right: 2px;
+    margin-left: 2px;
+  }
+
+  .app-shell:has(#step-1-view.active) .main-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-shell:has(#step-1-view.active) .upload-scan-footer {
+    margin-right: -12px;
+    margin-left: -12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+@media (max-height: 760px) {
+  .app-shell:has(#step-1-view.active) .upload-scan-footer {
+    position: static;
+    flex: 0 0 auto;
+    margin: 16px -16px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell:has(#step-1-view.active) #btn-browse-file {
+    transition: none;
+  }
+}
+
 

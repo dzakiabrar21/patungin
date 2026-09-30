@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/workflow-redesign.css">
 </head>
 <body>
 
@@ -40,22 +41,16 @@
       <div class="header-inner">
         <div class="header-left">
           <button id="btn-header-back" class="btn-back hidden" title="Kembali" aria-label="Kembali">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
+            <img src="assets/workflow-back.svg" alt="" aria-hidden="true" width="18" height="18">
           </button>
           <div class="header-title-box">
-            <h1 class="header-title" id="page-title">PatungIn</h1>
-            <span class="header-subtitle" id="page-subtitle">Smart Split Bill</span>
+            <h1 class="header-title" id="page-title">Upload Struk</h1>
+            <span class="header-subtitle" id="page-subtitle">Foto struk restoran kamu</span>
           </div>
         </div>
         <div class="header-right">
           <button id="btn-header-menu" class="btn-hamburger" title="Menu Opsi" aria-label="Menu Opsi" aria-expanded="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="4" y1="7" x2="20" y2="7"></line>
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-              <line x1="4" y1="17" x2="20" y2="17"></line>
-            </svg>
+            <img src="assets/upload-menu.svg" alt="" aria-hidden="true" width="20" height="20">
           </button>
         </div>
       </div>
@@ -66,10 +61,10 @@
         <button type="button" class="dropdown-menu-item" id="menu-item-circle" role="menuitem">
           <span class="dropdown-item-icon">👥</span>
           <div class="dropdown-item-info">
-            <span class="dropdown-item-title">Anggota Patungan</span>
-            <span class="dropdown-item-desc"><span id="dropdown-member-count">6</span> orang aktif</span>
+            <span class="dropdown-item-title">Anggota</span>
+            <span class="dropdown-item-desc"><span id="dropdown-member-count">2</span> orang aktif</span>
           </div>
-          <span class="dropdown-item-badge" id="dropdown-member-badge">6</span>
+          <span class="dropdown-item-badge" id="dropdown-member-badge">2</span>
         </button>
         <button type="button" class="dropdown-menu-item" id="menu-item-payment" role="menuitem">
           <span class="dropdown-item-icon">💳</span>
@@ -116,68 +111,64 @@
     <main class="main-content">
       <div class="content-container">
 
-                        <!-- STEP 1: Upload Struk (Clean, Simple, User-Friendly) -->
+                        <!-- STEP 1: Upload Struk -->
         <section id="step-1-view" class="step-view active">
-          
           <div class="hero-card">
-            <div class="hero-tag">Split Bill Instan</div>
-            <h2 class="hero-heading">Bagi Tagihan Tanpa Ribet</h2>
-            <p class="hero-desc">Unggah foto struk belanja untuk membaca menu dan harga secara otomatis.</p>
+            <div class="hero-tag">PatungIn · Smart Split</div>
+            <h2 class="hero-heading">Scan Struk,<br>Bagi Tagihan Instan ⚡</h2>
+            <p class="hero-desc">Upload foto struk restoran kamu, AI kami akan membaca semua item otomatis.</p>
           </div>
 
-          <!-- 1. Initial Clean Upload Box -->
           <div class="action-card" id="dropzone">
-            <input type="file" id="file-input" accept="image/*" multiple class="file-input-hidden">
-            <div class="action-card-left">
-              <div class="action-icon-badge">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                  <circle cx="12" cy="13" r="4"></circle>
-                </svg>
+            <input type="file" id="file-input" accept="image/*" multiple class="file-input-hidden" aria-label="Pilih foto struk">
+            <div class="upload-dropzone-content">
+              <div class="upload-camera-tile" aria-hidden="true">
+                <img src="assets/receipt-camera.svg" alt="" width="40" height="40">
               </div>
-              <div>
-                <h3 class="action-card-title">Pindai Foto Struk</h3>
-                <p class="action-card-desc">Bisa pilih 1 atau beberapa foto struk sekaligus</p>
+              <div class="upload-dropzone-copy">
+                <h3 class="action-card-title">Upload Foto Struk</h3>
+                <p class="action-card-desc">Seret ke sini atau klik untuk pilih foto</p>
+                <span class="upload-file-limit">JPG, PNG · Maks. 10MB</span>
               </div>
-            </div>
-            <div class="action-card-right">
-              <button type="button" class="btn-primary" id="btn-browse-file">
-                <span>Pilih Foto</span>
-              </button>
+              <div class="action-card-right">
+                <button type="button" class="btn-primary" id="btn-browse-file">
+                  <span>Pilih Foto Struk</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- 2. Selected Receipts Preview (Sleek, Clean, Modern) -->
-          <div class="card card-padded hidden" id="receipts-preview-card">
-            <div class="card-header-clean" style="margin-bottom: 0.65rem;">
-              <span class="card-title-clean" id="selected-receipts-title">Struk Terpilih (1)</span>
-              <button type="button" class="btn-link-danger btn-xs" id="btn-clear-all-receipts">Batal</button>
+          <div class="hidden" id="receipts-preview-card">
+            <div class="card-header-clean" style="margin-bottom: 12px;">
+              <span class="card-title-clean" id="selected-receipts-title">Foto Terpilih (1)</span>
+              <button type="button" class="btn-link-danger btn-xs" id="btn-clear-all-receipts" style="font-size: 11px; color: #94a3b8;">Hapus Semua</button>
             </div>
-
-            <!-- List of selected receipt items -->
             <div class="selected-receipts-list" id="selected-receipts-list"></div>
-
-            <!-- Add more receipt button (shown if under max limit) -->
-            <div id="add-second-receipt-box" style="margin-top: 0.65rem; position: relative;">
+            <div id="add-second-receipt-box" style="margin-top: 12px; position: relative;">
               <input type="file" id="file-input-second" accept="image/*" multiple style="display: none;">
               <button type="button" class="btn-dashed-action" id="btn-trigger-second-file">
                 <span id="btn-trigger-second-text">+ Tambah Foto Struk Lainnya</span>
               </button>
             </div>
-
-            <!-- Primary Scan Button -->
-            <button type="button" class="btn-primary btn-block" id="btn-start-scan" style="margin-top: 0.85rem; padding: 0.85rem 1rem; font-size: 0.95rem; font-weight: 800;">
-              <span id="btn-start-scan-text">Pindai Struk Sekarang →</span>
-            </button>
           </div>
 
-          <!-- Shared Loading Spinner -->
           <div id="upload-loading-spinner" class="loading-overlay hidden">
             <div class="spinner-ring"></div>
             <p id="spinner-status-text">Memindai struk dengan AI...</p>
             <span class="loading-sub">Mohon tunggu beberapa detik</span>
           </div>
 
+          <aside class="upload-tip" aria-label="Tips mengunggah struk">
+            <span class="upload-tip-icon" aria-hidden="true">💡</span>
+            <p><strong>Tips:</strong> Pastikan struk terlihat jelas, tidak blur, dan semua item terlihat. Bisa upload lebih dari 1 struk.</p>
+          </aside>
+
+          <footer class="upload-scan-footer">
+            <button type="button" class="btn-primary btn-block upload-scan-button" id="btn-start-scan">
+              <span id="btn-start-scan-text">Pindai Struk Sekarang</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </footer>
         </section>
 
         <!-- STEP 2: Cek Detail Pesanan (Muncul Setelah Struk Masuk) -->
@@ -189,61 +180,69 @@
             <p class="step-guide-desc">Periksa menu, kuantiti, dan nominal harga yang terbaca dari struk.</p>
           </div>
 
-          <div class="card card-padded">
+          <div class="card card-padded review-merchant-card">
             <div class="receipt-head-row">
-              <div>
-                <span class="merchant-badge" id="merchant-badge">Merchant</span>
-                <h3 class="merchant-title" id="receipt-merchant-name">Nama Tempat</h3>
-                <span class="receipt-date" id="receipt-date-text">Tanggal</span>
+              <div class="review-merchant-lockup">
+                <span class="review-receipt-icon" aria-hidden="true">
+                  <img src="assets/receipt-outline.svg" alt="" width="40" height="40">
+                </span>
+                <div class="review-merchant-copy">
+                  <span class="merchant-badge" id="merchant-badge">Merchant</span>
+                  <h3 class="merchant-title" id="receipt-merchant-name">Nama Tempat</h3>
+                  <span class="receipt-date" id="receipt-date-text">Tanggal</span>
+                </div>
               </div>
-              <button id="btn-add-item-step2" class="btn-outline-sm" type="button">
-                <span>+ Menu Manual</span>
+              <button id="btn-add-item-step2" class="btn-outline-sm review-add-item" type="button">
+                <img src="assets/add-item.svg" alt="" aria-hidden="true" width="12" height="12">
+                <span>Menu Manual</span>
               </button>
-            </div>
-
-            <!-- Items Review Table -->
-            <div class="receipt-items-list" id="receipt-items-review-list">
-              <!-- Injected via JS -->
-            </div>
-
-            <!-- Calculations Summary -->
-            <div class="charges-card">
-              <div class="charge-line">
-                <span>Subtotal Menu</span>
-                <strong id="display-subtotal">Rp 0</strong>
-              </div>
-              <div class="charge-line">
-                <div class="charge-edit-trigger">
-                  <span>Pajak Resto (PB1)</span>
-                  <button class="btn-edit-link" id="btn-edit-tax" type="button">Ubah</button>
-                </div>
-                <strong id="display-tax">Rp 0</strong>
-              </div>
-              <div class="charge-line">
-                <div class="charge-edit-trigger">
-                  <span>Service Charge</span>
-                  <button class="btn-edit-link" id="btn-edit-service" type="button">Ubah</button>
-                </div>
-                <strong id="display-service">Rp 0</strong>
-              </div>
-              <div class="charge-line">
-                <div class="charge-edit-trigger">
-                  <span>Diskon Promo</span>
-                  <button class="btn-edit-link" id="btn-edit-discount" type="button">Ubah</button>
-                </div>
-                <strong id="display-discount" class="text-green">- Rp 0</strong>
-              </div>
-              <div class="charge-line line-grand-total">
-                <span>Total Tagihan</span>
-                <strong class="grand-total-amount" id="display-total">Rp 0</strong>
-              </div>
             </div>
           </div>
 
-          <div class="step-actions-footer">
-            <button type="button" class="btn-outline" id="btn-back-to-1">← Upload Ulang</button>
+          <div class="card review-items-card">
+            <h3 class="receipt-item-count" id="receipt-item-count">0 Item Pesanan</h3>
+            <div class="receipt-items-list" id="receipt-items-review-list">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+
+          <div class="charges-card">
+            <h4 class="charges-heading">Rincian Tagihan</h4>
+            <div class="charge-line">
+              <span>Subtotal Menu</span>
+              <strong id="display-subtotal">Rp 0</strong>
+            </div>
+            <div class="charge-line">
+              <div class="charge-edit-trigger">
+                <span>Pajak Resto (PB1)</span>
+                <button class="btn-edit-link" id="btn-edit-tax" type="button" title="Ubah pajak" aria-label="Ubah pajak"><img src="assets/edit-charge.svg" alt="" aria-hidden="true" width="14" height="14"></button>
+              </div>
+              <strong id="display-tax">Rp 0</strong>
+            </div>
+            <div class="charge-line">
+              <div class="charge-edit-trigger">
+                <span>Service Charge</span>
+                <button class="btn-edit-link" id="btn-edit-service" type="button" title="Ubah service charge" aria-label="Ubah service charge"><img src="assets/edit-charge.svg" alt="" aria-hidden="true" width="14" height="14"></button>
+              </div>
+              <strong id="display-service">Rp 0</strong>
+            </div>
+            <div class="charge-line">
+              <div class="charge-edit-trigger">
+                <span>Diskon Promo</span>
+                <button class="btn-edit-link" id="btn-edit-discount" type="button" title="Ubah diskon" aria-label="Ubah diskon"><img src="assets/edit-charge.svg" alt="" aria-hidden="true" width="14" height="14"></button>
+              </div>
+              <strong id="display-discount" class="text-green">- Rp 0</strong>
+            </div>
+            <div class="charge-line line-grand-total">
+              <span>Grand Total</span>
+              <strong class="grand-total-amount" id="display-total">Rp 0</strong>
+            </div>
+          </div>
+
+          <div class="step-actions-footer review-actions-footer">
+            <button type="button" class="btn-outline" id="btn-back-to-1">← Upload</button>
             <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-3">
-              <span>Lanjut Pilih Orang & Bagi →</span>
+              <span>Bagi Pesanan</span>
             </button>
           </div>
 
@@ -255,10 +254,10 @@
           <!-- Collaborative Mode Segmented Switcher (Visible in Session Mode) -->
           <div id="collab-tabs-container" class="collab-tabs-container hidden">
             <button type="button" class="collab-tab active" id="tab-self-claim">
-              <span>Klaim Pesanan Saya</span>
+              <span>🙋 Klaim Pesananku</span>
             </button>
             <button type="button" class="collab-tab" id="tab-host-manage">
-              <span>Atur Semua</span>
+              <span>👑 Atur Semua (Host)</span>
             </button>
           </div>
 
@@ -275,19 +274,19 @@
                 </div>
               </div>
               <button type="button" class="btn-change-claim-name" id="btn-change-claim-name">
-                ✏️ Ganti Nama
+                <img src="assets/workflow-edit.svg" alt="" aria-hidden="true" width="14" height="14">
+                <span>Ganti</span>
               </button>
             </div>
 
             <!-- Step A2: Daftar Menu (Layout Bersih) -->
             <div class="card card-padded claim-items-card">
-              <div class="card-header-clean" style="margin-bottom: 0.65rem;">
+              <div class="card-header-clean claim-items-header" style="margin-bottom: 0.65rem;">
                 <div>
-                  <h4 class="card-title-clean">Pilih Menu Kamu</h4>
-                  <p class="card-desc-clean">Tap menu makanan yang kamu pesan untuk memilih</p>
+                  <h4 class="card-title-clean">Centang yang kamu pesan</h4>
                 </div>
-                <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims">
-                  🔄 Sync
+                <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims" aria-label="Sinkronkan klaim">
+                  <img src="assets/sync-refresh.svg" alt="" aria-hidden="true" width="14" height="14">
                 </button>
               </div>
 
@@ -299,12 +298,9 @@
 
             <!-- Step A3: Submit Button Bar (Simpel, Tanpa Total Rupiah) -->
             <div class="self-claim-action-bar" id="self-claim-summary-card">
-              <div class="self-claim-count-info">
-                <span class="self-claim-count-text" id="self-claim-summary-items">0 menu dipilih</span>
-                <span class="self-claim-helper-text">Pilihanmu otomatis tersimpan</span>
-              </div>
               <button type="button" class="btn-primary btn-claim-submit" id="btn-submit-self-claim">
-                <span id="btn-submit-claim-text">💾 Simpan Pesanan Saya</span>
+                <span id="btn-submit-claim-text">Simpan</span>
+                <span class="claim-submit-count">(<span class="self-claim-count-text" id="self-claim-summary-items">0 menu dipilih</span>) ✓</span>
               </button>
             </div>
 
@@ -348,33 +344,39 @@
             <div class="card card-padded">
               <div class="card-header-clean">
                 <div>
-                  <h4 class="card-title-clean">1. Siapa Saja yang Ikut Patungan?</h4>
-                  <p class="card-desc-clean">Centang teman yang ikut serta di tagihan ini</p>
+                  <h4 class="card-title-clean">Peserta & Pembayar</h4>
                 </div>
               </div>
 
-              <!-- Participant Selection Chips -->
-              <div class="participants-selection-grid" id="participants-toggle-list">
-                <!-- Injected via JS -->
+              <!-- Participant chips row -->
+              <div class="participant-chips-and-add">
+                <div class="participants-selection-grid" id="participants-toggle-list">
+                  <!-- Injected via JS -->
+                </div>
               </div>
 
-              <!-- Quick Add Friend Form -->
+              <!-- Quick add member below chips -->
               <div class="quick-add-member-row">
-                <input type="text" id="input-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
-                <button type="button" id="btn-quick-add" class="btn-primary-sm">+ Tambah</button>
+                <div class="quick-add-input-wrapper">
+                  <span class="quick-add-icon">👤</span>
+                  <input type="text" id="input-quick-name" class="input-text-compact" placeholder="Tambah nama teman..." maxlength="20" aria-label="Nama teman baru">
+                </div>
+                <button type="button" id="btn-quick-add" class="btn-primary-sm btn-quick-add" aria-label="Tambah teman">
+                  <span class="plus-icon">+</span> Tambah
+                </button>
               </div>
 
               <!-- Payer Selection (Who paid the bill) -->
               <div class="payer-selection-box">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
-                  <label class="form-label-bold">Siapa yang menalangi / bayar struk ini?</label>
+                  <label class="form-label-bold">Siapa yang nalangin?</label>
                   <button type="button" id="btn-open-rek-inline" class="btn-link-action" style="font-size: 0.72rem;">Atur No. Rekening</button>
                 </div>
 
                 <!-- Payer Mode Segmented Switch -->
                 <div class="payer-mode-segmented">
                   <button type="button" class="btn-segment active" id="btn-payer-mode-single">1 Orang</button>
-                  <button type="button" class="btn-segment" id="btn-payer-mode-multi">Banyak Orang (Multi)</button>
+                  <button type="button" class="btn-segment" id="btn-payer-mode-multi">Banyak Orang</button>
                 </div>
 
                 <!-- Mode 1: Single Payer -->
@@ -404,17 +406,14 @@
             <!-- CARD 2: Tentukan Siapa yang Pesan Tiap Menu -->
             <div class="card card-padded">
               <div class="card-header-clean">
-                <div>
-                  <h4 class="card-title-clean">2. Tentukan Pesanan Masing-Masing</h4>
-                  <p class="card-desc-clean">Menu yang sudah diklaim otomatis terisi nama teman</p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.45rem;">
-                  <button type="button" class="btn-link-action btn-xs" id="btn-sync-host-items" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 0.25rem 0.6rem; border-radius: 8px; font-weight: 700;">
-                    🔄 Sync
-                  </button>
+                <h4 class="card-title-clean">Assign Pesanan</h4>
+                <div class="card-header-actions" style="display: flex; align-items: center; gap: 8px;">
                   <div id="unclaimed-warning-pill" class="badge-warning hidden">
                     Ada menu belum dipilih
                   </div>
+                  <button type="button" class="btn-link-action btn-xs host-item-sync" id="btn-sync-host-items" aria-label="Sinkronkan item" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 0.25rem 0.6rem; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                    <img src="assets/sync-refresh.svg" alt="" aria-hidden="true" width="14" height="14"> Sync
+                  </button>
                 </div>
               </div>
 
@@ -424,36 +423,70 @@
             </div>
 
             <!-- CARD 3: Pengaturan Pembagian (Pajak & Pembulatan) -->
-            <div class="card card-padded options-card">
-              <div class="option-row">
-                <label class="option-label" for="tax-split-mode">Metode Pajak:</label>
-                <select id="tax-split-mode" class="select-clean-sm">
-                  <option value="proportional" selected>Proporsional (Sesuai Porsi Menu)</option>
-                  <option value="equal">Bagi Rata</option>
-                </select>
+            <div class="card card-padded modern-options-card">
+              <div class="card-header-clean" style="margin-bottom: 0.65rem;">
+                <h4 class="card-title-clean">Pengaturan Pembagian</h4>
               </div>
-              <div class="option-row">
-                <label class="option-label" for="rounding-mode">Pembulatan:</label>
-                <select id="rounding-mode" class="select-clean-sm">
-                  <option value="none" selected>Tanpa Pembulatan</option>
-                  <option value="500">Rp 500 Terdekat</option>
-                  <option value="1000">Rp 1.000 Terdekat</option>
-                </select>
+
+              <!-- Selector 1: Metode Pembagian Pajak -->
+              <div class="modern-select-field" id="trigger-tax-modal" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Pilih Metode Pembagian Pajak">
+                <div class="modern-select-label">Metode Pembagian Pajak</div>
+                <div class="modern-select-box">
+                  <div class="modern-select-left">
+                    <span class="modern-select-icon" id="tax-display-icon">📊</span>
+                    <span class="modern-select-text" id="tax-display-text">Proporsional (Sesuai Porsi)</span>
+                  </div>
+                  <div class="modern-select-arrow">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                </div>
               </div>
+
+              <!-- Selector 2: Pembulatan Ribuan -->
+              <div class="modern-select-field" id="trigger-rounding-modal" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Pilih Pembulatan Nominal" style="margin-top: 10px;">
+                <div class="modern-select-label">Pembulatan Ribuan</div>
+                <div class="modern-select-box">
+                  <div class="modern-select-left">
+                    <span class="modern-select-icon" id="rounding-display-icon">🪙</span>
+                    <span class="modern-select-text" id="rounding-display-text">Tanpa Pembulatan</span>
+                  </div>
+                  <div class="modern-select-arrow">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Backward-compatibility fallback selects -->
+              <select id="tax-split-mode" class="hidden-accessible" aria-hidden="true" tabindex="-1">
+                <option value="proportional" selected>Proporsional</option>
+                <option value="equal">Bagi Rata</option>
+              </select>
+              <select id="rounding-mode" class="hidden-accessible" aria-hidden="true" tabindex="-1">
+                <option value="none" selected>Tanpa Pembulatan</option>
+                <option value="500">Rp 500 Terdekat</option>
+                <option value="1000">Dibulatkan ke atas Rp1.000</option>
+              </select>
             </div>
 
             <!-- CARD 4: Estimasi Patungan Sementara (Real-time) -->
             <div class="card card-padded">
-              <h4 class="card-title-clean">Estimasi Sementara</h4>
+              <div class="estimate-header">
+                <h4 class="card-title-clean">Estimasi Per Orang</h4>
+                <span class="estimate-live-label">Real-time</span>
+              </div>
               <div class="shares-grid-responsive" id="preview-shares-grid">
                 <!-- Injected via JS -->
               </div>
             </div>
 
             <div class="step-actions-footer">
-              <button type="button" class="btn-outline" id="btn-back-to-2">← Cek Struk</button>
+              <button type="button" class="btn-outline" id="btn-back-to-2">← Cek</button>
               <button type="button" class="btn-primary btn-flex-grow" id="btn-proceed-to-4">
-                <span>Buat Rincian Tagihan ✨</span>
+                <span>Buat Rincian ✦</span>
               </button>
             </div>
 
@@ -462,53 +495,44 @@
         </section>
 
         <!-- STEP 4: Sukses & Kirim WhatsApp -->
-        <section id="step-4-view" class="step-view hidden">
-          
+      <section id="step-4-view" class="step-view hidden">
           <div class="card card-padded success-card">
-            <div class="success-icon-badge">✓</div>
-            <h2 class="success-title">Split Bill Berhasil Dibuat</h2>
-            <p class="success-desc">Rincian pembagian tagihan telah selesai dihitung dan siap dibagikan ke WhatsApp.</p>
+            <img class="success-icon-badge" src="assets/success-check-circle.svg" alt="" aria-hidden="true" width="56" height="56">
+            <h2 class="success-title">Rincian Siap! 🎉</h2>
+            <p class="success-desc"><span id="final-merchant-name">Struk Belanja</span><span class="success-date-separator"> · </span><span id="final-receipt-date">Hari ini</span></p>
+            <strong class="success-total" id="final-total-amount">Rp 0</strong>
           </div>
 
-          <!-- Final Breakdown -->
-          <div class="card card-padded">
-            <div class="receipt-head-row">
-              <div>
-                <span class="merchant-badge" id="final-merchant-name">Merchant</span>
-                <h3 class="merchant-title" id="final-total-amount">Total: Rp 0</h3>
-              </div>
-              <div class="payer-badge-clean" id="final-payer-info">
-                Penanggung: jeki
-              </div>
+          <div class="card final-consumption-card">
+            <div class="final-consumption-header">
+              <h3>Porsi Konsumsi</h3>
+              <div class="final-payer-label" id="final-payer-info">Penanggung: -</div>
             </div>
-
             <div class="final-members-list" id="final-members-container">
               <!-- Injected via JS -->
             </div>
+          </div>
 
-            <!-- Transfer Directions Card (Siapa Transfer ke Siapa) -->
-            <div id="transfer-directions-card" class="card card-padded transfer-directions-card">
-              <div class="card-header-clean">
-                <div>
-                  <h4 class="card-title-clean">💸 Arahan Transfer (Siapa Bayar ke Siapa)</h4>
-                  <p class="card-desc-clean">Perhitungan otomatis agar utang-piutang selesai tanpa ribet</p>
-                </div>
+          <!-- Keep the current debt-settlement detail available alongside the new summary. -->
+          <div id="transfer-directions-card" class="card card-padded transfer-directions-card">
+            <div class="card-header-clean">
+              <div>
+                <h4 class="card-title-clean">💸 Arahan Transfer (Siapa Bayar ke Siapa)</h4>
+                <p class="card-desc-clean">Perhitungan otomatis agar utang-piutang selesai tanpa ribet</p>
               </div>
-              <div id="transfer-directions-list" class="transfer-directions-list">
-                <!-- Injected via JS -->
-              </div>
+            </div>
+            <div id="transfer-directions-list" class="transfer-directions-list">
+              <!-- Injected via JS -->
             </div>
           </div>
 
-          <!-- WhatsApp Share Card -->
           <div class="card card-padded whatsapp-card">
             <div class="whatsapp-header">
               <div class="whatsapp-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.044c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+                <img src="assets/whatsapp-mark.svg" alt="" aria-hidden="true" width="18" height="18">
               </div>
               <div>
-                <h4 class="card-title-clean">Format Pesan WhatsApp</h4>
-                <p class="card-desc-clean">Salin untuk dikirimkan langsung</p>
+                <h4 class="card-title-clean">Kirim ke Grup</h4>
               </div>
             </div>
 
@@ -517,23 +541,26 @@
             </div>
 
             <div class="whatsapp-buttons-column">
-              <button type="button" class="btn-block hidden" id="btn-send-to-wa-group" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%); color: white; border: none; padding: 0.85rem 1rem; border-radius: 12px; font-weight: 700; font-size: 0.92rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(4, 120, 87, 0.22); transition: all 0.2s ease;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.044c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
-                <span>Kirim Rincian ke Grup WhatsApp</span>
+              <button type="button" class="btn-block btn-wa-group-send" id="btn-send-to-wa-group">
+                <img src="assets/whatsapp-mark.svg" alt="" aria-hidden="true" width="18" height="18">
+                <span>Kirim ke Grup WhatsApp</span>
               </button>
-
-              <button type="button" class="btn-primary btn-block" id="btn-copy-wa">
-                <span>Salin Pesan WhatsApp</span>
-              </button>
-              <button type="button" class="btn-outline btn-block" id="btn-open-wa">
-                <span>Buka WhatsApp Langsung</span>
-              </button>
+              <div class="whatsapp-secondary-actions">
+                <button type="button" class="btn-outline" id="btn-copy-wa">
+                  <img src="assets/copy-outline.svg" alt="" aria-hidden="true" width="14" height="14">
+                  <span>Salin Pesan</span>
+                </button>
+                <button type="button" class="btn-primary" id="btn-open-wa">
+                  <img src="assets/whatsapp-mark.svg" alt="" aria-hidden="true" width="18" height="18">
+                  <span>Buka WA</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="reset-link-area">
-            <button type="button" class="btn-link-action" id="btn-reset-new-bill">
-              Buat Split Bill Baru
+          <div class="reset-link-area final-reset-area">
+            <button type="button" class="btn-outline btn-block final-reset-button" id="btn-reset-new-bill">
+              🔄 Buat Split Bill Baru
             </button>
           </div>
 
@@ -574,24 +601,24 @@
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">Pilih Anggota yang Ikut</h3>
-          <p class="modal-desc">Centang siapa saja yang ikut patungan di tagihan ini</p>
+          <h3 class="modal-title">Anggota</h3>
+          <p class="modal-desc">Pilih siapa saja yang ikut dalam tagihan</p>
         </div>
         <button class="btn-close-modal" id="btn-close-circle-modal" aria-label="Tutup">✕</button>
       </div>
       <div class="modal-body">
+
+        <!-- Quick Add Member Row (At top so it's always visible and never cut off on mobile) -->
+        <div class="modal-add-member-section">
+          <div class="quick-add-member-row">
+            <input type="text" id="input-modal-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20" autocomplete="off">
+            <button type="button" id="btn-modal-quick-add" class="btn-primary-sm" aria-label="Tambah anggota">+</button>
+          </div>
+        </div>
         
         <!-- Member Selection List with Checkboxes -->
         <div id="circle-pick-list-container" class="member-pick-list">
           <!-- Injected via JS -->
-        </div>
-
-        <!-- Quick Add Member Row -->
-        <div class="modal-add-member-section">
-          <div class="quick-add-member-row" style="margin-top: 0.85rem; margin-bottom: 0;">
-            <input type="text" id="input-modal-quick-name" class="input-text-compact" placeholder="Ketik nama teman baru..." maxlength="20">
-            <button type="button" id="btn-modal-quick-add" class="btn-primary-sm">+ Tambah</button>
-          </div>
         </div>
 
         <!-- Shortcut banner to Payment Settings -->
@@ -613,15 +640,15 @@
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">Pengaturan Rekening & E-Wallet</h3>
-          <p class="modal-desc">Simpan nomor rekening tiap orang untuk info transfer penalangi</p>
+        <h3 class="modal-title">Rekening & E-Wallet</h3>
+          <p class="modal-desc">Atur detail transfer setiap anggota</p>
         </div>
         <button class="btn-close-modal" id="btn-close-payment-modal" aria-label="Tutup">✕</button>
       </div>
       <div class="modal-body">
         
         <p class="payment-modal-intro">
-          Tiap anggota bisa menyimpan beberapa rekening sekaligus (misal: <strong>BCA, BSI, Mandiri, GoPay, DANA</strong>).
+          Tambahkan satu atau beberapa detail rekening untuk setiap anggota menggunakan tombol bank.
         </p>
 
         <div id="payment-settings-form-container" class="payment-cards-list">
@@ -718,6 +745,95 @@
       <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button id="btn-unclaimed-back" class="btn-outline-sm" type="button">Pilih Menu Dulu</button>
         <button id="btn-unclaimed-proceed" class="btn-primary-sm" type="button" style="background: #0284c7;">Tetap Lanjut →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Pilih Metode Pembagian Pajak (Modern Bottom Sheet) -->
+  <div id="modal-tax-picker" class="modal-backdrop hidden">
+    <div class="modal-card modal-sheet-card">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Metode Pembagian Pajak</h3>
+          <p class="modal-desc" style="display:block;">Pilih cara perhitungan pajak & diskon untuk tiap orang</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="btn-close-tax-picker" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body modal-sheet-body">
+        <div class="picker-options-list">
+          <div class="picker-option-card active" data-tax-val="proportional" id="opt-tax-proportional" role="button" tabindex="0">
+            <div class="picker-option-left">
+              <div class="picker-option-icon icon-cyan">📊</div>
+              <div class="picker-option-text">
+                <div class="picker-option-title">Proporsional (Sesuai Porsi)</div>
+                <div class="picker-option-desc">Pajak dihitung adil berdasarkan nilai makanan/minuman yang dipesan tiap orang.</div>
+              </div>
+            </div>
+            <div class="picker-option-check">✓</div>
+          </div>
+
+          <div class="picker-option-card" data-tax-val="equal" id="opt-tax-equal" role="button" tabindex="0">
+            <div class="picker-option-left">
+              <div class="picker-option-icon icon-amber">⚖️</div>
+              <div class="picker-option-text">
+                <div class="picker-option-title">Bagi Rata (Equal Split)</div>
+                <div class="picker-option-desc">Total pajak dan service dibagi sama rata ke semua orang, berapa pun porsi pesanannya.</div>
+              </div>
+            </div>
+            <div class="picker-option-check">✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Pilih Pembulatan Nominal (Modern Bottom Sheet) -->
+  <div id="modal-rounding-picker" class="modal-backdrop hidden">
+    <div class="modal-card modal-sheet-card">
+      <div class="modal-sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Pembulatan Nominal</h3>
+          <p class="modal-desc" style="display:block;">Atur pembulatan tagihan agar praktis saat transfer</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="btn-close-rounding-picker" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body modal-sheet-body">
+        <div class="picker-options-list">
+          <div class="picker-option-card active" data-round-val="none" id="opt-round-none" role="button" tabindex="0">
+            <div class="picker-option-left">
+              <div class="picker-option-icon icon-slate">🪙</div>
+              <div class="picker-option-text">
+                <div class="picker-option-title">Tanpa Pembulatan</div>
+                <div class="picker-option-desc">Nominal persis sesuai perhitungan struk tanpa pembulatan pecahan rupiah.</div>
+              </div>
+            </div>
+            <div class="picker-option-check">✓</div>
+          </div>
+
+          <div class="picker-option-card" data-round-val="500" id="opt-round-500" role="button" tabindex="0">
+            <div class="picker-option-left">
+              <div class="picker-option-icon icon-cyan">🎯</div>
+              <div class="picker-option-text">
+                <div class="picker-option-title">Rp 500 Terdekat</div>
+                <div class="picker-option-desc">Dibulatkan ke kelipatan Rp 500 terdekat (misal: Rp 32.500).</div>
+              </div>
+            </div>
+            <div class="picker-option-check">✓</div>
+          </div>
+
+          <div class="picker-option-card" data-round-val="1000" id="opt-round-1000" role="button" tabindex="0">
+            <div class="picker-option-left">
+              <div class="picker-option-icon icon-emerald">🔺</div>
+              <div class="picker-option-text">
+                <div class="picker-option-title">Dibulatkan ke atas Rp 1.000</div>
+                <div class="picker-option-desc">Dibulatkan ke atas ke ribuan penuh (misal: Rp 33.000) agar mudah transfer.</div>
+              </div>
+            </div>
+            <div class="picker-option-check">✓</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

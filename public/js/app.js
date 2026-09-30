@@ -90,30 +90,6 @@ const DEFAULT_MEMBERS = [
     name: 'nabiluy', 
     initial: 'N', 
     paymentInfo: 'Transfer ke nabiluy' 
-  },
-  { 
-    id: 'm3', 
-    name: 'alysuy', 
-    initial: 'A', 
-    paymentInfo: 'Transfer ke alysuy' 
-  },
-  { 
-    id: 'm4', 
-    name: 'gifaruy', 
-    initial: 'G', 
-    paymentInfo: 'Transfer ke gifaruy' 
-  },
-  { 
-    id: 'm5', 
-    name: 'salwuy', 
-    initial: 'S', 
-    paymentInfo: 'Transfer ke salwuy' 
-  },
-  { 
-    id: 'm6', 
-    name: 'sosuy', 
-    initial: 'S', 
-    paymentInfo: 'DANA: a.n sosuy' 
   }
 ];
 
@@ -313,9 +289,10 @@ function loadMembers() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      // Auto-migrate if device still holds the old default ["Saya", "Andi", "Budi", "Citra"]
+      // Auto-migrate if device still holds the old 6 members default or 4 members default
+      const isOld6Default = Array.isArray(parsed) && parsed.length >= 6 && parsed.some(m => m.name === 'alysuy' || m.name === 'gifaruy');
       const isOldDefault = Array.isArray(parsed) && parsed.length === 4 && parsed.some(m => m.name === 'Saya' || m.name === 'Andi');
-      if (isOldDefault) {
+      if (isOldDefault || isOld6Default) {
         state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
         saveMembers();
       } else {
@@ -340,9 +317,8 @@ function saveMembers() {
 }
 
 function updateMemberCountBadges() {
-  const activeCount = state.participatingMemberIds && state.participatingMemberIds.length > 0
-    ? state.participatingMemberIds.length
-    : (state.allMembers ? state.allMembers.length : 6);
+  const active = getActiveParticipants();
+  const activeCount = active.length;
   const dropdownCount = document.getElementById('dropdown-member-count');
   const dropdownBadge = document.getElementById('dropdown-member-badge');
   if (dropdownCount) dropdownCount.textContent = activeCount;
@@ -380,24 +356,24 @@ function goToStep(step) {
   const stepperCaption = document.getElementById('stepper-caption');
 
   if (step === 1) {
-    elements.pageTitle.textContent = 'PatungIn';
-    elements.pageSubtitle.textContent = 'Smart Split Bill & Scanner';
+    elements.pageTitle.textContent = 'Upload Struk';
+    elements.pageSubtitle.textContent = 'Foto struk restoran kamu';
     if (stepperCaption) stepperCaption.textContent = 'Langkah 1 dari 4: Upload Struk';
   } else if (step === 2) {
-    elements.pageTitle.textContent = 'Cek Tagihan';
-    const merchantName = state.receipt.merchant || 'Konfirmasi rincian menu';
-    elements.pageSubtitle.textContent = merchantName;
+    elements.pageTitle.textContent = 'Cek Pesanan';
+    const merchantName = state.receipt.merchant || 'Struk Belanja';
+    elements.pageSubtitle.textContent = `${merchantName} · ${state.receipt.date || 'Hari ini'}`;
     elements.pageSubtitle.title = merchantName;
     if (stepperCaption) stepperCaption.textContent = 'Langkah 2 dari 4: Cek Rincian Menu';
     renderStep2Review();
   } else if (step === 3) {
-    elements.pageTitle.textContent = 'Pilih & Bagi';
-    elements.pageSubtitle.textContent = 'Pilih yang ikut & penikmat menu';
+    elements.pageTitle.textContent = 'Bagi Tagihan';
+    elements.pageSubtitle.textContent = 'Tentukan porsi masing-masing';
     if (stepperCaption) stepperCaption.textContent = 'Langkah 3 dari 4: Bagi Pesanan';
     renderStep3();
   } else if (step === 4) {
-    elements.pageTitle.textContent = 'Selesai';
-    elements.pageSubtitle.textContent = 'Rekap tagihan siap dikirim';
+    elements.pageTitle.textContent = 'Rincian Final';
+    elements.pageSubtitle.textContent = 'Salin & kirim ke grup';
     if (stepperCaption) stepperCaption.textContent = 'Langkah 4 dari 4: Siap Kirim WA';
     calculateAndRenderFinal();
   }
@@ -476,15 +452,166 @@ function setupEventListeners() {
     renderStep3LiveShares();
   });
 
-  elements.taxSplitMode.addEventListener('change', (e) => {
-    state.taxSplitMode = e.target.value;
-    renderStep3LiveShares();
-  });
+  // Tax Split Mode & Modern Picker Dialog
+  const triggerTaxModal = document.getElementById('trigger-tax-modal');
+  const modalTaxPicker = document.getElementById('modal-tax-picker');
+  const btnCloseTaxPicker = document.getElementById('btn-close-tax-picker');
+  const taxDisplayIcon = document.getElementById('tax-display-icon');
+  const taxDisplayText = document.getElementById('tax-display-text');
+  const taxOptionCards = document.querySelectorAll('#modal-tax-picker .picker-option-card');
 
-  elements.roundingMode.addEventListener('change', (e) => {
-    state.roundingMode = e.target.value;
-    renderStep3LiveShares();
-  });
+  function openTaxPicker() {
+    if (modalTaxPicker) modalTaxPicker.classList.remove('hidden');
+  }
+
+  function closeTaxPicker() {
+    if (modalTaxPicker) modalTaxPicker.classList.add('hidden');
+  }
+
+  function updateTaxSegmentUI(mode, recompute = true) {
+    state.taxSplitMode = mode;
+    if (elements.taxSplitMode) elements.taxSplitMode.value = mode;
+
+    if (taxDisplayIcon) {
+      taxDisplayIcon.textContent = mode === 'equal' ? '⚖️' : '📊';
+    }
+    if (taxDisplayText) {
+      taxDisplayText.textContent = mode === 'equal' ? 'Bagi Rata (Equal Split)' : 'Proporsional (Sesuai Porsi)';
+    }
+
+    if (taxOptionCards) {
+      taxOptionCards.forEach(card => {
+        card.classList.toggle('active', card.getAttribute('data-tax-val') === mode);
+      });
+    }
+
+    if (recompute) renderStep3LiveShares();
+  }
+
+  if (triggerTaxModal) {
+    triggerTaxModal.addEventListener('click', openTaxPicker);
+    triggerTaxModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openTaxPicker();
+      }
+    });
+  }
+  if (btnCloseTaxPicker) {
+    btnCloseTaxPicker.addEventListener('click', closeTaxPicker);
+  }
+  if (modalTaxPicker) {
+    modalTaxPicker.addEventListener('click', (e) => {
+      if (e.target === modalTaxPicker) closeTaxPicker();
+    });
+  }
+  if (taxOptionCards) {
+    taxOptionCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const val = card.getAttribute('data-tax-val');
+        if (val) {
+          updateTaxSegmentUI(val);
+          closeTaxPicker();
+        }
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
+      });
+    });
+  }
+
+  // Rounding Mode & Modern Picker Dialog
+  const triggerRoundingModal = document.getElementById('trigger-rounding-modal');
+  const modalRoundingPicker = document.getElementById('modal-rounding-picker');
+  const btnCloseRoundingPicker = document.getElementById('btn-close-rounding-picker');
+  const roundingDisplayIcon = document.getElementById('rounding-display-icon');
+  const roundingDisplayText = document.getElementById('rounding-display-text');
+  const roundingOptionCards = document.querySelectorAll('#modal-rounding-picker .picker-option-card');
+
+  function openRoundingPicker() {
+    if (modalRoundingPicker) modalRoundingPicker.classList.remove('hidden');
+  }
+
+  function closeRoundingPicker() {
+    if (modalRoundingPicker) modalRoundingPicker.classList.add('hidden');
+  }
+
+  function updateRoundingSegmentUI(mode, recompute = true) {
+    state.roundingMode = mode;
+    if (elements.roundingMode) elements.roundingMode.value = mode;
+
+    if (roundingDisplayIcon) {
+      if (mode === '500') roundingDisplayIcon.textContent = '🎯';
+      else if (mode === '1000') roundingDisplayIcon.textContent = '🔺';
+      else roundingDisplayIcon.textContent = '🪙';
+    }
+    if (roundingDisplayText) {
+      if (mode === '500') roundingDisplayText.textContent = 'Rp 500 Terdekat';
+      else if (mode === '1000') roundingDisplayText.textContent = 'Dibulatkan ke atas Rp1.000';
+      else roundingDisplayText.textContent = 'Tanpa Pembulatan';
+    }
+
+    if (roundingOptionCards) {
+      roundingOptionCards.forEach(card => {
+        card.classList.toggle('active', card.getAttribute('data-round-val') === mode);
+      });
+    }
+
+    if (recompute) renderStep3LiveShares();
+  }
+
+  if (triggerRoundingModal) {
+    triggerRoundingModal.addEventListener('click', openRoundingPicker);
+    triggerRoundingModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openRoundingPicker();
+      }
+    });
+  }
+  if (btnCloseRoundingPicker) {
+    btnCloseRoundingPicker.addEventListener('click', closeRoundingPicker);
+  }
+  if (modalRoundingPicker) {
+    modalRoundingPicker.addEventListener('click', (e) => {
+      if (e.target === modalRoundingPicker) closeRoundingPicker();
+    });
+  }
+  if (roundingOptionCards) {
+    roundingOptionCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const val = card.getAttribute('data-round-val');
+        if (val) {
+          updateRoundingSegmentUI(val);
+          closeRoundingPicker();
+        }
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
+      });
+    });
+  }
+
+  if (elements.taxSplitMode) {
+    elements.taxSplitMode.addEventListener('change', (e) => {
+      updateTaxSegmentUI(e.target.value);
+    });
+  }
+
+  if (elements.roundingMode) {
+    elements.roundingMode.addEventListener('change', (e) => {
+      updateRoundingSegmentUI(e.target.value);
+    });
+  }
+
+  window.updateTaxSegmentUI = updateTaxSegmentUI;
+  window.updateRoundingSegmentUI = updateRoundingSegmentUI;
 
   // File Upload Handlers
   // elements.btnBrowse is handled inside setupCleanUploadListeners() to avoid double clicks on mobile
@@ -540,6 +667,7 @@ function setupEventListeners() {
 
   function toggleHeaderDropdown() {
     if (!dropdownMenu) return;
+    updateMemberCountBadges();
     const isHidden = dropdownMenu.classList.contains('hidden');
     if (isHidden) {
       dropdownMenu.classList.remove('hidden');
@@ -749,7 +877,9 @@ function loadPresetAndProceed(presetId) {
 function renderStep2Review() {
   const r = state.receipt;
   elements.receiptMerchantName.textContent = r.merchant || 'Struk Belanja';
-  elements.receiptDateText.textContent = `${r.date || 'Hari ini'} • ${r.items.length} Item`;
+  elements.receiptDateText.textContent = r.date || 'Hari ini';
+  const itemCount = document.getElementById('receipt-item-count');
+  if (itemCount) itemCount.textContent = `${r.items.length} Item Pesanan`;
 
   elements.receiptItemsReviewList.innerHTML = '';
 
@@ -825,13 +955,11 @@ function createReviewItemRow(item) {
   const unitPrice = (item.price && Number(item.price) > 0)
     ? Number(item.price)
     : Math.round(Number(item.total || 0) / Math.max(1, Number(item.qty || 1)));
-  const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
 
   row.innerHTML = `
-    <div class="row-item-left">
-      <span class="qty-badge">${item.qty}x</span>
+    <div class="row-item-left review-item-copy">
       <span class="item-name-text">${escapeHtml(item.name)}</span>
-      ${unitPriceHtml}
+      <span class="review-item-meta">${item.qty > 1 ? `${item.qty}x · ` : ''}Rp ${formatRupiah(unitPrice)} / porsi</span>
     </div>
     <div class="row-item-right">
       <span>Rp ${formatRupiah(item.total)}</span>
@@ -871,6 +999,8 @@ function renderStep3() {
   renderStep3PayerDropdown();
   if (state.payerMode === "multi") renderMultiPayerInputs();
   renderAssignmentItems();
+  if (window.updateTaxSegmentUI) window.updateTaxSegmentUI(state.taxSplitMode || 'proportional', false);
+  if (window.updateRoundingSegmentUI) window.updateRoundingSegmentUI(state.roundingMode || 'none', false);
   renderStep3LiveShares();
 }
 
@@ -930,6 +1060,10 @@ function renderStep3PayerDropdown() {
   const active = getActiveParticipants();
   elements.step3PayerSelect.innerHTML = '';
 
+  if (!active.some(m => m.id === state.payerId) && active.length > 0) {
+    state.payerId = active[0].id;
+  }
+
   active.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.id;
@@ -939,8 +1073,7 @@ function renderStep3PayerDropdown() {
     elements.step3PayerSelect.appendChild(opt);
   });
 
-  if (!state.participatingMemberIds.includes(state.payerId) && active.length > 0) {
-    state.payerId = active[0].id;
+  if (active.length > 0) {
     elements.step3PayerSelect.value = state.payerId;
   }
 }
@@ -1034,11 +1167,12 @@ function createAssignmentCard(item, active) {
 
   card.innerHTML = `
     <div class="assignment-head">
-      <div>
-        <span class="qty-badge">${item.qty}x</span>
+      <div class="assignment-head-copy">
         <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
-        ${unitPriceHtml}
-        ${splitNote}
+        <div class="assignment-price-meta">
+          <span>${item.qty > 1 ? `${item.qty}x · ` : ''}Rp ${formatRupiah(unitPrice)} / porsi</span>
+          ${splitNote}
+        </div>
       </div>
       <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
     </div>
@@ -1097,6 +1231,9 @@ function renderStep3LiveShares() {
   const active = getActiveParticipants();
   active.forEach(m => {
     const s = shares[m.id] || { total: 0 };
+    const sharePercent = state.receipt.total > 0
+      ? Math.round((s.total / state.receipt.total) * 100)
+      : 0;
     let isPayer = false;
     let payerBadgeHtml = '';
     let payerSubInfo = '';
@@ -1120,11 +1257,18 @@ function renderStep3LiveShares() {
     div.innerHTML = `
       <div class="share-preview-header">
         <div class="avatar-initial-sm">${escapeHtml(m.initial)}</div>
-        <span class="share-preview-name">${escapeHtml(m.name)}</span>
-        ${payerBadgeHtml}
+        <div class="share-preview-details">
+          <div class="share-preview-summary">
+            <span class="share-preview-name">${escapeHtml(m.name)}</span>
+            <strong class="share-preview-amount">Rp ${formatRupiah(s.total)}</strong>
+          </div>
+          <div class="share-progress-track" aria-hidden="true">
+            <span style="width: ${sharePercent}%"></span>
+          </div>
+          ${payerSubInfo || payerBadgeHtml}
+        </div>
+        <span class="share-preview-percent">${sharePercent}%</span>
       </div>
-      <strong class="share-preview-amount">Rp ${formatRupiah(s.total)}</strong>
-      ${payerSubInfo}
     `;
     elements.previewSharesGrid.appendChild(div);
   });
@@ -1283,6 +1427,17 @@ function updateMultiPayerStatus() {
 // Settlement Algorithm: Resolves Debt Graph with Minimum Transactions
 function calculateSettlementTransfers(shares) {
   const active = getActiveParticipants();
+
+  // Robust Payer Resolution:
+  // Ensure state.payerId points to a valid active participant!
+  if (state.payerMode === 'single') {
+    let currentPayer = active.find(m => m.id === state.payerId);
+    if (!currentPayer && active.length > 0) {
+      currentPayer = active[0];
+      state.payerId = currentPayer.id;
+    }
+  }
+
   const balances = active.map(m => {
     const s = shares[m.id];
     let paid = 0;
@@ -1411,11 +1566,13 @@ function calculateAndRenderFinal() {
   const { balances, transfers } = calculateSettlementTransfers(shares);
 
   elements.finalMerchantName.textContent = state.receipt.merchant || 'Struk Belanja';
-  elements.finalTotalAmount.textContent = `Total: Rp ${formatRupiah(state.receipt.total)}`;
+  const finalReceiptDate = document.getElementById('final-receipt-date');
+  if (finalReceiptDate) finalReceiptDate.textContent = state.receipt.date || 'Hari ini';
+  elements.finalTotalAmount.textContent = `Rp ${formatRupiah(state.receipt.total)}`;
 
   // Payer display in header
   if (state.payerMode === 'single') {
-    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+    const payer = active.find(m => m.id === state.payerId) || active[0];
     elements.finalPayerInfo.textContent = `Penanggung: ${payer ? payer.name : '-'}`;
   } else {
     const payersList = active.filter(m => (state.payerAmounts[m.id] || 0) > 0);
@@ -1423,29 +1580,30 @@ function calculateAndRenderFinal() {
     elements.finalPayerInfo.textContent = `Ditalangi: ${payersNames || '-'}`;
   }
 
-  // Render Member Rows with net surplus / deficit badges
+  // Render Member Rows (bersih, tanpa teks Transfer / Surplus di baris porsi)
   elements.finalMembersContainer.innerHTML = '';
   balances.forEach(b => {
     const s = shares[b.id];
     const row = document.createElement('div');
     row.className = 'final-member-row' + (b.net > 0 ? ' is-payer' : '');
 
-    let statusText = '';
-    if (b.net < 0) {
-      statusText = `<span style="color: #dc2626; font-weight: 700;">(Transfer: Rp ${formatRupiah(-b.net)})</span>`;
-    }
+    const memberItems = (s.items || []).map(item => `
+      <div class="final-consumption-item">
+        <span>${escapeHtml(item.name)}</span>
+        <span>Rp ${formatRupiah(item.price)}</span>
+      </div>
+    `).join('');
 
     row.innerHTML = `
-      <div class="final-row-left">
-        <div class="avatar-initial-badge">${escapeHtml(s.member.initial)}</div>
-        <div>
-          <span class="final-row-name">${escapeHtml(b.name)}</span>
-          <div class="final-row-sub">Porsi: Rp ${formatRupiah(b.consumed)}${statusText ? ' ' + statusText : ''}</div>
+      <div class="final-member-content">
+        <div class="final-member-head">
+          <div class="final-member-identity">
+            <div class="avatar-initial-badge">${escapeHtml(s.member.initial)}</div>
+            <span class="final-row-name">${escapeHtml(b.name)}</span>
+          </div>
+          <div class="final-row-amount">Rp ${formatRupiah(b.consumed)}</div>
         </div>
-      </div>
-      <div style="text-align: right;">
-        <div class="final-row-amount">Rp ${formatRupiah(b.consumed)}</div>
-        <div style="font-size: 0.7rem; color: #64748b;">Bayar: Rp ${formatRupiah(b.paid)}</div>
+        <div class="final-member-items">${memberItems}</div>
       </div>
     `;
     elements.finalMembersContainer.appendChild(row);
@@ -1559,8 +1717,19 @@ function copyWaMessage() {
 }
 
 function openWaDirect() {
-  const text = encodeURIComponent(elements.waPreview.textContent);
-  window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  const text = (elements.waPreview || document.getElementById('wa-message-preview'))?.textContent || '';
+  if (!text || text.includes('Membuat format')) {
+    showToast('Format rincian tagihan belum siap', 'error');
+    return;
+  }
+  const encodedText = encodeURIComponent(text);
+  const waUrl = `https://wa.me/?text=${encodedText}`;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = waUrl;
+  } else {
+    window.open(waUrl, '_blank');
+  }
 }
 
 function resetAllToStart() {
@@ -2037,6 +2206,7 @@ function renderReceiptsPreview() {
   if (selectedReceiptFiles.length === 0) {
     previewCard.classList.add('hidden');
     dropzone.classList.remove('hidden');
+    scanBtnText.textContent = 'Pindai Struk Sekarang';
     return;
   }
 
@@ -2044,12 +2214,13 @@ function renderReceiptsPreview() {
   dropzone.classList.add('hidden');
   previewCard.classList.remove('hidden');
 
-  titleEl.textContent = `Struk Terpilih (${selectedReceiptFiles.length})`;
+  // Update title — Figma: "Foto Terpilih (N)"
+  titleEl.textContent = `Foto Terpilih (${selectedReceiptFiles.length})`;
   listContainer.innerHTML = '';
 
   selectedReceiptFiles.forEach((file, idx) => {
     const row = document.createElement('div');
-    row.className = 'selected-receipt-row';
+    row.className = 'receipt-preview-item';
 
     let thumbUrl = '';
     try {
@@ -2060,12 +2231,13 @@ function renderReceiptsPreview() {
     const label = `Struk #${idx + 1}`;
 
     row.innerHTML = `
-      <div class="selected-receipt-left">
-        ${thumbUrl ? `<img src="${thumbUrl}" alt="${label}" class="selected-receipt-thumb">` : ''}
-        <div class="selected-receipt-meta">
-          <span class="selected-receipt-label">${label}</span>
-          <span class="selected-receipt-name">${file.name || 'Foto Struk'}</span>
-        </div>
+      ${thumbUrl
+        ? `<img src="${thumbUrl}" alt="${label}" class="receipt-preview-thumb">`
+        : `<div class="receipt-preview-thumb" style="display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:20px;">📄</div>`
+      }
+      <div class="receipt-preview-info">
+        <div class="receipt-preview-name">${label}</div>
+        <div class="receipt-preview-status">Siap dipindai</div>
       </div>
       <button type="button" class="btn-remove-receipt" title="Hapus struk ini" data-idx="${idx}">✕</button>
     `;
@@ -2082,16 +2254,17 @@ function renderReceiptsPreview() {
   if (selectedReceiptFiles.length < MAX_RECEIPTS) {
     addSecondBox.classList.remove('hidden');
     if (btnTriggerText) {
-      btnTriggerText.textContent = `+ Tambah Struk #${selectedReceiptFiles.length + 1} (Maks ${MAX_RECEIPTS})`;
+      btnTriggerText.textContent = '+ Tambah Foto Struk Lainnya';
     }
   } else {
     addSecondBox.classList.add('hidden');
   }
 
+  // Update scan button text
   if (selectedReceiptFiles.length === 1) {
-    scanBtnText.textContent = 'Pindai Struk Sekarang →';
+    scanBtnText.textContent = 'Pindai Struk Sekarang';
   } else {
-    scanBtnText.textContent = `✨ Pindai ${selectedReceiptFiles.length} Struk Sekaligus →`;
+    scanBtnText.textContent = `Pindai ${selectedReceiptFiles.length} Struk Sekarang`;
   }
 
   // Ensure card is visible in mobile viewport
@@ -2297,7 +2470,22 @@ function applyLoadedSession(session) {
   if (Array.isArray(session.allMembers) && session.allMembers.length > 0) {
     state.allMembers = session.allMembers;
     state.participatingMemberIds = session.allMembers.map(m => m.id);
+  } else if (session.id) {
+    // New group session without pre-filled members: start clean with 0 members
+    state.allMembers = [];
+    state.participatingMemberIds = [];
   }
+
+  // Ensure payerId is set to session.payer or first participating member
+  if (session.payer && session.payer.id) {
+    state.payerId = session.payer.id;
+  } else if (state.participatingMemberIds.length > 0) {
+    if (!state.participatingMemberIds.includes(state.payerId)) {
+      state.payerId = state.participatingMemberIds[0];
+    }
+  }
+
+  updateMemberCountBadges();
 
   // Ensure items have assignedTo array, but DO NOT round-robin pre-assign!
   if (Array.isArray(state.receipt.items)) {
@@ -2451,6 +2639,16 @@ function selectOrCreateSelfMember(name, id = null) {
   state.selfClaim.activeMemberId = member.id;
   state.selfClaim.activeMemberName = member.name;
 
+  if (!state.participatingMemberIds.includes(member.id)) {
+    state.participatingMemberIds.push(member.id);
+  }
+
+  if (!state.participatingMemberIds.includes(state.payerId)) {
+    state.payerId = member.id;
+  }
+
+  updateMemberCountBadges();
+
   try {
     localStorage.setItem('patungin_self_member_id', member.id);
     localStorage.setItem('patungin_self_member_name', member.name);
@@ -2508,25 +2706,19 @@ function renderSelfClaimMode() {
       .filter(id => id !== state.selfClaim.activeMemberId)
       .map(id => memberMap.get(id) || 'Teman');
 
-    const unitPrice = (item.price && Number(item.price) > 0)
-      ? Number(item.price)
-      : Math.round(Number(item.total || 0) / Math.max(1, Number(item.qty || 1)));
-    const unitPriceHtml = item.qty > 1 ? `<span class="unit-price-pill" title="Harga satuan">@ Rp ${formatRupiah(unitPrice)}</span>` : '';
-
     const card = document.createElement('div');
     card.className = 'assignment-card claim-selectable-card' + (isMine ? ' my-claimed-card' : '');
     card.style.cursor = 'pointer';
 
     card.innerHTML = `
       <div class="assignment-head">
-        <div class="assignment-head-left">
+      <div class="assignment-head-left">
           <div class="claim-check-box ${isMine ? 'checked' : ''}">
             <span class="claim-check-mark">${isMine ? '✓' : ''}</span>
           </div>
-          <div>
-            <span class="qty-badge">${item.qty}x</span>
+          <div class="claim-item-copy">
             <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
-            ${unitPriceHtml}
+            ${item.qty > 1 ? `<span class="claim-item-quantity">${item.qty} porsi</span>` : ''}
           </div>
         </div>
         <strong class="assignment-item-price">Rp ${formatRupiah(item.total)}</strong>
@@ -2764,7 +2956,18 @@ async function pollSessionNow(showToastOnSuccess = false) {
         state.receipt = data.session.receipt;
         if (Array.isArray(data.session.allMembers)) {
           state.allMembers = data.session.allMembers;
+          state.participatingMemberIds = data.session.allMembers.map(m => m.id);
         }
+
+        if (data.session.payer && data.session.payer.id) {
+          state.payerId = data.session.payer.id;
+        } else if (state.participatingMemberIds.length > 0) {
+          if (!state.participatingMemberIds.includes(state.payerId)) {
+            state.payerId = state.participatingMemberIds[0];
+          }
+        }
+
+        updateMemberCountBadges();
 
         if (state.activeCollabTab === 'self-claim') {
           renderSelfClaimMode();
@@ -2875,7 +3078,8 @@ async function sendFinalBillToWhatsAppGroup() {
   }
 
   if (!state.activeSession || !state.activeSession.groupId) {
-    showToast('Sesi ini tidak terhubung ke grup WhatsApp.', 'error');
+    showToast('Membuka WhatsApp untuk mengirim rincian...', 'info');
+    openWaDirect();
     return;
   }
 

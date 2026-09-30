@@ -1,0 +1,3060 @@
+/* ============================================================================
+   PatungIn workflow screens — Figma-matched presentation for steps 2–4
+   Existing step-1 upload presentation remains in style.css.
+   ============================================================================ */
+:root {
+  --flow-cyan: #00aed6;
+  --flow-cyan-deep: #0090b3;
+  --flow-cyan-soft: #e6f9fd;
+  --flow-page: #f8fafc;
+  --flow-surface: #ffffff;
+  --flow-ink: #1e293b;
+  --flow-body: #334155;
+  --flow-secondary: #475569;
+  --flow-muted: #94a3b8;
+  --flow-faint: #cad5e2;
+  --flow-border: #e2e8f0;
+  --flow-separator: #f1f5f9;
+  --flow-green: #059669;
+  --flow-whatsapp: #00c950;
+  --flow-blue: #3b82f6;
+  --flow-amber: #f59e0b;
+  --flow-radius-card: 16px;
+  --flow-radius-control: 12px;
+  --flow-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Shared frame, centered header and completed/current progress steps */
+.app-shell:has(#step-2-view.active),
+.app-shell:has(#step-3-view.active),
+.app-shell:has(#step-4-view.active) {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--flow-page);
+}
+
+.app-shell:has(#step-2-view.active) .app-header,
+.app-shell:has(#step-3-view.active) .app-header,
+.app-shell:has(#step-4-view.active) .app-header {
+  height: 117px;
+  flex: 0 0 117px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--flow-separator);
+  box-shadow: none;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.app-shell:has(#step-2-view.active) .header-inner,
+.app-shell:has(#step-3-view.active) .header-inner,
+.app-shell:has(#step-4-view.active) .header-inner {
+  position: relative;
+  height: 58px;
+  min-height: 58px;
+  padding: 0 16px;
+  justify-content: center;
+}
+
+.app-shell:has(#step-2-view.active) .header-left,
+.app-shell:has(#step-3-view.active) .header-left,
+.app-shell:has(#step-4-view.active) .header-left {
+  position: static;
+  width: 100%;
+  flex: none;
+  justify-content: center;
+}
+
+.app-shell:has(#step-2-view.active) .header-title-box,
+.app-shell:has(#step-3-view.active) .header-title-box,
+.app-shell:has(#step-4-view.active) .header-title-box {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 120px);
+  flex: none;
+  align-items: center;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.app-shell:has(#step-2-view.active) .header-title,
+.app-shell:has(#step-3-view.active) .header-title,
+.app-shell:has(#step-4-view.active) .header-title {
+  color: var(--flow-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 19px;
+  letter-spacing: -0.01em;
+}
+
+.app-shell:has(#step-2-view.active) .header-subtitle,
+.app-shell:has(#step-3-view.active) .header-subtitle,
+.app-shell:has(#step-4-view.active) .header-subtitle {
+  max-width: 100%;
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell:has(#step-2-view.active) .header-right,
+.app-shell:has(#step-3-view.active) .header-right,
+.app-shell:has(#step-4-view.active) .header-right {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+}
+
+.app-shell:has(#step-2-view.active) .btn-back,
+.app-shell:has(#step-3-view.active) .btn-back,
+.app-shell:has(#step-4-view.active) .btn-back,
+.app-shell:has(#step-2-view.active) .btn-hamburger,
+.app-shell:has(#step-3-view.active) .btn-hamburger,
+.app-shell:has(#step-4-view.active) .btn-hamburger {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 13px;
+  background: #f1f5f9;
+  color: var(--flow-body);
+}
+
+.app-shell:has(#step-2-view.active) .btn-back,
+.app-shell:has(#step-3-view.active) .btn-back,
+.app-shell:has(#step-4-view.active) .btn-back {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+}
+
+.app-shell:has(#step-2-view.active) .btn-back img,
+.app-shell:has(#step-3-view.active) .btn-back img,
+.app-shell:has(#step-4-view.active) .btn-back img,
+.app-shell:has(#step-2-view.active) .btn-hamburger img,
+.app-shell:has(#step-3-view.active) .btn-hamburger img,
+.app-shell:has(#step-4-view.active) .btn-hamburger img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.app-shell:has(#step-2-view.active) .stepper-bar,
+.app-shell:has(#step-3-view.active) .stepper-bar,
+.app-shell:has(#step-4-view.active) .stepper-bar {
+  height: 59px;
+  padding: 3px 24px 4px;
+  align-items: flex-start;
+  background: var(--flow-surface);
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step,
+.app-shell:has(#step-3-view.active) .stepper-step,
+.app-shell:has(#step-4-view.active) .stepper-step {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 1;
+}
+
+.app-shell:has(#step-2-view.active) .step-num,
+.app-shell:has(#step-3-view.active) .step-num,
+.app-shell:has(#step-4-view.active) .step-num {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: var(--flow-page);
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step.active .step-num,
+.app-shell:has(#step-3-view.active) .stepper-step.active .step-num,
+.app-shell:has(#step-4-view.active) .stepper-step.active .step-num,
+.app-shell:has(#step-2-view.active) .stepper-step.completed .step-num,
+.app-shell:has(#step-3-view.active) .stepper-step.completed .step-num,
+.app-shell:has(#step-4-view.active) .stepper-step.completed .step-num {
+  background: var(--flow-cyan);
+  color: var(--flow-surface);
+  box-shadow: 0 4px 12px rgba(0, 174, 214, 0.2);
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step.completed .step-num,
+.app-shell:has(#step-3-view.active) .stepper-step.completed .step-num,
+.app-shell:has(#step-4-view.active) .stepper-step.completed .step-num {
+  font-size: 0;
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step.completed .step-num::after,
+.app-shell:has(#step-3-view.active) .stepper-step.completed .step-num::after,
+.app-shell:has(#step-4-view.active) .stepper-step.completed .step-num::after {
+  width: 10px;
+  height: 8px;
+  background: var(--flow-surface);
+  content: "";
+  mask: url("/assets/workflow-check.svg") center / contain no-repeat;
+  -webkit-mask: url("/assets/workflow-check.svg") center / contain no-repeat;
+}
+
+.app-shell:has(#step-2-view.active) .step-text,
+.app-shell:has(#step-3-view.active) .step-text,
+.app-shell:has(#step-4-view.active) .step-text {
+  color: var(--flow-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step.active .step-text,
+.app-shell:has(#step-3-view.active) .stepper-step.active .step-text,
+.app-shell:has(#step-4-view.active) .stepper-step.active .step-text,
+.app-shell:has(#step-2-view.active) .stepper-step.completed .step-text,
+.app-shell:has(#step-3-view.active) .stepper-step.completed .step-text,
+.app-shell:has(#step-4-view.active) .stepper-step.completed .step-text {
+  color: var(--flow-cyan);
+}
+
+.app-shell:has(#step-2-view.active) .stepper-line,
+.app-shell:has(#step-3-view.active) .stepper-line,
+.app-shell:has(#step-4-view.active) .stepper-line {
+  height: 2px;
+  margin: 13px 4px 0;
+  background: var(--flow-border);
+}
+
+.app-shell:has(#step-2-view.active) .stepper-step[data-step="1"] + .stepper-line,
+.app-shell:has(#step-3-view.active) .stepper-step[data-step="1"] + .stepper-line,
+.app-shell:has(#step-3-view.active) .stepper-step[data-step="2"] + .stepper-line,
+.app-shell:has(#step-4-view.active) .stepper-step[data-step="1"] + .stepper-line,
+.app-shell:has(#step-4-view.active) .stepper-step[data-step="2"] + .stepper-line,
+.app-shell:has(#step-4-view.active) .stepper-step[data-step="3"] + .stepper-line {
+  background: var(--flow-cyan);
+}
+
+.app-shell:has(#step-2-view.active) .main-content,
+.app-shell:has(#step-3-view.active) .main-content,
+.app-shell:has(#step-4-view.active) .main-content {
+  flex: 1 0 auto;
+  padding: 20px 16px 24px;
+  background: var(--flow-page);
+}
+
+.app-shell:has(#step-2-view.active) .content-container,
+.app-shell:has(#step-3-view.active) .content-container,
+.app-shell:has(#step-4-view.active) .content-container {
+  width: 100%;
+  max-width: 398px;
+  margin: 0 auto;
+}
+
+.app-shell:has(#step-2-view.active) .step-view,
+.app-shell:has(#step-3-view.active) .step-view,
+.app-shell:has(#step-4-view.active) .step-view {
+  gap: 12px;
+}
+
+.app-shell:has(#step-2-view.active) .step-guide-banner,
+.app-shell:has(#step-3-view.active) #panel-host-manage > .step-guide-banner {
+  display: none;
+}
+
+/* Step 2 — compact receipt review and editable charge summary */
+.app-shell:has(#step-2-view.active) #step-2-view {
+  min-height: calc(100dvh - 165px);
+  gap: 12px;
+}
+
+.review-merchant-card,
+.review-items-card,
+.app-shell:has(#step-2-view.active) .charges-card {
+  overflow: hidden;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.review-merchant-card {
+  min-height: 78px;
+  padding: 12px 16px;
+}
+
+.review-merchant-card .receipt-head-row {
+  min-height: 52px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.review-merchant-lockup {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.review-receipt-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.review-receipt-icon img {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.review-merchant-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.review-merchant-copy .merchant-badge {
+  display: none;
+}
+
+.review-merchant-copy .merchant-title {
+  max-width: 185px;
+  overflow: hidden;
+  color: var(--flow-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-merchant-copy .receipt-date {
+  margin-top: 1px;
+  color: var(--flow-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.review-add-item {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #b3edf8;
+  border-radius: var(--flow-radius-control);
+  background: #e6f9fd;
+  color: var(--flow-cyan-deep);
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.review-add-item img {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.review-items-card {
+  padding: 0;
+}
+
+.receipt-item-count {
+  min-height: 42px;
+  margin: 0;
+  padding: 13px 16px 11px;
+  border-bottom: 1px solid var(--flow-separator);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 17px;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-2-view.active) .receipt-items-list {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.app-shell:has(#step-2-view.active) .receipt-row-item {
+  min-height: 65px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.app-shell:has(#step-2-view.active) .row-item-left.review-item-copy {
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.app-shell:has(#step-2-view.active) .review-item-copy .item-name-text {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-item-meta {
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.app-shell:has(#step-2-view.active) .row-item-right {
+  flex: 0 0 auto;
+  gap: 8px;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-2-view.active) .btn-delete-item {
+  color: #cbd5e1;
+}
+
+.app-shell:has(#step-2-view.active) .receipt-store-section-header {
+  margin: 8px 12px;
+}
+
+.app-shell:has(#step-2-view.active) .charges-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+}
+
+.charges-heading {
+  margin: 0 0 7px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-2-view.active) .charge-line {
+  min-height: 41px;
+  border-bottom: 1px solid var(--flow-separator);
+  color: var(--flow-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.app-shell:has(#step-2-view.active) .charge-line strong {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-2-view.active) .charge-edit-trigger {
+  gap: 5px;
+}
+
+.app-shell:has(#step-2-view.active) .btn-edit-link {
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.app-shell:has(#step-2-view.active) .line-grand-total {
+  min-height: 56px;
+  margin: 8px 0 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--flow-radius-control);
+  background: var(--flow-ink);
+}
+
+.app-shell:has(#step-2-view.active) .line-grand-total span {
+  color: #cad5e2;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-2-view.active) .line-grand-total .grand-total-amount {
+  color: var(--flow-surface);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.app-shell:has(#step-2-view.active) .review-actions-footer {
+  position: sticky;
+  z-index: 28;
+  bottom: 0;
+  min-height: 74px;
+  margin: auto -16px -24px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--flow-separator);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-shell:has(#step-2-view.active) .review-actions-footer .btn-outline,
+.app-shell:has(#step-2-view.active) .review-actions-footer .btn-primary {
+  min-height: 50px;
+  border-radius: var(--flow-radius-control);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-2-view.active) .review-actions-footer .btn-outline {
+  min-width: 108px;
+  border-color: var(--flow-border);
+  color: var(--flow-secondary);
+}
+
+.app-shell:has(#step-2-view.active) .review-actions-footer .btn-primary {
+  background: var(--flow-cyan);
+  box-shadow: 0 8px 16px rgba(0, 174, 214, 0.18);
+}
+
+/* Step 3 — participant tabs, personal claim and host assignment */
+.app-shell:has(#step-3-view.active) #step-3-view {
+  min-height: calc(100dvh - 165px);
+  gap: 12px;
+}
+
+.app-shell:has(#step-3-view.active) .collab-tabs-container {
+  min-height: 48px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 16px;
+  background: #f1f5f9;
+}
+
+.app-shell:has(#step-3-view.active) .collab-tab {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 6px;
+  border-radius: 13px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) .collab-tab.active {
+  color: var(--flow-ink);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1), 0 2px 5px rgba(15, 23, 42, 0.04);
+}
+
+.app-shell:has(#step-3-view.active) .collab-panel:not(.hidden) {
+  display: flex;
+  min-height: 100%;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-shell:has(#step-3-view.active) #panel-self-claim .switch-to-host-hint {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-bar {
+  min-height: 74px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-left {
+  gap: 12px;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-avatar-circle {
+  width: 36px;
+  height: 36px;
+  background: var(--flow-blue);
+  font-size: 14px;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-label {
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 16px;
+  text-transform: none;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-name {
+  color: var(--flow-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) .btn-change-claim-name {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: var(--flow-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-header {
+  min-height: 40px;
+  margin: 0 !important;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-header .card-title-clean {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-header .btn-link-action {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 9px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-items-list {
+  gap: 0;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card {
+  min-height: 49px;
+  padding: 11px 16px;
+  border: 0;
+  border-bottom: 1px solid #f8fafc;
+  border-radius: 0;
+  background: var(--flow-surface);
+  box-shadow: none;
+  transition: background 160ms ease;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card:last-child {
+  border-bottom: 0;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card.my-claimed-card {
+  border-color: #f8fafc;
+  background: rgba(230, 249, 253, 0.42);
+  box-shadow: none;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-head {
+  min-height: 28px;
+  gap: 10px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-head-left {
+  flex: 1;
+  gap: 12px;
+}
+
+.app-shell:has(#step-3-view.active) .claim-check-box {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cad5e2;
+  border-radius: 6px;
+}
+
+.app-shell:has(#step-3-view.active) .claim-check-box.checked {
+  border-color: var(--flow-cyan);
+  background: var(--flow-cyan);
+  color: var(--flow-ink);
+}
+
+.app-shell:has(#step-3-view.active) .claim-item-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-item-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-item-quantity {
+  color: var(--flow-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-item-price {
+  flex: 0 0 auto;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-chips-row {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-action-bar {
+  position: sticky;
+  z-index: 24;
+  bottom: 0;
+  min-height: 64px;
+  margin: auto -16px -24px;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-shell:has(#step-3-view.active) .btn-claim-submit {
+  width: 100%;
+  min-height: 48px;
+  min-width: 0;
+  border-radius: var(--flow-radius-control);
+  background: var(--flow-cyan);
+  box-shadow: 0 8px 16px rgba(0, 174, 214, 0.18);
+  font-size: 14px;
+}
+
+.app-shell:has(#step-3-view.active) .claim-submit-count,
+.app-shell:has(#step-3-view.active) .claim-submit-count .self-claim-count-text {
+  color: var(--flow-surface);
+  font: inherit;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) #panel-self-claim:has(#claim-success-card:not(.hidden)) .self-claim-action-bar {
+  display: none;
+}
+
+/* Host mode participant, payer, item assignment and share estimate */
+.app-shell:has(#step-3-view.active) #panel-host-manage > .card {
+  padding: 14px 16px;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .card-header-clean {
+  margin-bottom: 10px;
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage #items-container + .card-header-clean,
+.app-shell:has(#step-3-view.active) #panel-host-manage #items-container {
+  min-width: 0;
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .card-header-clean .card-desc-clean {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .card-title-clean {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-3-view.active) #participants-toggle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.app-shell:has(#step-3-view.active) .participant-select-chip {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 5px;
+  border: 1px solid var(--flow-border);
+  border-radius: 999px;
+  background: var(--flow-surface);
+  gap: 4px;
+}
+
+.app-shell:has(#step-3-view.active) .participant-select-chip.active {
+  border-color: var(--flow-green);
+  background: var(--flow-green);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .participant-avatar-badge {
+  width: 16px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+  font-size: 8px;
+}
+
+.app-shell:has(#step-3-view.active) .participant-select-chip.active .participant-avatar-badge {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.app-shell:has(#step-3-view.active) .participant-chip-info {
+  flex: 0 1 auto;
+}
+
+.app-shell:has(#step-3-view.active) .participant-chip-name {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) .participant-chip-status {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) .participant-check-icon {
+  color: inherit;
+  font-size: 10px;
+}
+
+/* Quick-add-member-row styles are in the participant layout section below */
+
+.app-shell:has(#step-3-view.active) .payer-selection-box {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 7px;
+}
+
+.app-shell:has(#step-3-view.active) .payer-selection-box > div:first-child {
+  margin-bottom: 0 !important;
+}
+
+.app-shell:has(#step-3-view.active) .payer-selection-box .form-label-bold {
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.app-shell:has(#step-3-view.active) .payer-selection-box .btn-link-action {
+  font-size: 11px !important;
+}
+
+.app-shell:has(#step-3-view.active) .payer-mode-segmented {
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  gap: 8px;
+  background: transparent;
+}
+
+.app-shell:has(#step-3-view.active) .btn-segment {
+  min-height: 36px;
+  border: 1px solid var(--flow-border);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-3-view.active) .btn-segment.active {
+  border-color: var(--flow-cyan);
+  background: var(--flow-cyan);
+  color: var(--flow-surface);
+  box-shadow: none;
+}
+
+.app-shell:has(#step-3-view.active) #single-payer-container .select-clean {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 12px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-items-list#items-container {
+  gap: 0;
+}
+
+.app-shell:has(#step-3-view.active) #items-container > .assignment-card {
+  min-height: 98px;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: var(--flow-surface);
+  box-shadow: none;
+}
+
+.app-shell:has(#step-3-view.active) #items-container > .assignment-card:last-child {
+  border-bottom: 0;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-head {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.assignment-head-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-head-copy .assignment-item-name {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-price-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--flow-muted);
+  font-size: 11px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-price-meta .unit-price-pill,
+.app-shell:has(#step-3-view.active) .assignment-price-meta .split-portion-note {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.app-shell:has(#step-3-view.active) #items-container .assignment-item-price {
+  flex: 0 0 auto;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row {
+  gap: 7px;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row .btn-member-chip {
+  min-height: 27px;
+  padding: 3px 10px;
+  border: 1px solid var(--flow-border);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row .btn-member-chip.active:nth-child(1) {
+  border-color: var(--flow-green);
+  background: var(--flow-green);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row .btn-member-chip.active:nth-child(2) {
+  border-color: var(--flow-blue);
+  background: var(--flow-blue);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row .btn-member-chip.active:nth-child(3) {
+  border-color: var(--flow-amber);
+  background: var(--flow-amber);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .assignment-chips-row .chip-avatar-mini {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) #items-container .btn-toggle-all {
+  width: max-content;
+  padding: 2px 0;
+  color: var(--flow-cyan-deep);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   Modern Selector Fields in Card 3
+   ========================================================================== */
+.options-card.modern-options-card,
+.app-shell:has(#step-3-view.active) #panel-host-manage .options-card.modern-options-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--flow-surface);
+  border-radius: var(--flow-radius-card);
+  box-shadow: var(--flow-card-shadow);
+  padding: 16px;
+}
+
+.modern-select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modern-select-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modern-select-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modern-select-field:hover .modern-select-box,
+.modern-select-field:focus-visible .modern-select-box {
+  border-color: #00b4d8;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 180, 216, 0.12);
+}
+
+.modern-select-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modern-select-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.modern-select-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modern-select-arrow {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.modern-select-field:hover .modern-select-arrow {
+  color: #00b4d8;
+  transform: translateY(1px);
+}
+
+/* ==========================================================================
+   Modern Option Picker Bottom Sheet Modal
+   ========================================================================== */
+.modal-sheet-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+  animation: popModalCenter 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-sheet-handle {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  #modal-tax-picker.modal-backdrop,
+  #modal-rounding-picker.modal-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  #modal-tax-picker .modal-sheet-card,
+  #modal-rounding-picker .modal-sheet-card {
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 85dvh !important;
+    animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .modal-sheet-handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 999px;
+    margin: 8px auto 0;
+  }
+}
+
+.modal-sheet-body {
+  padding: 16px 20px 24px;
+}
+
+.picker-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.picker-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.picker-option-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.picker-option-card.active {
+  border-color: #00b4d8;
+  background: #f0fbfd;
+  box-shadow: 0 2px 8px rgba(0, 180, 216, 0.15);
+}
+
+.picker-option-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.picker-option-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.picker-option-icon.icon-cyan {
+  background: rgba(0, 180, 216, 0.12);
+}
+
+.picker-option-icon.icon-amber {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.picker-option-icon.icon-slate {
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.picker-option-icon.icon-emerald {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.picker-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.picker-option-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.picker-option-card.active .picker-option-title {
+  color: #0077b6;
+}
+
+.picker-option-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.picker-option-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: transparent;
+  flex-shrink: 0;
+  margin-left: 10px;
+  transition: all 0.15s ease;
+}
+
+.picker-option-card.active .picker-option-check {
+  border-color: #00b4d8;
+  background: #00b4d8;
+  color: #ffffff;
+}
+
+.hidden-accessible {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.app-shell:has(#step-3-view.active) .estimate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.app-shell:has(#step-3-view.active) .estimate-header .card-title-clean {
+  color: #64748b;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-3-view.active) .estimate-live-label {
+  color: var(--flow-cyan);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-3-view.active) .shares-grid-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 -16px -14px;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item {
+  min-height: 55px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item.is-payer {
+  border-color: var(--flow-separator);
+  background: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-header {
+  display: contents;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-header .avatar-initial-sm {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  background: var(--flow-green);
+  color: var(--flow-surface);
+  font-size: 11px;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item:nth-child(2) .avatar-initial-sm {
+  background: var(--flow-blue);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item:nth-child(3) .avatar-initial-sm {
+  background: var(--flow-amber);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-details {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-name {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-amount {
+  flex: 0 0 auto;
+  color: var(--flow-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-3-view.active) .share-progress-track {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.app-shell:has(#step-3-view.active) .share-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--flow-green);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item:nth-child(2) .share-progress-track > span {
+  background: var(--flow-blue);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-item:nth-child(3) .share-progress-track > span {
+  background: var(--flow-amber);
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-percent {
+  flex: 0 0 30px;
+  color: var(--flow-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-details .payer-badge-tag,
+.app-shell:has(#step-3-view.active) .share-preview-details > div:not(.share-preview-summary):not(.share-progress-track) {
+  display: none;
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer {
+  position: sticky;
+  z-index: 24;
+  bottom: 0;
+  min-height: 74px;
+  margin: auto -16px -24px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--flow-separator);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer .btn-outline,
+.app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer .btn-primary {
+  min-height: 50px;
+  border-radius: var(--flow-radius-control);
+  font-size: 14px;
+}
+
+.app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer .btn-primary {
+  background: var(--flow-cyan);
+  box-shadow: 0 8px 16px rgba(0, 174, 214, 0.18);
+}
+
+/* Step 4 — final summary hero, per-member breakdown and WhatsApp actions */
+.app-shell:has(#step-4-view.active) #step-4-view {
+  gap: 12px;
+}
+
+.app-shell:has(#step-4-view.active) .success-card {
+  min-height: 220px;
+  gap: 7px;
+  padding: 20px 18px;
+  border: 0;
+  border-radius: var(--flow-radius-card);
+  background: linear-gradient(120deg, #00aed6 0%, #0093b9 100%);
+  box-shadow: none;
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-4-view.active) .success-icon-badge {
+  width: 56px;
+  height: 56px;
+  margin: 0 0 2px;
+  border-radius: 0;
+  background: transparent;
+  object-fit: contain;
+  animation: popSuccess 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-shell:has(#step-4-view.active) .success-title {
+  color: var(--flow-surface);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 28px;
+}
+
+.app-shell:has(#step-4-view.active) .success-desc {
+  color: #b3edf8;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.app-shell:has(#step-4-view.active) .success-total {
+  margin-top: 2px;
+  padding: 7px 17px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--flow-surface);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 34px;
+}
+
+.final-consumption-card {
+  overflow: hidden;
+  border: 1px solid var(--flow-separator);
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.final-consumption-header {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.final-consumption-header h3 {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.final-payer-label {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.final-payer-label strong {
+  margin-left: 3px;
+  color: var(--flow-ink);
+  font-weight: 700;
+}
+
+.app-shell:has(#step-4-view.active) .final-members-list {
+  gap: 0;
+}
+
+.app-shell:has(#step-4-view.active) .final-member-row {
+  min-height: 78px;
+  padding: 13px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: var(--flow-surface);
+}
+
+.app-shell:has(#step-4-view.active) .final-member-row.is-payer {
+  background: rgba(230, 249, 253, 0.5);
+}
+
+.final-member-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.final-member-head,
+.final-member-identity {
+  display: flex;
+  align-items: center;
+}
+
+.final-member-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.final-member-identity {
+  min-width: 0;
+  gap: 12px;
+}
+
+.app-shell:has(#step-4-view.active) .final-member-row .avatar-initial-badge {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  background: var(--flow-green);
+  color: var(--flow-surface);
+  font-size: 11px;
+}
+
+.app-shell:has(#step-4-view.active) .final-member-row:nth-child(2) .avatar-initial-badge {
+  background: var(--flow-blue);
+}
+
+.app-shell:has(#step-4-view.active) .final-member-row:nth-child(3) .avatar-initial-badge {
+  background: var(--flow-amber);
+}
+
+.app-shell:has(#step-4-view.active) .final-row-name {
+  color: var(--flow-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-shell:has(#step-4-view.active) .final-row-amount {
+  flex: 0 0 auto;
+  color: var(--flow-ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.final-member-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 7px 0 0 40px;
+}
+
+.final-consumption-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--flow-muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.final-consumption-item span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-directions-card {
+  border: 1px solid #bbf7d0;
+  border-radius: var(--flow-radius-card);
+  background: #f0fdf4;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #d1fae5;
+  border-radius: var(--flow-radius-card);
+  background: var(--flow-surface);
+  box-shadow: var(--flow-card-shadow);
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-header {
+  min-height: 45px;
+  margin: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-icon img,
+.app-shell:has(#step-4-view.active) .whatsapp-secondary-actions img,
+.app-shell:has(#step-4-view.active) #btn-send-to-wa-group img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-icon img {
+  color: #00c950;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-header .card-title-clean {
+  color: #64748b;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-preview-box {
+  max-height: 210px;
+  margin: 16px;
+  padding: 14px;
+  border: 1px solid var(--flow-border);
+  border-radius: var(--flow-radius-control);
+  background: #f8fafc;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-preview-box pre {
+  color: var(--flow-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-buttons-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.whatsapp-secondary-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.whatsapp-secondary-actions > button {
+  min-width: 0;
+  min-height: 42px;
+  flex: 1;
+  gap: 8px;
+  border-radius: var(--flow-radius-control);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-secondary-actions .btn-primary {
+  background: var(--flow-whatsapp);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-4-view.active) #btn-send-to-wa-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: var(--flow-radius-control);
+  background: var(--flow-whatsapp) !important;
+  color: var(--flow-surface) !important;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 16px rgba(0, 201, 80, 0.2);
+}
+
+.final-reset-area {
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.app-shell:has(#step-4-view.active) .final-reset-button {
+  min-height: 50px;
+  border-color: #86efac;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--flow-cyan-deep);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Member and payment sheets keep all current modal actions and data fields. */
+#modal-circle-settings .modal-card,
+#modal-payment-settings .modal-card {
+  max-height: min(88vh, 88dvh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px 24px 0 0;
+}
+
+#modal-circle-settings .modal-header,
+#modal-payment-settings .modal-header {
+  flex-shrink: 0;
+  min-height: 60px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--flow-separator);
+  background: var(--flow-surface);
+}
+
+#modal-circle-settings .modal-title,
+#modal-payment-settings .modal-title {
+  color: var(--flow-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+#modal-circle-settings .modal-desc,
+#modal-payment-settings .modal-desc,
+#modal-payment-settings .payment-modal-intro {
+  display: none;
+}
+
+#modal-circle-settings .btn-close-modal,
+#modal-payment-settings .btn-close-modal {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 16px;
+}
+
+#modal-circle-settings .modal-body,
+#modal-payment-settings .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(88dvh - 130px);
+  padding: 14px 20px;
+  overflow-y: auto;
+  background: var(--flow-surface);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Quick add member at TOP of modal body so it's ALWAYS visible on mobile */
+#modal-circle-settings .modal-add-member-section {
+  margin: 0 0 12px 0;
+  position: sticky;
+  top: -14px;
+  z-index: 10;
+  background: var(--flow-surface);
+  padding: 4px 0 6px;
+}
+
+#modal-circle-settings .modal-add-member-section .quick-add-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 !important;
+  width: 100%;
+}
+
+#modal-circle-settings .modal-add-member-section .input-text-compact {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1.5px solid var(--flow-border);
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 13.5px;
+  color: var(--flow-ink);
+  transition: all 0.15s ease;
+}
+
+#modal-circle-settings .modal-add-member-section .input-text-compact:focus {
+  border-color: var(--flow-cyan);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.12);
+}
+
+#modal-circle-settings .modal-add-member-section .btn-primary-sm {
+  flex: 0 0 auto;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--flow-cyan);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#modal-circle-settings .modal-add-member-section .btn-primary-sm:hover {
+  background: var(--flow-cyan-deep);
+}
+
+#modal-circle-settings .member-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#modal-circle-settings .member-pick-row {
+  min-height: 48px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#modal-circle-settings .member-pick-row.active {
+  border-left: 3px solid var(--flow-cyan);
+  background: #f0fbfd;
+}
+
+#modal-circle-settings .member-pick-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#modal-circle-settings .member-checkbox-circle {
+  display: none;
+}
+
+#modal-circle-settings .member-pick-left .avatar-initial-badge {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--flow-green);
+  color: var(--flow-surface);
+  font-size: 11px;
+}
+
+#modal-circle-settings .member-pick-row:nth-child(2) .avatar-initial-badge {
+  background: var(--flow-blue);
+}
+
+#modal-circle-settings .member-pick-row:nth-child(3) .avatar-initial-badge {
+  background: var(--flow-amber);
+}
+
+#modal-circle-settings .member-pick-name {
+  color: var(--flow-body);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+#modal-circle-settings .member-pick-sub {
+  display: none;
+}
+
+#modal-circle-settings .btn-delete-member {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--flow-muted);
+}
+
+#modal-circle-settings .modal-shortcut-banner {
+  display: none;
+}
+
+#modal-circle-settings .modal-footer,
+#modal-payment-settings .modal-footer {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  min-height: 60px;
+  gap: 10px;
+  padding: 12px 20px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  border-top: 1px solid var(--flow-separator);
+  background: var(--flow-surface);
+}
+
+#modal-circle-settings .modal-footer > button,
+#modal-payment-settings .modal-footer > button {
+  min-height: 40px;
+  border-radius: var(--flow-radius-control);
+  font-size: 12px;
+}
+
+#modal-payment-settings .payment-cards-list {
+  gap: 12px;
+}
+
+#modal-payment-settings .payment-person-card {
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--flow-separator);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+#modal-payment-settings .payment-person-title {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#modal-payment-settings .payment-person-title .avatar-initial-badge {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: #003b95;
+  color: var(--flow-surface);
+  font-size: 12px;
+}
+
+#modal-payment-settings .payment-person-card:nth-child(2) .avatar-initial-badge { background: #00805a; }
+#modal-payment-settings .payment-person-card:nth-child(3) .avatar-initial-badge { background: #003b95; }
+#modal-payment-settings .payment-person-card:nth-child(4) .avatar-initial-badge { background: var(--flow-cyan); }
+#modal-payment-settings .payment-person-card:nth-child(5) .avatar-initial-badge { background: #168cf0; }
+
+#modal-payment-settings .quick-bank-chips {
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+#modal-payment-settings .btn-quick-bank {
+  min-height: 24px;
+  padding: 2px 6px;
+  border-color: #dbe5ef;
+  font-size: 9px;
+}
+
+#modal-payment-settings .textarea-payment {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #dbe5ef;
+  border-radius: 9px;
+  background: var(--flow-surface);
+  font-size: 14px;
+  resize: vertical;
+}
+
+#modal-payment-settings #btn-save-payment {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--flow-radius-control);
+  background: var(--flow-cyan);
+  color: var(--flow-surface);
+}
+
+/* Fine details for assets and the compact host participant row */
+.app-shell:has(#step-3-view.active) .participant-chips-and-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.app-shell:has(#step-3-view.active) .participant-chips-and-add {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.app-shell:has(#step-3-view.active) .participant-chips-and-add .participants-selection-grid,
+.app-shell:has(#step-3-view.active) #participants-toggle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
+}
+
+/* Quick-add row — full width, tidy input with icon and distinct add button */
+.app-shell:has(#step-3-view.active) #panel-host-manage > .card > .quick-add-member-row,
+.app-shell:has(#step-3-view.active) .quick-add-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  width: 100%;
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-input-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--flow-border);
+  border-radius: 12px;
+  background: var(--flow-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-input-wrapper:focus-within {
+  border-color: var(--flow-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.12);
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-icon {
+  font-size: 13px;
+  margin-right: 8px;
+  color: var(--flow-muted);
+  user-select: none;
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-member-row .input-text-compact {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 4px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--flow-ink);
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-member-row .input-text-compact::placeholder {
+  color: var(--flow-muted);
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-member-row .btn-primary-sm,
+.app-shell:has(#step-3-view.active) .btn-quick-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--flow-cyan);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 180, 216, 0.22);
+  transition: all 0.15s ease;
+}
+
+.app-shell:has(#step-3-view.active) .quick-add-member-row .btn-primary-sm:hover,
+.app-shell:has(#step-3-view.active) .btn-quick-add:hover {
+  background: var(--flow-cyan-deep);
+  transform: translateY(-1px);
+}
+
+.app-shell:has(#step-3-view.active) .btn-quick-add .plus-icon {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Card header actions container */
+.app-shell:has(#step-3-view.active) .card-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Warning badge — amber pill strictly placed to the left of sync */
+.app-shell:has(#step-3-view.active) .badge-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.app-shell:has(#step-3-view.active) .badge-warning.hidden {
+  display: none !important;
+}
+
+.app-shell:has(#step-3-view.active) .participant-select-chip.active:nth-child(2) {
+  border-color: var(--flow-blue);
+  background: var(--flow-blue);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .participant-select-chip.active:nth-child(3) {
+  border-color: var(--flow-amber);
+  background: var(--flow-amber);
+  color: var(--flow-surface);
+}
+
+.app-shell:has(#step-3-view.active) .host-item-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.app-shell:has(#step-3-view.active) .host-item-sync img,
+.app-shell:has(#step-3-view.active) #btn-refresh-claims img {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.app-shell:has(#step-3-view.active) .share-preview-header .share-preview-details {
+  min-width: 0;
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-icon img {
+  filter: invert(49%) sepia(98%) saturate(707%) hue-rotate(88deg) brightness(96%) contrast(103%);
+}
+
+.app-shell:has(#step-4-view.active) .whatsapp-secondary-actions .btn-primary img,
+.app-shell:has(#step-4-view.active) #btn-send-to-wa-group img {
+  filter: brightness(0) invert(1);
+}
+
+/* WhatsApp "Kirim ke Grup" prominent green button */
+.app-shell:has(#step-4-view.active) .btn-wa-group-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--flow-radius-control);
+  background: #25D366;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.30);
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.app-shell:has(#step-4-view.active) .btn-wa-group-send:hover {
+  background: #1db954;
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.38);
+}
+
+.app-shell:has(#step-4-view.active) .btn-wa-group-send:active {
+  transform: scale(0.98);
+}
+
+.app-shell:has(#step-4-view.active) .btn-wa-group-send img {
+  filter: brightness(0) invert(1);
+}
+
+.app-shell:has(#step-4-view.active) .final-payer-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-shell:has(#step-4-view.active) .final-payer-label #final-payer-info {
+  color: var(--flow-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#modal-circle-settings.modal-backdrop,
+#modal-payment-settings.modal-backdrop {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+/* Small phone widths, long names and short viewports */
+@media (max-width: 380px) {
+  .app-shell:has(#step-2-view.active) .main-content,
+  .app-shell:has(#step-3-view.active) .main-content,
+  .app-shell:has(#step-4-view.active) .main-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-shell:has(#step-2-view.active) .review-actions-footer,
+  .app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer,
+  .app-shell:has(#step-3-view.active) .self-claim-action-bar {
+    margin-right: -12px;
+    margin-left: -12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-shell:has(#step-3-view.active) .collab-tab {
+    font-size: 11px;
+  }
+
+  .app-shell:has(#step-3-view.active) .participant-select-chip {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .app-shell:has(#step-3-view.active) .quick-add-member-row .input-text-compact {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-height: 700px) {
+  .app-shell:has(#step-2-view.active) .review-actions-footer,
+  .app-shell:has(#step-3-view.active) #panel-host-manage .step-actions-footer,
+  .app-shell:has(#step-3-view.active) .self-claim-action-bar {
+    position: static;
+    margin-top: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell:has(#step-2-view.active) *,
+  .app-shell:has(#step-3-view.active) *,
+  .app-shell:has(#step-4-view.active) *,
+  #modal-circle-settings *,
+  #modal-payment-settings * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+   Step 1 — Upload Struk (Figma Redesign Override)
+   ============================================================================ */
+
+/* Background & shell */
+.app-shell:has(#step-1-view.active) {
+  background: var(--flow-page);
+}
+
+/* Header — match steps 2–4 style */
+.app-shell:has(#step-1-view.active) .app-header {
+  height: 117px;
+  flex: 0 0 117px;
+  background: rgba(255, 255, 255, 0.90);
+  border-bottom: 1px solid var(--flow-separator);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app-shell:has(#step-1-view.active) .header-inner {
+  position: relative;
+  height: 58px;
+  min-height: 58px;
+  padding: 12px 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-shell:has(#step-1-view.active) .header-left {
+  position: static;
+  width: auto;
+  flex: none;
+  justify-content: flex-start;
+}
+
+/* Back button area — Step 1 has no back btn, use placeholder div width */
+.app-shell:has(#step-1-view.active) .btn-back {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.app-shell:has(#step-1-view.active) .header-title-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 120px);
+  align-items: center;
+  text-align: center;
+}
+
+.app-shell:has(#step-1-view.active) .header-title {
+  color: var(--flow-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 18.75px;
+}
+
+.app-shell:has(#step-1-view.active) .header-subtitle {
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16.5px;
+}
+
+.app-shell:has(#step-1-view.active) .header-right {
+  position: relative;
+  top: auto;
+  right: auto;
+}
+
+.app-shell:has(#step-1-view.active) .btn-hamburger {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--flow-separator);
+  color: var(--flow-body);
+}
+
+/* Stepper bar */
+.app-shell:has(#step-1-view.active) .stepper-bar {
+  height: 59px;
+  padding: 3px 24px 4px;
+  align-items: flex-start;
+  background: var(--flow-surface);
+}
+
+/* Hero Card — Figma gradient + decorative circles */
+.app-shell:has(#step-1-view.active) .hero-card {
+  position: relative;
+  min-height: 157.5px;
+  padding: 20px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #00AED6 0%, #00ABD3 9%, #00A8D0 18%, #00A6CC 27%, #00A3C9 36%, #00A0C6 45%, #009EC3 55%, #009BC0 64%, #0098BC 73%, #0095B9 82%, #0093B6 91%, #0090B3 100%);
+  box-shadow: none;
+}
+
+.app-shell:has(#step-1-view.active) .hero-card::before {
+  top: -24px;
+  right: -16px;
+  width: 112px;
+  height: 112px;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.app-shell:has(#step-1-view.active) .hero-card::after {
+  bottom: -4px;
+  right: 4px;
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.app-shell:has(#step-1-view.active) .hero-tag {
+  color: #A4F4CF;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.55px;
+  line-height: 16.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.app-shell:has(#step-1-view.active) .hero-heading {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 25px;
+  margin-bottom: 8px;
+  letter-spacing: normal;
+}
+
+.app-shell:has(#step-1-view.active) .hero-desc {
+  color: #B3EDF8;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 19.5px;
+}
+
+/* Dropzone — centered, bordered box */
+.app-shell:has(#step-1-view.active) .action-card {
+  min-height: auto;
+  padding: 48px 16px;
+  border: 2px solid var(--flow-border);
+  border-radius: 16px;
+  background: var(--flow-surface);
+  box-shadow: none;
+  text-align: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 180ms ease;
+}
+
+.app-shell:has(#step-1-view.active) .action-card:hover,
+.app-shell:has(#step-1-view.active) .action-card.dragover {
+  border-color: var(--flow-cyan);
+}
+
+.app-shell:has(#step-1-view.active) .upload-dropzone-content {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Camera icon box */
+.app-shell:has(#step-1-view.active) .upload-camera-tile {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--flow-separator);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-shell:has(#step-1-view.active) .upload-camera-tile img {
+  width: 40px;
+  height: 40px;
+  opacity: 0.55;
+}
+
+/* Dropzone copy text */
+.app-shell:has(#step-1-view.active) .upload-dropzone-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card-title {
+  color: var(--flow-body);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22.5px;
+}
+
+.app-shell:has(#step-1-view.active) .action-card-desc {
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  margin-top: 4px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-file-limit {
+  color: var(--flow-faint);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+  margin-top: 4px;
+}
+
+/* Browse button */
+.app-shell:has(#step-1-view.active) .action-card-right {
+  position: relative;
+  z-index: 15;
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file {
+  min-height: 40px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  background: var(--flow-cyan);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  border: 0;
+  transition: background 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file:hover {
+  background: var(--flow-cyan-deep);
+  box-shadow: 0 8px 16px rgba(0, 174, 214, 0.22);
+}
+
+.app-shell:has(#step-1-view.active) #btn-browse-file:active {
+  transform: scale(0.97);
+}
+
+/* Selected receipts preview card — Figma "Foto Terpilih" */
+.app-shell:has(#step-1-view.active) #receipts-preview-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell:has(#step-1-view.active) #receipts-preview-card .card-header-clean {
+  margin-bottom: 12px !important;
+}
+
+.app-shell:has(#step-1-view.active) #receipts-preview-card .card-title-clean {
+  color: var(--flow-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.60px;
+  line-height: 16px;
+}
+
+/* Each receipt row */
+.app-shell:has(#step-1-view.active) .selected-receipts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-shell:has(#step-1-view.active) .receipt-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--flow-surface);
+  border-radius: 12px;
+  border: 1px solid var(--flow-separator);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px -1px rgba(0, 0, 0, 0.10);
+}
+
+.app-shell:has(#step-1-view.active) .receipt-preview-thumb {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: 8px;
+  background: var(--flow-separator);
+  object-fit: cover;
+}
+
+.app-shell:has(#step-1-view.active) .receipt-preview-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-shell:has(#step-1-view.active) .receipt-preview-name {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell:has(#step-1-view.active) .receipt-preview-status {
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.app-shell:has(#step-1-view.active) .btn-remove-receipt {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 8px;
+  background: #FEF2F2;
+  color: #FF6467;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+}
+
+.app-shell:has(#step-1-view.active) .btn-remove-receipt:hover {
+  background: #fee2e2;
+}
+
+/* Add more photos button */
+.app-shell:has(#step-1-view.active) #add-second-receipt-box {
+  margin-top: 12px;
+}
+
+.app-shell:has(#step-1-view.active) .btn-dashed-action {
+  width: 100%;
+  min-height: 46px;
+  padding: 12px;
+  border: 1px solid var(--flow-faint);
+  border-radius: 12px;
+  background: var(--flow-surface);
+  color: var(--flow-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.app-shell:has(#step-1-view.active) .btn-dashed-action:hover {
+  border-color: var(--flow-cyan);
+  background: var(--flow-cyan-soft);
+  color: var(--flow-cyan-deep);
+}
+
+/* Tips box — Figma amber style */
+.app-shell:has(#step-1-view.active) .upload-tip {
+  display: flex;
+  min-height: 65px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #FEF3C6;
+  border-radius: 12px;
+  background: #FFFBEB;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip-icon {
+  flex: 0 0 auto;
+  font-size: 18px;
+  line-height: 18px;
+  padding-top: 2px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip p {
+  color: #BB4D00;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 19.5px;
+}
+
+.app-shell:has(#step-1-view.active) .upload-tip strong {
+  color: #BB4D00;
+  font-weight: 700;
+}
+
+/* Sticky footer — scan button */
+.app-shell:has(#step-1-view.active) .upload-scan-footer {
+  position: sticky;
+  z-index: 30;
+  bottom: 0;
+  min-height: 84px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin: auto -16px 0;
+  padding: 16px 16px 8px;
+  border-top: 1px solid var(--flow-separator);
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Scan button — inactive (no file selected) */
+.app-shell:has(#step-1-view.active) .upload-scan-button {
+  min-height: 51px;
+  border-radius: 12px;
+  background: var(--flow-separator);
+  color: var(--flow-muted);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22.5px;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+
+.app-shell:has(#step-1-view.active) .upload-scan-button > img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  opacity: 0.45;
+  transition: opacity 200ms ease, filter 200ms ease;
+}
+
+/* Scan button — active (file selected) */
+.app-shell:has(#step-1-view.active) #step-1-view:has(#receipts-preview-card:not(.hidden)) .upload-scan-button {
+  background: var(--flow-cyan);
+  color: #ffffff;
+  box-shadow: 0 4px 6px -4px #A4F4CF, 0 10px 15px -3px #A4F4CF;
+}
+
+.app-shell:has(#step-1-view.active) #step-1-view:has(#receipts-preview-card:not(.hidden)) .upload-scan-button > img {
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+
+/* Demo link below scan button */
+.app-shell:has(#step-1-view.active) .upload-scan-footer a,
+.app-shell:has(#step-1-view.active) #btn-demo-mode {
+  display: block;
+  text-align: center;
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  padding: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Main content area */
+.app-shell:has(#step-1-view.active) .main-content {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  padding: 20px 16px 0;
+  background: var(--flow-page);
+}
+
+.app-shell:has(#step-1-view.active) .content-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 398px;
+  margin: 0 auto;
+}
+
+.app-shell:has(#step-1-view.active) #step-1-view {
+  position: relative;
+  flex: 1;
+  gap: 16px;
+}
+
+/* ============================================================================
+   Step 3 Self-Claim Items — Figma Refined (Checkbox + Row highlight)
+   ============================================================================ */
+
+/* Item row — unchecked */
+.app-shell:has(#step-3-view.active) .claim-selectable-card {
+  min-height: 48px;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: var(--flow-surface);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.app-shell:has(#step-3-view.active) .claim-selectable-card:last-child {
+  border-bottom: 0;
+}
+
+/* Item row — checked */
+.app-shell:has(#step-3-view.active) .claim-selectable-card.my-claimed-card {
+  background: rgba(230, 249, 253, 0.30);
+  border-color: #F8FAFC;
+}
+
+/* Checkbox — unchecked */
+.app-shell:has(#step-3-view.active) .claim-check-box {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid #CAD5E2;
+  border-radius: 6px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 140ms ease, background 140ms ease;
+  flex-shrink: 0;
+}
+
+/* Checkbox — checked */
+.app-shell:has(#step-3-view.active) .claim-check-box.checked {
+  border-color: var(--flow-cyan);
+  background: var(--flow-cyan);
+  color: #ffffff;
+}
+
+/* Checkmark SVG inside checkbox */
+.app-shell:has(#step-3-view.active) .claim-check-box.checked::after {
+  content: '';
+  display: block;
+  width: 11px;
+  height: 11px;
+  background: #ffffff;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+/* Assignment head layout inside claim card */
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-head {
+  min-height: auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.app-shell:has(#step-3-view.active) .assignment-head-left {
+  flex: 1;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Item name */
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-item-name {
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 17.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Quantity label */
+.claim-item-quantity {
+  color: var(--flow-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+/* Item price */
+.app-shell:has(#step-3-view.active) .claim-selectable-card .assignment-item-price {
+  flex: 0 0 auto;
+  color: var(--flow-body);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+/* Save/Submit button — Figma style */
+.app-shell:has(#step-3-view.active) .btn-claim-submit {
+  width: 100%;
+  min-height: 49px;
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--flow-cyan);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  box-shadow: 0 4px 6px -4px #A4F4CF, 0 10px 15px -3px rgba(0,174,214,0.25);
+  border: 0;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.app-shell:has(#step-3-view.active) .btn-claim-submit:hover {
+  background: var(--flow-cyan-deep);
+}
+
+.app-shell:has(#step-3-view.active) .btn-claim-submit:active {
+  transform: scale(0.98);
+}
+
+.app-shell:has(#step-3-view.active) .claim-submit-count,
+.app-shell:has(#step-3-view.active) .claim-submit-count .self-claim-count-text {
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-weight: 600;
+}
+
+/* Self-claim action bar footer */
+.app-shell:has(#step-3-view.active) .self-claim-action-bar {
+  position: sticky;
+  z-index: 24;
+  bottom: 0;
+  min-height: 65px;
+  margin: auto -16px -24px;
+  padding: 16px 16px 8px;
+  border: 0;
+  border-top: 1px solid var(--flow-separator);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.80);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Tab switcher — Figma style */
+.app-shell:has(#step-3-view.active) .collab-tabs-container {
+  min-height: 48px;
+  margin: 0 0 12px;
+  padding: 4px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--flow-separator);
+  width: 100%;
+}
+
+.app-shell:has(#step-3-view.active) .collab-tab {
+  flex: 1;
+  min-height: 40px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  color: var(--flow-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-shell:has(#step-3-view.active) .collab-tab.active {
+  background: var(--flow-surface);
+  color: var(--flow-ink);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.10), 0 1px 2px -1px rgba(0, 0, 0, 0.10);
+}
+
+/* Self-claim user identity bar */
+.app-shell:has(#step-3-view.active) .self-claim-user-bar {
+  min-height: 68px;
+  padding: 16px;
+  border: 1px solid var(--flow-separator);
+  border-radius: 16px;
+  background: var(--flow-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+  margin-bottom: 12px;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--flow-blue);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-label {
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16.5px;
+}
+
+.app-shell:has(#step-3-view.active) .self-claim-user-name {
+  color: var(--flow-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22.5px;
+}
+
+.app-shell:has(#step-3-view.active) .btn-change-claim-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--flow-separator);
+  color: var(--flow-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.app-shell:has(#step-3-view.active) .btn-change-claim-name:hover {
+  background: #e2e8f0;
+}
+
+/* Claim items card wrapper */
+.app-shell:has(#step-3-view.active) .claim-items-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--flow-separator);
+  border-radius: 16px;
+  background: var(--flow-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.10);
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-header {
+  min-height: 40px;
+  margin: 0 !important;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--flow-separator);
+}
+
+.app-shell:has(#step-3-view.active) .claim-items-header .card-title-clean {
+  color: var(--flow-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.60px;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+/* Responsive: small screens */
+@media (max-width: 380px) {
+  .app-shell:has(#step-1-view.active) .main-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-shell:has(#step-1-view.active) .upload-scan-footer {
+    margin-right: -12px;
+    margin-left: -12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+@media (max-height: 700px) {
+  .app-shell:has(#step-1-view.active) .upload-scan-footer {
+    position: static;
+    margin-top: 16px;
+  }
+}
