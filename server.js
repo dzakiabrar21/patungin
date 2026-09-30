@@ -18,6 +18,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Prevent process crash from async tunnel or network drops
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Server Guard] Unhandled Rejection caught:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.warn('[Server Guard] Uncaught Exception caught:', err?.message || err);
+});
+
 // Setup upload directory in OS temporary directory (compatible with Vercel serverless and local)
 const uploadDir = path.join(os.tmpdir(), 'patungin_uploads');
 if (!fs.existsSync(uploadDir)) {

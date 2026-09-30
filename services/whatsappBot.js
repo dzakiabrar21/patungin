@@ -143,10 +143,13 @@ async function setupPublicTunnel(port = activeAppPort) {
   // 2. Coba Cloudflare Quick Tunnel via untun (HTTPS trycloudflare.com, langsung buka tanpa warning)
   try {
     console.log(`[WhatsAppBot] Mengaktifkan Cloudflare Quick Tunnel via untun untuk port ${port}...`);
-    tunnelPromise = startTunnel({ port, acceptCloudflareNotice: true });
+    tunnelPromise = startTunnel({ port, acceptCloudflareNotice: true }).catch((err) => {
+      console.warn('[WhatsAppBot] untun quick tunnel error:', err.message);
+      return null;
+    });
     const tunnel = await tunnelPromise;
     if (tunnel && typeof tunnel.getURL === 'function') {
-      const url = await tunnel.getURL();
+      const url = await tunnel.getURL().catch(() => null);
       if (url) {
         publicTunnelUrl = url;
         console.log(`\n🚀 [WhatsAppBot] Cloudflare Untun Tunnel Aktif: ${publicTunnelUrl}\n`);
