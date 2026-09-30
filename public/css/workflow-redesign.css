@@ -983,6 +983,7 @@
   border-radius: 0;
   background: var(--flow-surface);
   box-shadow: none;
+  transition: background 0.18s ease;
 }
 
 .app-shell:has(#step-3-view.active) #items-container > .assignment-card:last-child {
@@ -1052,8 +1053,8 @@
 }
 
 .app-shell:has(#step-3-view.active) #items-container > .assignment-card.item-has-assigned {
-  background: #fbfdfe;
-  border-left: 3.5px solid #00b4d8;
+  background: #f8fafc;
+  border-left: none;
 }
 
 .app-shell:has(#step-3-view.active) #items-container .assignment-item-price {
