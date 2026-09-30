@@ -284,6 +284,62 @@ function init() {
 }
 
 // Members Management
+function deduplicateAllMembers() {
+  if (!Array.isArray(state.allMembers) || state.allMembers.length === 0) return;
+
+  const seenNames = new Set();
+  const unique = [];
+  const oldIdToCanonicalId = new Map();
+
+  state.allMembers.forEach(m => {
+    if (!m || !m.name) return;
+    const clean = m.name.trim().toLowerCase();
+    if (!seenNames.has(clean)) {
+      seenNames.add(clean);
+      unique.push(m);
+      oldIdToCanonicalId.set(m.id, m.id);
+    } else {
+      const canonical = unique.find(u => u.name.trim().toLowerCase() === clean);
+      if (canonical) {
+        oldIdToCanonicalId.set(m.id, canonical.id);
+      }
+    }
+  });
+
+  state.allMembers = unique;
+
+  // Remap participatingMemberIds to canonical IDs and keep unique
+  const newParticipating = new Set();
+  (state.participatingMemberIds || []).forEach(id => {
+    const canonicalId = oldIdToCanonicalId.get(id) || id;
+    if (unique.some(m => m.id === canonicalId)) {
+      newParticipating.add(canonicalId);
+    }
+  });
+  state.participatingMemberIds = Array.from(newParticipating);
+
+  // Remap item.assignedTo to valid canonical IDs
+  if (state.receipt && Array.isArray(state.receipt.items)) {
+    state.receipt.items.forEach(it => {
+      if (Array.isArray(it.assignedTo)) {
+        const remapped = new Set();
+        it.assignedTo.forEach(id => {
+          const canonicalId = oldIdToCanonicalId.get(id) || id;
+          if (unique.some(m => m.id === canonicalId)) {
+            remapped.add(canonicalId);
+          }
+        });
+        it.assignedTo = Array.from(remapped);
+      }
+    });
+  }
+
+  // Remap payerId
+  if (state.payerId && oldIdToCanonicalId.has(state.payerId)) {
+    state.payerId = oldIdToCanonicalId.get(state.payerId);
+  }
+}
+
 function loadMembers() {
   const saved = localStorage.getItem('patungin_members');
   if (saved) {
@@ -305,6 +361,8 @@ function loadMembers() {
     state.allMembers = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
   }
 
+  deduplicateAllMembers();
+
   // By default, everyone is participating
   state.participatingMemberIds = state.allMembers.map(m => m.id);
   state.payerId = state.participatingMemberIds[0] || 'm1';
@@ -312,6 +370,7 @@ function loadMembers() {
 }
 
 function saveMembers() {
+  deduplicateAllMembers();
   localStorage.setItem('patungin_members', JSON.stringify(state.allMembers));
   updateMemberCountBadges();
 }
@@ -326,7 +385,19 @@ function updateMemberCountBadges() {
 }
 
 function getActiveParticipants() {
-  return state.allMembers.filter(m => state.participatingMemberIds.includes(m.id));
+  deduplicateAllMembers();
+  const seen = new Set();
+  const list = [];
+  state.allMembers.forEach(m => {
+    if (state.participatingMemberIds.includes(m.id)) {
+      const clean = m.name.trim().toLowerCase();
+      if (!seen.has(clean)) {
+        seen.add(clean);
+        list.push(m);
+      }
+    }
+  });
+  return list;
 }
 
 // Stepper Navigation with guaranteed visibility toggling
@@ -812,6 +883,19 @@ function handleQuickAddMember() {
     return;
   }
 
+  const cleanLower = name.toLowerCase();
+  const existing = state.allMembers.find(m => m.name.trim().toLowerCase() === cleanLower);
+  if (existing) {
+    if (!state.participatingMemberIds.includes(existing.id)) {
+      state.participatingMemberIds.push(existing.id);
+      saveMembers();
+    }
+    elements.inputQuickName.value = '';
+    showToast(`${existing.name} sudah ada di daftar anggota`, 'info');
+    renderStep3();
+    return;
+  }
+
   const newId = 'm_' + Date.now();
   const initial = name.charAt(0).toUpperCase();
   const newMember = {
@@ -826,7 +910,7 @@ function handleQuickAddMember() {
   saveMembers();
 
   elements.inputQuickName.value = '';
-  showToast(`${name} ditambahkan ke daftar patungan`, 'success');
+  showToast(`${name} ditambahkan ke daftar anggota`, 'success');
   renderStep3();
 }
 
@@ -1165,6 +1249,11 @@ function createAssignmentCard(item, active) {
     splitNote = `<span class="unclaimed-status-pill">Belum diklaim</span>`;
   }
 
+  const isAnyAssigned = item.assignedTo.length > 0;
+  if (isAnyAssigned) {
+    card.classList.add('item-has-assigned');
+  }
+
   card.innerHTML = `
     <div class="assignment-head">
       <div class="assignment-head-copy">
@@ -1185,11 +1274,13 @@ function createAssignmentCard(item, active) {
   `;
 
   const chipsRow = card.querySelector(`#chips-${item.id}`);
-  active.forEach(member => {
+  active.forEach((member, mIdx) => {
     const isAssigned = item.assignedTo.includes(member.id);
+    const colorIdx = mIdx % 8;
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'btn-member-chip' + (isAssigned ? ' active' : '');
+    chip.setAttribute('data-color-idx', colorIdx);
     chip.innerHTML = `
       <span class="chip-avatar-mini">${escapeHtml(member.initial)}</span>
       <span>${escapeHtml(member.name)}</span>
@@ -1907,6 +1998,19 @@ function handleModalQuickAdd() {
   const name = elements.inputModalQuickName.value.trim();
   if (!name) {
     showToast('Ketik nama teman terlebih dahulu', 'error');
+    return;
+  }
+
+  const cleanLower = name.toLowerCase();
+  const existing = state.allMembers.find(m => m.name.trim().toLowerCase() === cleanLower);
+  if (existing) {
+    if (!state.participatingMemberIds.includes(existing.id)) {
+      state.participatingMemberIds.push(existing.id);
+      saveMembers();
+    }
+    elements.inputModalQuickName.value = '';
+    renderCirclePickList();
+    showToast(`${existing.name} sudah ada di daftar anggota`, 'info');
     return;
   }
 
@@ -2695,7 +2799,17 @@ function renderSelfClaimMode() {
     return;
   }
 
-  const memberMap = new Map(state.allMembers.map(m => [m.id, m.name]));
+  const memberMap = new Map();
+  if (state.activeSession && Array.isArray(state.activeSession.allMembers)) {
+    state.activeSession.allMembers.forEach(m => {
+      if (m && m.id && m.name) memberMap.set(m.id, m.name);
+    });
+  }
+  if (Array.isArray(state.allMembers)) {
+    state.allMembers.forEach(m => {
+      if (m && m.id && m.name) memberMap.set(m.id, m.name);
+    });
+  }
 
   state.receipt.items.forEach((item, idx) => {
     const isMine = state.selfClaim.selectedIndices.has(idx);
@@ -2712,10 +2826,8 @@ function renderSelfClaimMode() {
 
     card.innerHTML = `
       <div class="assignment-head">
-      <div class="assignment-head-left">
-          <div class="claim-check-box ${isMine ? 'checked' : ''}">
-            <span class="claim-check-mark">${isMine ? '✓' : ''}</span>
-          </div>
+        <div class="assignment-head-left">
+          <div class="claim-check-box ${isMine ? 'checked' : ''}"></div>
           <div class="claim-item-copy">
             <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
             ${item.qty > 1 ? `<span class="claim-item-quantity">${item.qty} porsi</span>` : ''}
@@ -2728,27 +2840,34 @@ function renderSelfClaimMode() {
 
     const chipsRow = card.querySelector(`#claim-chips-${idx}`);
 
-    // 1. Render other members who already claimed this item
-    otherMembers.forEach(otherName => {
-      const otherChip = document.createElement('div');
-      otherChip.className = 'btn-member-chip other-claimed';
-      otherChip.title = `${otherName} memesan menu ini`;
-      otherChip.innerHTML = `
-        <span class="chip-avatar-mini">${escapeHtml(otherName.charAt(0).toUpperCase())}</span>
-        <span>${escapeHtml(otherName)}</span>
-      `;
-      chipsRow.appendChild(otherChip);
-    });
-
-    // 2. Render badge for current user ONLY if they selected this item
+    // 1. Badge for current user if they claimed this item
     if (isMine) {
       const myChip = document.createElement('div');
-      myChip.className = 'btn-member-chip my-claimed-badge';
+      myChip.className = 'claim-status-tag my-claimed';
       myChip.innerHTML = `
-        <span class="check-icon">✓</span>
+        <span class="claim-tag-icon">✓</span>
         <span>Pesanan Kamu</span>
       `;
       chipsRow.appendChild(myChip);
+    }
+
+    // 2. Render other members who already claimed this item
+    if (otherMembers.length > 0) {
+      otherMembers.forEach(otherName => {
+        const otherChip = document.createElement('div');
+        otherChip.className = 'claim-status-tag other-claimed';
+        otherChip.title = `${otherName} memesan menu ini`;
+        otherChip.innerHTML = `
+          <span class="claim-tag-avatar">${escapeHtml(otherName.charAt(0).toUpperCase())}</span>
+          <span>${escapeHtml(otherName)}</span>
+        `;
+        chipsRow.appendChild(otherChip);
+      });
+    } else if (!isMine) {
+      const emptyChip = document.createElement('div');
+      emptyChip.className = 'claim-status-tag unclaimed-subtle';
+      emptyChip.innerHTML = `<span>Belum ada yang pesan</span>`;
+      chipsRow.appendChild(emptyChip);
     }
 
     // Tapping the card toggles claim for this item
