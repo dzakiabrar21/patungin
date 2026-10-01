@@ -519,9 +519,9 @@ export async function initWhatsAppBot(port = null) {
           (botLid && replyParticipant.includes(botLid))
         );
 
-        // Deteksi panggilan Edwin, Ed, Win, Jarvis, Vis, Jar, Bro di mana saja
-        const hasTriggerKeyword = /\b(edwin|ed|win|jarvis|vis|jar|bro+)\b/i.test(lowerText);
-        const startsWithCall = /^(\/tanya|@bot|edwin\b|ed\b|win\b|jarvis\b|vis\b|jar\b|bro+\b|bray\b|cuy\b|bang\b|bot\b|min\b|halo|hai|hei)/i.test(lowerText);
+        // Deteksi panggilan spesifik ke nama Bot (Edwin, Jarvis, Ed, Win, Vis, Jar) atau command /tanya
+        const hasBotNameKeyword = /\b(edwin|jarvis|ed\b|win\b|vis\b|jar\b)\b/i.test(lowerText);
+        const startsWithBotCommand = /^(\/tanya|@bot\b)/i.test(lowerText);
 
         // Deteksi apakah pesan menyertakan gambar atau me-reply gambar
         const quotedImageMsg =
@@ -534,13 +534,17 @@ export async function initWhatsAppBot(port = null) {
         const hasQuotedImage = Boolean(quotedImageMsg);
 
         const isPrivateChat = !isGroup;
+
+        // DI GRUP: HANYA aktif jika dipanggil namanya (Edwin/Jarvis/Ed/Win), di-mention (@bot), di-reply, atau command /tanya.
+        // Kata umum seperti "halo", "hai", "hi", "bro", "bray", "bang", "cuy" TIDAK AKAN memicu bot di grup agar tidak mengganggu obrolan biasa.
+        // DI PRIVATE CHAT: Bebas mengobrol apa saja langsung dengan bot.
         const shouldChat = !m.key?.fromMe && !isFromBot && (
           isPrivateChat ||
           isBotMentioned ||
           isReplyToBot ||
-          hasTriggerKeyword ||
-          startsWithCall ||
-          ((hasDirectImage || hasQuotedImage) && (hasTriggerKeyword || isBotMentioned))
+          hasBotNameKeyword ||
+          startsWithBotCommand ||
+          ((hasDirectImage || hasQuotedImage) && (hasBotNameKeyword || isBotMentioned))
         );
 
         if (shouldChat && (text?.trim().length > 0 || hasDirectImage || hasQuotedImage)) {
@@ -578,7 +582,7 @@ export async function initWhatsAppBot(port = null) {
             cleanPrompt = `[Membalas chat: "${quotedText.trim()}"]\n${cleanPrompt}`;
           }
 
-          console.log(`[WhatsAppBot] 💬 Edwin Jarvis chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, Keyword: ${hasTriggerKeyword}, Img: ${hasDirectImage || hasQuotedImage})`);
+          console.log(`[WhatsAppBot] 💬 Edwin Jarvis chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, BotName: ${hasBotNameKeyword}, Img: ${hasDirectImage || hasQuotedImage})`);
 
           try {
             await sock.sendPresenceUpdate('composing', chatId);
