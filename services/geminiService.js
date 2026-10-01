@@ -168,21 +168,23 @@ export async function executeGutsRequest({
 }
 
 export const CANDIDATE_VISION_MODELS = [
-  'gemini-3.5-flash',
+  'gemini-3.8-flash',
   'gemini-3.7-flash',
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
   'gemini-3-flash-preview',
   'gemini-3.6-flash',
-  'gemini-flash-latest',
   'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite'
 ];
 
 export const CANDIDATE_TEXT_MODELS = [
-  'gemini-3.5-flash',
+  'gemini-3.8-flash',
   'gemini-3.7-flash',
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
   'gemini-3-flash-preview',
   'gemini-3.6-flash',
-  'gemini-flash-latest',
   'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite'
 ];
@@ -945,6 +947,86 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
     return {
       success: false,
       error: err.message || 'Gagal menganalisis foto dengan AI.'
+    };
+  }
+}
+
+/**
+ * Process and respond to audio voice notes (VN) sent via WhatsApp using Gemini Audio Multimodal
+ */
+export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+  const apiKeys = getApiKeys(customApiKey);
+
+  if (apiKeys.length === 0) {
+    return {
+      success: false,
+      error: 'API key AI belum dikonfigurasi di server.'
+    };
+  }
+
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64Data = fileBuffer.toString('base64');
+
+    // Clean mimeType: e.g. "audio/ogg; codecs=opus" -> "audio/ogg"
+    let cleanMime = (mimeType || 'audio/ogg').split(';')[0].trim();
+    if (cleanMime === 'audio/opus') cleanMime = 'audio/ogg';
+
+    const promptText = 
+      "[SYSTEM INSTRUCTION]\n" +
+      BOT_SYSTEM_INSTRUCTION + "\n\n" +
+      (recentContext ? "[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP]:\n" + recentContext + "\n\n" : "") +
+      `[USER INFO]\nNama teman yang mengirim voice note: ${senderName}\n\n` +
+      `[INSTRUKSI PESAN SUARA / VOICE NOTE (VN)]:\n` +
+      `File audio terlampir adalah rekaman suara / voice note (VN) dari ${senderName}. ` +
+      `Dengarkan isi pembicaraan atau pertanyaan di dalam rekaman suara ini dengan seksama. ` +
+      `Langsung tanggapi dan balas apa yang dia bicarakan di VN tersebut ` +
+      `dengan gaya santai khas Edwin Jarvis (typingan ganteng, no capslock, tanpa titik di akhir kalimat, dan ringkas jika obrolan santai). ` +
+      (prompt && !prompt.startsWith('[') ? `\nPesan tambahan dari pengirim: "${prompt}"` : '');
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: cleanMime,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 1200
+      }
+    };
+
+    const { data } = await executeGeminiRequest({
+      requestBody,
+      candidateModels: CANDIDATE_VISION_MODELS,
+      customApiKey,
+      timeoutMs: 15000
+    });
+
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (text) {
+      text = cleanCoolResponse(text);
+      return { success: true, text };
+    }
+    return { success: false, error: 'Tidak ada respon dari model saat memproses voice note.' };
+  } catch (err) {
+    if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
+      return {
+        success: true,
+        text: 'kuota ai lagi limit nih bro pas mau denger vn lu. ntar coba kirim lagi ya'
+      };
+    }
+    return {
+      success: false,
+      error: err.message || 'Gagal memproses voice note dengan AI.'
     };
   }
 }

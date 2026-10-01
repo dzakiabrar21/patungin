@@ -23,7 +23,7 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision } from './geminiService.js';
+import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision, askGeminiAudio } from './geminiService.js';
 import sessionStore from './sessionStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -249,6 +249,10 @@ function unwrapMessage(m) {
 
   const imageMessage = msg?.imageMessage || null;
   const hasImage = Boolean(imageMessage);
+  const audioMessage = msg?.audioMessage || null;
+  const hasAudio = Boolean(audioMessage);
+  const isPtt = Boolean(audioMessage?.ptt);
+
   const text = (
     imageMessage?.caption ||
     msg?.extendedTextMessage?.text ||
@@ -256,7 +260,7 @@ function unwrapMessage(m) {
     ''
   ).trim();
 
-  return { text, hasImage, imageMessage, rawMsg: msg };
+  return { text, hasImage, imageMessage, hasAudio, audioMessage, isPtt, rawMsg: msg };
 }
 
 /**
@@ -425,7 +429,7 @@ export async function initWhatsAppBot(port = null) {
           toDelete.forEach(id => processedMessages.delete(id));
         }
 
-        const { text, hasImage, rawMsg } = unwrapMessage(m);
+        const { text, hasImage, imageMessage, hasAudio, audioMessage, isPtt, rawMsg } = unwrapMessage(m);
         const lowerText = text.toLowerCase();
         const chatId = m.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
@@ -504,8 +508,12 @@ export async function initWhatsAppBot(port = null) {
           continue;
         }
 
-        // Case D: Percakapan Alami 2 Arah dengan Context Memory & Vision (Edwin Jarvis)
-        const contextInfo = m.message?.extendedTextMessage?.contextInfo || rawMsg?.extendedTextMessage?.contextInfo;
+        // Case D: Percakapan Alami 2 Arah dengan Context Memory, Vision & Voice Note (Edwin Jarvis)
+        const contextInfo =
+          m.message?.extendedTextMessage?.contextInfo ||
+          rawMsg?.extendedTextMessage?.contextInfo ||
+          rawMsg?.audioMessage?.contextInfo ||
+          rawMsg?.imageMessage?.contextInfo;
 
         const mentionedJids = contextInfo?.mentionedJid || [];
         const isBotMentioned = mentionedJids.some(jid => {
@@ -533,21 +541,34 @@ export async function initWhatsAppBot(port = null) {
         const hasDirectImage = hasImage && !isTrigger;
         const hasQuotedImage = Boolean(quotedImageMsg);
 
+        // Deteksi apakah pesan berupa Voice Note / Audio atau me-reply audio/VN
+        const quotedAudioMsg =
+          contextInfo?.quotedMessage?.audioMessage ||
+          contextInfo?.quotedMessage?.viewOnceMessage?.message?.audioMessage ||
+          contextInfo?.quotedMessage?.viewOnceMessageV2?.message?.audioMessage ||
+          contextInfo?.quotedMessage?.ephemeralMessage?.message?.audioMessage;
+
+        const hasDirectAudio = hasAudio;
+        const hasQuotedAudio = Boolean(quotedAudioMsg);
+
         const isPrivateChat = !isGroup;
 
-        // DI GRUP: HANYA aktif jika dipanggil namanya (Edwin/Jarvis/Ed/Win), di-mention (@bot), di-reply, atau command /tanya.
-        // Kata umum seperti "halo", "hai", "hi", "bro", "bray", "bang", "cuy" TIDAK AKAN memicu bot di grup agar tidak mengganggu obrolan biasa.
-        // DI PRIVATE CHAT: Bebas mengobrol apa saja langsung dengan bot.
+        // DI GRUP:
+        // - Teks/Foto: aktif jika dipanggil namanya (Edwin/Jarvis/Ed/Win), di-mention (@bot), di-reply, atau command /tanya.
+        // - Voice Note (VN): aktif jika me-reply chat bot dengan VN (isReplyToBot && hasDirectAudio), ATAU me-reply VN sambil manggil nama/mention bot.
+        // DI PRIVATE CHAT:
+        // - Bebas mengobrol apa saja langsung dengan bot (teks, foto, maupun Voice Note).
         const shouldChat = !m.key?.fromMe && !isFromBot && (
           isPrivateChat ||
           isBotMentioned ||
           isReplyToBot ||
           hasBotNameKeyword ||
           startsWithBotCommand ||
-          ((hasDirectImage || hasQuotedImage) && (hasBotNameKeyword || isBotMentioned))
+          ((hasDirectImage || hasQuotedImage) && (hasBotNameKeyword || isBotMentioned)) ||
+          ((hasDirectAudio || hasQuotedAudio) && (isPrivateChat || isReplyToBot || hasBotNameKeyword || isBotMentioned))
         );
 
-        if (shouldChat && (text?.trim().length > 0 || hasDirectImage || hasQuotedImage)) {
+        if (shouldChat && (text?.trim().length > 0 || hasDirectImage || hasQuotedImage || hasDirectAudio || hasQuotedAudio)) {
           if (msgId) processedMessages.add(msgId);
 
           // Ambil konteks quoted message jika ada
@@ -573,7 +594,9 @@ export async function initWhatsAppBot(port = null) {
           }
 
           if (!cleanPrompt) {
-            if (hasDirectImage || hasQuotedImage) {
+            if (hasDirectAudio || hasQuotedAudio) {
+              cleanPrompt = 'Tolong dengarkan dan jawab voice note ini secara santai bro.';
+            } else if (hasDirectImage || hasQuotedImage) {
               cleanPrompt = 'Tolong jelasin atau analisis apa yang ada di foto ini santai aja bro.';
             } else {
               cleanPrompt = quotedText ? `[Membalas chat: "${quotedText.trim()}"]` : '[Menyapa lu santai]';
@@ -582,7 +605,7 @@ export async function initWhatsAppBot(port = null) {
             cleanPrompt = `[Membalas chat: "${quotedText.trim()}"]\n${cleanPrompt}`;
           }
 
-          console.log(`[WhatsAppBot] 💬 Edwin Jarvis chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, BotName: ${hasBotNameKeyword}, Img: ${hasDirectImage || hasQuotedImage})`);
+          console.log(`[WhatsAppBot] 💬 Edwin Jarvis chat dari ${m.pushName || 'User'} di ${isGroup ? 'Grup' : 'PC'}: "${cleanPrompt}" (VN: ${hasDirectAudio || hasQuotedAudio}, Mention: ${isBotMentioned}, Reply: ${isReplyToBot}, BotName: ${hasBotNameKeyword}, Img: ${hasDirectImage || hasQuotedImage})`);
 
           try {
             await sock.sendPresenceUpdate('composing', chatId);
@@ -594,8 +617,50 @@ export async function initWhatsAppBot(port = null) {
 
           let aiRes = null;
 
-          // Jika ada gambar (langsung atau dari reply gambar), proses dengan Gemini Vision
-          if (hasDirectImage || hasQuotedImage) {
+          // 1. Jika ada Voice Note / Audio (langsung atau dari reply audio), proses dengan Gemini Audio
+          if (hasDirectAudio || hasQuotedAudio) {
+            let tempAudioPath = null;
+            try {
+              let audioBuffer = null;
+              let mimeType = 'audio/ogg';
+
+              if (hasDirectAudio) {
+                mimeType = audioMessage?.mimetype || 'audio/ogg';
+                audioBuffer = await downloadMediaMessage({ key: m.key, message: rawMsg }, 'buffer', {});
+              } else if (hasQuotedAudio) {
+                mimeType = quotedAudioMsg?.mimetype || 'audio/ogg';
+                audioBuffer = await downloadMediaMessage({
+                  key: { remoteJid: chatId, id: contextInfo.stanzaId },
+                  message: { audioMessage: quotedAudioMsg }
+                }, 'buffer', {});
+              }
+
+              if (audioBuffer && audioBuffer.length > 0) {
+                const ext = mimeType.includes('mp4') ? 'm4a' : 'ogg';
+                tempAudioPath = path.join(os.tmpdir(), `wa-audio-${Date.now()}.${ext}`);
+                fs.writeFileSync(tempAudioPath, audioBuffer);
+
+                console.log(`[WhatsAppBot] 🎙️ Memproses Voice Note (${audioBuffer.length} bytes, ${mimeType}) dari ${senderName}...`);
+
+                aiRes = await askGeminiAudio({
+                  filePath: tempAudioPath,
+                  mimeType,
+                  prompt: cleanPrompt,
+                  senderName,
+                  recentContext
+                });
+              }
+            } catch (aErr) {
+              console.error('[WhatsAppBot] Error processing voice note/audio:', aErr);
+            } finally {
+              if (tempAudioPath && fs.existsSync(tempAudioPath)) {
+                try { fs.unlinkSync(tempAudioPath); } catch (_) {}
+              }
+            }
+          }
+
+          // 2. Jika ada gambar (langsung atau dari reply gambar), proses dengan Gemini Vision
+          if (!aiRes && (hasDirectImage || hasQuotedImage)) {
             let tempVisionPath = null;
             try {
               let imageBuffer = null;
@@ -629,7 +694,7 @@ export async function initWhatsAppBot(port = null) {
             }
           }
 
-          // Fallback ke chat percakapan teks biasa jika bukan gambar atau vision gagal
+          // 3. Fallback ke chat percakapan teks biasa jika bukan gambar/audio atau multimodal gagal
           if (!aiRes) {
             aiRes = await chatWithGemini({
               history,
@@ -640,7 +705,10 @@ export async function initWhatsAppBot(port = null) {
           }
 
           if (aiRes.success) {
-            addChatTurn(chatId, 'user', cleanPrompt);
+            const turnPrompt = (hasDirectAudio || hasQuotedAudio)
+              ? `[Voice Note dari ${senderName}]`
+              : cleanPrompt;
+            addChatTurn(chatId, 'user', turnPrompt);
             addChatTurn(chatId, 'model', aiRes.text);
 
             const sentMsg = await sock.sendMessage(chatId, { text: aiRes.text }, { quoted: m });
