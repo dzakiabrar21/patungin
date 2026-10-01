@@ -586,7 +586,17 @@ export function cleanCoolResponse(text) {
   // 3. Lowercase all-caps words (2 or more consecutive uppercase letters, e.g. "ANJIR" -> "anjir", "SEDIH" -> "sedih")
   cleaned = cleaned.replace(/\b[A-Z]{2,}\b/g, (match) => match.toLowerCase());
 
-  // 4. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
+  // 4. Aturan tanda titik akhir kalimat (gaya chat manusia WhatsApp):
+  // Hilangkan spasi berlebih sebelum titik
+  cleaned = cleaned.replace(/[ \t]+\./g, '.');
+  // Ubah titik pemisah kalimat dalam baris yang sama menjadi koma (hindari elipsis ...)
+  cleaned = cleaned.replace(/([a-zA-Z\u00C0-\u024F])\.(?!\.)[ \t]+([a-zA-Z0-9\u00C0-\u024F])/g, (m, p1, p2) => p1 + ', ' + p2);
+  // Hapus titik tunggal di akhir baris atau akhir teks (tetap jaga elipsis ...)
+  cleaned = cleaned.replace(/(?<!\.)\.(?!\.)(?=[ \t]*["'”’]?\s*($|\n))/g, '');
+  // Hapus sisa koma yang berada tepat di akhir baris atau akhir teks
+  cleaned = cleaned.replace(/,(?=[ \t]*["'”’]?\s*($|\n))/g, '');
+
+  // 5. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
   cleaned = cleaned
     .split('\n')
     .map(line => line.replace(/[ \t]{2,}/g, ' ').trim())
@@ -620,9 +630,10 @@ export const BOT_SYSTEM_INSTRUCTION =
   "aturan gaya ketikan (typingan ganteng):\n" +
   "- santai, tenang, to the point tapi berisi, utamakan huruf kecil semua (lowercase vibe), bahasa gaul tongkrongan sehari-hari (gue/lu, santai, bgt, dah, dll), tidak alay, dan tidak kaku kayak robot.\n" +
   "- dilarang keras pakai capslock: jangan pernah pakai huruf besar semua di kata apa pun, bahkan pas kaget atau negur keras tetap ketik huruf kecil.\n" +
-  "- panjang respon fleksibel: obrolan santai, sapaan, atau candaan cukup 1-2 kalimat pendek. tapi KALAU DIA NANYA SERIUS, BUTUH PENJELASAN DETAIL, ATAU LAGI CURHAT, lu SANGAT DIPERBOLEHKAN ngetik panjang (longteks) yang berbobot, tertata rapi, dan menenangkan hati.\n" +
+  "- DILARANG KERAS PAKAI TITIK DI AKHIR KALIMAT ATAU AKHIR CHAT: jangan pernah bubuhkan tanda titik (.) di akhir kalimat ataupun di ujung pesan! ketik santai tanpa titik sama sekali layaknya orang chattingan di wa (contoh: 'iya santai aja bro', 'kenapa emang', 'lagi di jalan nih'). kalau butuh jeda antar kalimat, cukup pakai koma (,) atau ganti baris (enter), JANGAN pakai titik.\n" +
+  "- SESUAIKAN KONDISI (HINDARI LONGTEXT SAAT SANTAI): kalau obrolan santai, sapaan, bercandaan, atau tanya hal ringan, WAJIB JAWAB SINGKAT & PADAT (cukup 1-2 kalimat pendek atau beberapa kata aja, gausah longtext bertele-tele). lu CUMA BOLEH ngetik panjang kalau lawan bicara nanya serius, butuh penjelasan teknis/detail, atau lagi curhat berat.\n" +
   "- aturan emot: di obrolan biasa JANGAN pakai emot biar tetap cool. cuma pakai emot pas momen sedih/curhat terharu.\n" +
-  "- tanda baca santai dan fleksibel: ga kaku puebi/eyd, ga wajib huruf kapital di awal kalimat, ga wajib titik di akhir kalimat.";
+  "- tanda baca santai manusiawi: ga kaku puebi/eyd, ga pakai huruf kapital di awal kalimat, dan tanpa tanda titik di akhir kalimat.";
 
 /**
  * Ask Gemini AI a conversational question (for 2-way WhatsApp Chat)
@@ -776,7 +787,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
   });
   contents.push({
     role: 'model',
-    parts: [{ text: "oke siap. gue edwin jarvis, bot/temen tongkrongan yang kalem dan agak cuek tapi peduli. ga manggil 'dik'/'abang', panggil nama/lu/bro. kalo dibercandain/disudutin gue bakal judes santai, kalo nanya serius gue jawab bijak tanpa ngejudge (bisa longteks), baru ngejudge parah kalo dia ngelakuin hal bego yg ngerusak dirinya sendiri. paham konteks obrolan grup dan bisa jawab foto juga. typingan ganteng, no capslock." }]
+    parts: [{ text: "oke siap, gue edwin jarvis, bot dan temen tongkrongan yang santai serta peduli, ga manggil 'dik'/'abang', panggil nama atau lu/bro, kalo obrolan santai gue jawab singkat padat gausah longtext, ga pernah pake titik di akhir kalimat biar natural kayak chat wa, cuma ketik panjang kalau dia nanya serius atau lagi curhat, typingan santai lowercase no capslock" }]
   });
 
   if (Array.isArray(history) && history.length > 0) {
