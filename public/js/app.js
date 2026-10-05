@@ -1008,7 +1008,7 @@ function renderStep2Review() {
       header.className = 'receipt-store-section-header';
       header.innerHTML = `
         <div class="store-section-title">
-          <span class="store-badge-tag">Struk #${idx + 1}</span>
+          <span class="store-badge-tag">Toko #${idx + 1}</span>
           <strong class="store-name-text">${escapeHtml(storeName)}</strong>
         </div>
         <span class="store-item-count">${storeItems.length} menu</span>
@@ -1197,7 +1197,7 @@ function renderAssignmentItems() {
       header.className = 'receipt-store-section-header';
       header.innerHTML = `
         <div class="store-section-title">
-          <span class="store-badge-tag">Struk #${sIdx + 1}</span>
+          <span class="store-badge-tag">Toko #${sIdx + 1}</span>
           <strong class="store-name-text">${escapeHtml(storeName)}</strong>
         </div>
         <span class="store-item-count">${storeItems.length} menu</span>
@@ -1610,7 +1610,8 @@ function calculateSplits() {
           name: item.name,
           qty: item.qty,
           price: portion,
-          isShared: assigned.length > 1
+          isShared: assigned.length > 1,
+          sourceStore: item.sourceStore || null
         });
         shares[id].itemsSubtotal += portion;
       });
@@ -1751,13 +1752,16 @@ function formatWhatsAppText(shares, balances, transfers) {
   text += `Ditalangi oleh: *${payerName}*\n`;
   text += `-----------------------------------\n`;
 
+  const uniqueStores = [...new Set(r.items.map(it => it.sourceStore).filter(Boolean))];
+
   // Itemized breakdown per member
   active.forEach(m => {
     const s = shares[m.id];
     text += `👤 *${m.name}*\n`;
     s.items.forEach(it => {
       const sharedLabel = it.isShared ? ' (Patungan)' : '';
-      text += `  • ${toTitleCase(it.name)}${sharedLabel} : Rp ${formatRupiah(it.price)}\n`;
+      const storeLabel = (uniqueStores.length > 1 && it.sourceStore) ? ` [${it.sourceStore}]` : '';
+      text += `  • ${toTitleCase(it.name)}${storeLabel}${sharedLabel} : Rp ${formatRupiah(it.price)}\n`;
     });
     if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
     if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;
@@ -1847,21 +1851,49 @@ function openItemModal() {
 
   const storeGroup = document.getElementById('form-group-item-store');
   const storeSelect = document.getElementById('select-item-store');
-  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+  const newStoreContainer = document.getElementById('container-new-store-name');
+  const newStoreInput = document.getElementById('input-new-store-name');
+  if (newStoreInput) newStoreInput.value = '';
+  if (newStoreContainer) newStoreContainer.style.display = 'none';
+
+  // Ambil semua nama toko unik yang sudah ada di struk
+  let uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+  const primaryMerchant = (state.receipt.merchant && state.receipt.merchant !== 'Merchant' && state.receipt.merchant !== 'Struk Belanja')
+    ? state.receipt.merchant
+    : 'Struk 1';
+
+  if (uniqueStores.length === 0) {
+    uniqueStores = [primaryMerchant];
+  }
 
   if (storeGroup && storeSelect) {
-    if (uniqueStores.length > 1) {
-      storeGroup.style.display = 'block';
-      storeSelect.innerHTML = '';
-      uniqueStores.forEach((storeName, idx) => {
-        const opt = document.createElement('option');
-        opt.value = storeName;
-        opt.textContent = `Struk #${idx + 1}: ${storeName}`;
-        storeSelect.appendChild(opt);
-      });
-    } else {
-      storeGroup.style.display = 'none';
-    }
+    storeGroup.style.display = 'block';
+    storeSelect.innerHTML = '';
+
+    uniqueStores.forEach((storeName, idx) => {
+      const opt = document.createElement('option');
+      opt.value = storeName;
+      opt.textContent = `Toko #${idx + 1}: ${storeName}`;
+      storeSelect.appendChild(opt);
+    });
+
+    const newOpt = document.createElement('option');
+    newOpt.value = '__NEW_STORE__';
+    newOpt.textContent = '➕ Tambah Toko / Tempat Baru (Tanpa Struk)...';
+    storeSelect.appendChild(newOpt);
+
+    storeSelect.onchange = () => {
+      if (storeSelect.value === '__NEW_STORE__') {
+        if (newStoreContainer) {
+          newStoreContainer.style.display = 'block';
+          if (newStoreInput) newStoreInput.focus();
+        }
+      } else {
+        if (newStoreContainer) {
+          newStoreContainer.style.display = 'none';
+        }
+      }
+    };
   }
 
   elements.modalCustomItem.classList.remove('hidden');
@@ -1887,11 +1919,41 @@ function saveCustomItem() {
   }
 
   const storeSelect = document.getElementById('select-item-store');
-  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
-  const targetStore = (storeSelect && storeSelect.value) ? storeSelect.value : (uniqueStores[0] || null);
+  const newStoreInput = document.getElementById('input-new-store-name');
+  let targetStore = null;
 
-  const active = getActiveParticipants();
-  const activeIds = active.length > 0 ? active.map(m => m.id) : state.allMembers.map(m => m.id);
+  let uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+  const primaryMerchant = (state.receipt.merchant && state.receipt.merchant !== 'Merchant' && state.receipt.merchant !== 'Struk Belanja')
+    ? state.receipt.merchant
+    : 'Struk 1';
+
+  if (storeSelect && storeSelect.value === '__NEW_STORE__') {
+    const customStoreName = newStoreInput ? newStoreInput.value.trim() : '';
+    if (!customStoreName) {
+      showToast('Silakan isi nama toko baru (contoh: Toko ke-3 / Es Teh Solo)', 'error');
+      if (newStoreInput) newStoreInput.focus();
+      return;
+    }
+    targetStore = toTitleCase(customStoreName);
+
+    // Berikan nama toko pertama pada item lama yang belum memiliki sourceStore agar tidak rancu
+    state.receipt.items.forEach(it => {
+      if (!it.sourceStore) {
+        it.sourceStore = uniqueStores[0] || primaryMerchant;
+      }
+    });
+
+    // Perbarui judul merchant utama agar mencakup toko baru ini
+    if (!state.receipt.merchant || state.receipt.merchant === 'Merchant' || state.receipt.merchant === 'Struk Belanja') {
+      state.receipt.merchant = `${primaryMerchant} + ${targetStore}`;
+    } else if (!state.receipt.merchant.toLowerCase().includes(targetStore.toLowerCase())) {
+      state.receipt.merchant = `${state.receipt.merchant} + ${targetStore}`;
+    }
+  } else if (storeSelect && storeSelect.value) {
+    targetStore = storeSelect.value;
+  } else {
+    targetStore = uniqueStores[0] || primaryMerchant;
+  }
 
   const newItem = {
     id: 'custom_' + Date.now(),
@@ -1907,7 +1969,7 @@ function saveCustomItem() {
   closeItemModal();
   recalculateTotals();
   renderStep2Review();
-  showToast(`Menu "${name}" berhasil ditambahkan`, 'success');
+  showToast(`Menu "${name}" berhasil ditambahkan ke ${targetStore}`, 'success');
 }
 
 function promptEditCharge(field, label) {
@@ -2811,6 +2873,8 @@ function renderSelfClaimMode() {
     });
   }
 
+  const uniqueStores = [...new Set(state.receipt.items.map(it => it.sourceStore).filter(Boolean))];
+
   state.receipt.items.forEach((item, idx) => {
     const isMine = state.selfClaim.selectedIndices.has(idx);
     const assignedIds = Array.isArray(item.assignedTo) ? item.assignedTo : [];
@@ -2824,12 +2888,16 @@ function renderSelfClaimMode() {
     card.className = 'assignment-card claim-selectable-card' + (isMine ? ' my-claimed-card' : '');
     card.style.cursor = 'pointer';
 
+    const storeBadgeHtml = (uniqueStores.length > 1 && item.sourceStore)
+      ? `<span class="claim-store-badge" style="font-size: 0.68rem; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 6px; margin-left: 5px; vertical-align: middle;">${escapeHtml(item.sourceStore)}</span>`
+      : '';
+
     card.innerHTML = `
       <div class="assignment-head">
         <div class="assignment-head-left">
           <div class="claim-check-box ${isMine ? 'checked' : ''}"></div>
           <div class="claim-item-copy">
-            <strong class="assignment-item-name">${escapeHtml(item.name)}</strong>
+            <strong class="assignment-item-name">${escapeHtml(item.name)}${storeBadgeHtml}</strong>
             ${item.qty > 1 ? `<span class="claim-item-quantity">${item.qty} porsi</span>` : ''}
           </div>
         </div>
