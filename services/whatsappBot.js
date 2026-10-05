@@ -25,6 +25,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision, askGeminiAudio } from './geminiService.js';
 import sessionStore from './sessionStore.js';
+import financeService from './financeService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -506,6 +507,95 @@ export async function initWhatsAppBot(port = null) {
             text: '📸 *PatungIn Bot:* Silakan kirim *foto struk (bisa 1 atau beberapa struk sekaligus)* dengan caption */bunted* untuk memindai dan membuat link split bill!'
           });
           continue;
+        }
+
+        // Case C.1: Private Chat Financial Logging & Reporting (Khusus Owner di DM)
+        if (!isGroup) {
+          // 1. Perintah Mendaftarkan Diri sebagai Pemilik (/setowner)
+          if (lowerText === '/setowner' || lowerText === '/daftarpemilik') {
+            if (msgId) processedMessages.add(msgId);
+            financeService.setOwnerPhone(senderClean);
+            const welcomeMsg =
+              `👑 *Pemilik Berhasil Didaftarkan!*\n` +
+              `Nomor kamu (*${senderClean}*) sekarang terdaftar sebagai pemilik buku kas PatungIn.\n\n` +
+              `Sekarang lu bisa langsung catat pengeluaran di sini, contohnya:\n` +
+              `• _"makan siang 35k bca"_\n` +
+              `• _"kopi 24000 gopay"_\n` +
+              `• _"bensin 50rb cash"_\n` +
+              `• _"transfer bca ke gopay 100k"_\n` +
+              `• _"/saldo"_ untuk cek dompet\n` +
+              `• _"/hariini"_ atau _"/bulanini"_ untuk rekap`;
+            await sock.sendMessage(chatId, { text: welcomeMsg }, { quoted: m });
+            continue;
+          }
+
+          // 2. Cek apakah pengirim adalah Owner (atau belum ada owner sama sekali yang terdaftar)
+          const isRegisteredOwner = financeService.isOwner(senderClean);
+          const hasNoOwnerYet = !financeService.getOwnerPhone();
+
+          if (isRegisteredOwner || hasNoOwnerYet) {
+            // Perintah Pembatalan (Undo)
+            if (lowerText === 'batal' || lowerText === '/undo' || lowerText === '/batal') {
+              if (msgId) processedMessages.add(msgId);
+              const undoRes = financeService.undoLastTransaction();
+              if (undoRes.success) {
+                const desc = undoRes.transaction.description || 'Transaksi';
+                const amt = financeService.formatRupiah(undoRes.transaction.amount);
+                await sock.sendMessage(chatId, {
+                  text: `🗑️ *Transaksi Dibatalkan!*\nTransaksi *${desc}* (Rp ${amt}) berhasil dihapus dan saldo dompet telah dikembalikan.`
+                }, { quoted: m });
+              } else {
+                await sock.sendMessage(chatId, { text: `⚠️ ${undoRes.error}` }, { quoted: m });
+              }
+              continue;
+            }
+
+            // Perintah Cek Saldo (/saldo)
+            if (lowerText === '/saldo' || lowerText === 'saldo' || lowerText === 'cek saldo') {
+              if (msgId) processedMessages.add(msgId);
+              const balRep = financeService.getBalanceReport();
+              await sock.sendMessage(chatId, { text: financeService.formatBalanceMessage(balRep) }, { quoted: m });
+              continue;
+            }
+
+            // Perintah Rekap Hari Ini (/hariini)
+            if (lowerText === '/hariini' || lowerText === 'hari ini' || lowerText === 'rekap hari ini' || lowerText.includes('hari ini abis berapa')) {
+              if (msgId) processedMessages.add(msgId);
+              const todayRep = financeService.getTodayReport();
+              await sock.sendMessage(chatId, { text: financeService.formatTodayMessage(todayRep) }, { quoted: m });
+              continue;
+            }
+
+            // Perintah Rekap Bulan Ini (/bulanini)
+            if (lowerText === '/bulanini' || lowerText === 'bulan ini' || lowerText === 'rekap bulan ini') {
+              if (msgId) processedMessages.add(msgId);
+              const monthRep = financeService.getMonthReport();
+              await sock.sendMessage(chatId, { text: financeService.formatMonthMessage(monthRep) }, { quoted: m });
+              continue;
+            }
+
+            // Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
+            const quickMatch = financeService.parseQuickRegex(text);
+            const hasFinanceMarkers = /\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText);
+
+            if (quickMatch || hasFinanceMarkers) {
+              if (msgId) processedMessages.add(msgId);
+              if (hasNoOwnerYet) {
+                financeService.setOwnerPhone(senderClean);
+              }
+
+              try {
+                await sock.sendPresenceUpdate('composing', chatId);
+              } catch (_) {}
+
+              const txResult = await financeService.processFinanceText(text, 'wa_dm');
+              if (txResult.success) {
+                const confMsg = financeService.formatConfirmationMessage(txResult.transaction);
+                await sock.sendMessage(chatId, { text: confMsg }, { quoted: m });
+                continue;
+              }
+            }
+          }
         }
 
         // Case D: Percakapan Alami 2 Arah dengan Context Memory, Vision & Voice Note (Edwin Jarvis)

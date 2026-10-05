@@ -15,6 +15,12 @@ data/sessions/*
 uploads/*
 !uploads/.gitkeep
 
+# SQLite Database
+*.db
+*.db-wal
+*.db-shm
+data/*.db*
+
 # Logs
 logs/
 *.log
