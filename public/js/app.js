@@ -841,6 +841,12 @@ function setupEventListeners() {
   const btnRefreshClaims = document.getElementById('btn-refresh-claims');
   if (btnRefreshClaims) btnRefreshClaims.addEventListener('click', () => pollSessionNow(true));
 
+  const btnSelfClaimToStep2 = document.getElementById('btn-self-claim-to-step2');
+  if (btnSelfClaimToStep2) btnSelfClaimToStep2.addEventListener('click', () => goToStep(2));
+
+  const btnSuccessToStep2 = document.getElementById('btn-success-to-step2');
+  if (btnSuccessToStep2) btnSuccessToStep2.addEventListener('click', () => goToStep(2));
+
   const btnSyncHost = document.getElementById('btn-sync-host');
   if (btnSyncHost) btnSyncHost.addEventListener('click', () => pollSessionNow(true));
 

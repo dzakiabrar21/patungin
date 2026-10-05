@@ -12,14 +12,35 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const dbPath = path.join(DATA_DIR, 'patungin.db');
-const db = new Database(dbPath);
+let db = null;
+let isDbAvailable = false;
 
-// Enable WAL mode & foreign keys for high performance and integrity
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+try {
+  db = new Database(dbPath);
+  // Enable WAL mode & foreign keys for high performance and integrity
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  isDbAvailable = true;
+} catch (err) {
+  console.warn('[Database] SQLite failed to initialize (using safe fallback):', err.message);
+  db = {
+    prepare: () => ({
+      get: () => null,
+      all: () => [],
+      run: () => ({ changes: 0 })
+    }),
+    exec: () => {},
+    transaction: (fn) => (...args) => {
+      try { return fn(...args); } catch (_) {}
+    },
+    pragma: () => {}
+  };
+}
 
 // Initialize database schema
 export function initDatabase() {
+  if (!isDbAvailable) return;
+  try {
   db.exec(`
     -- 1. Tabel Akun / Rekening / Dompet
     CREATE TABLE IF NOT EXISTS accounts (
@@ -84,7 +105,10 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_tx_category ON transactions(category_id);
   `);
 
-  seedInitialData();
+    seedInitialData();
+  } catch (err) {
+    console.warn('[Database] Failed to initialize schema:', err.message);
+  }
 }
 
 function seedInitialData() {

@@ -281,13 +281,19 @@
 
             <!-- Step A2: Daftar Menu (Layout Bersih) -->
             <div class="card card-padded claim-items-card">
-              <div class="card-header-clean claim-items-header" style="margin-bottom: 0.65rem;">
+              <div class="card-header-clean claim-items-header" style="margin-bottom: 0.65rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
                 <div>
                   <h4 class="card-title-clean">Centang yang kamu pesan</h4>
                 </div>
-                <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims" aria-label="Sinkronkan klaim">
-                  <img src="assets/sync-refresh.svg" alt="" aria-hidden="true" width="14" height="14">
-                </button>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <button type="button" class="btn-change-claim-name" id="btn-self-claim-to-step2" title="Kembali ke Cek Pesanan / Tambah Menu" style="padding: 0.28rem 0.55rem; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
+                    <img src="assets/workflow-edit.svg" alt="" aria-hidden="true" width="12" height="12">
+                    <span>Cek Pesanan</span>
+                  </button>
+                  <button type="button" class="btn-link-action btn-xs" id="btn-refresh-claims" aria-label="Sinkronkan klaim">
+                    <img src="assets/sync-refresh.svg" alt="" aria-hidden="true" width="14" height="14">
+                  </button>
+                </div>
               </div>
 
               <!-- Checklist of items using regular assignment-card style -->
@@ -318,9 +324,14 @@
                 <!-- Injected via JS: Daftar menu yang dipilih (tanpa total rupiah) -->
               </div>
 
-              <button type="button" class="btn-outline-sm btn-block" id="btn-re-edit-claim">
-                ✏️ Ubah Pesanan Saya
-              </button>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                <button type="button" class="btn-outline-sm" id="btn-re-edit-claim" style="flex: 1;">
+                  ✏️ Ubah Klaim
+                </button>
+                <button type="button" class="btn-outline-sm" id="btn-success-to-step2" style="flex: 1;">
+                  📋 Cek Pesanan
+                </button>
+              </div>
             </div>
 
             <!-- Switch to Host view prompt -->
