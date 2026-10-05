@@ -568,5 +568,11 @@ export default {
   formatBalanceMessage,
   getOwnerPhone,
   setOwnerPhone,
-  isOwner
+  isOwner,
+  parseQuickRegex,
+  formatRupiah,
+  getAllAccounts,
+  getAllCategories,
+  findAccountByName,
+  findCategoryByName
 };

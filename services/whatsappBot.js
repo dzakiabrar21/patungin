@@ -397,7 +397,8 @@ export async function initWhatsAppBot(port = null) {
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
       for (const m of messages) {
-        if (!m.message) continue;
+        try {
+          if (!m.message) continue;
 
         const msgId = m.key?.id;
         if (msgId && processedMessages.has(msgId)) continue;
@@ -540,7 +541,9 @@ export async function initWhatsAppBot(port = null) {
               const undoRes = financeService.undoLastTransaction();
               if (undoRes.success) {
                 const desc = undoRes.transaction.description || 'Transaksi';
-                const amt = financeService.formatRupiah(undoRes.transaction.amount);
+                const amt = (financeService && typeof financeService.formatRupiah === 'function')
+                  ? financeService.formatRupiah(undoRes.transaction.amount)
+                  : (undoRes.transaction.amount || 0).toLocaleString('id-ID');
                 await sock.sendMessage(chatId, {
                   text: `🗑️ *Transaksi Dibatalkan!*\nTransaksi *${desc}* (Rp ${amt}) berhasil dihapus dan saldo dompet telah dikembalikan.`
                 }, { quoted: m });
@@ -575,7 +578,9 @@ export async function initWhatsAppBot(port = null) {
             }
 
             // Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
-            const quickMatch = financeService.parseQuickRegex(text);
+            const quickMatch = (financeService && typeof financeService.parseQuickRegex === 'function')
+              ? financeService.parseQuickRegex(text)
+              : null;
             const hasFinanceMarkers = /\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText);
 
             if (quickMatch || hasFinanceMarkers) {
@@ -883,8 +888,11 @@ ${statusLines.join('\n\n')}
           }
           continue;
         }
+      } catch (mErr) {
+        console.error('[WhatsAppBot] Error processing message:', mErr);
       }
-    });
+    }
+  });
 
   } catch (err) {
     console.error('[WhatsAppBot] Error initializing bot:', err);
