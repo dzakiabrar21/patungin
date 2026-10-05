@@ -845,7 +845,8 @@ export async function initWhatsAppBot(port = null) {
             } else if (assigned.length > 1) {
               claimStatus = `👉 *${assigned.join(', ')}* _(Patungan)_`;
             }
-            return `${num}. ${toTitleCase(it.name)} (${priceStr})\n   ${claimStatus}`;
+            const storeLabel = it.sourceStore ? ` _[${it.sourceStore}]_` : '';
+            return `${num}. ${toTitleCase(it.name)}${storeLabel} (${priceStr})\n   ${claimStatus}`;
           });
 
           const statusMsg =

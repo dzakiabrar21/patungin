@@ -441,7 +441,11 @@ function goToStep(step) {
     elements.pageTitle.textContent = 'Bagi Tagihan';
     elements.pageSubtitle.textContent = 'Tentukan porsi masing-masing';
     if (stepperCaption) stepperCaption.textContent = 'Langkah 3 dari 4: Bagi Pesanan';
-    renderStep3();
+    if (state.activeSession && state.activeCollabTab === 'self-claim') {
+      renderSelfClaimMode();
+    } else {
+      renderStep3();
+    }
   } else if (step === 4) {
     elements.pageTitle.textContent = 'Rincian Final';
     elements.pageSubtitle.textContent = 'Salin & kirim ke grup';
@@ -460,11 +464,24 @@ function setupEventListeners() {
 
   elements.btnBackTo1.addEventListener('click', () => goToStep(1));
 
-  elements.btnProceedTo3.addEventListener('click', () => {
+  elements.btnProceedTo3.addEventListener('click', async () => {
     if (state.receipt.items.length === 0) {
       showToast('Belum ada menu dalam daftar tagihan', 'error');
       return;
     }
+
+    if (state.activeSession && state.activeSession.id) {
+      const originalText = elements.btnProceedTo3.innerHTML;
+      elements.btnProceedTo3.disabled = true;
+      elements.btnProceedTo3.innerHTML = '<span>Menyimpan pesanan...</span>';
+      try {
+        await syncSessionReceiptToServer();
+      } finally {
+        elements.btnProceedTo3.disabled = false;
+        elements.btnProceedTo3.innerHTML = originalText;
+      }
+    }
+
     goToStep(3);
   });
 
@@ -1055,6 +1072,9 @@ function createReviewItemRow(item) {
     state.receipt.items = state.receipt.items.filter(i => i.id !== item.id);
     recalculateTotals();
     renderStep2Review();
+    if (state.activeSession && state.activeSession.id) {
+      syncSessionReceiptToServer();
+    }
   });
 
   return row;
@@ -1970,6 +1990,9 @@ function saveCustomItem() {
   recalculateTotals();
   renderStep2Review();
   showToast(`Menu "${name}" berhasil ditambahkan ke ${targetStore}`, 'success');
+  if (state.activeSession && state.activeSession.id) {
+    syncSessionReceiptToServer();
+  }
 }
 
 function promptEditCharge(field, label) {
@@ -1980,6 +2003,9 @@ function promptEditCharge(field, label) {
     state.receipt[field] = num;
     recalculateTotals();
     showToast(`${label} diperbarui menjadi Rp ${formatRupiah(num)}`, 'success');
+    if (state.activeSession && state.activeSession.id) {
+      syncSessionReceiptToServer();
+    }
   }
 }
 
@@ -3111,6 +3137,37 @@ function renderClaimSuccessCard() {
   card.scrollIntoView({ behavior: 'smooth' });
 }
 
+let isSyncingReceipt = false;
+async function syncSessionReceiptToServer() {
+  if (!state.activeSession || !state.activeSession.id) return;
+  if (isSyncingReceipt) return;
+
+  isSyncingReceipt = true;
+  try {
+    const res = await fetch(`/api/bill/${state.activeSession.id}/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receipt: state.receipt,
+        allMembers: state.allMembers
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.session) {
+      state.activeSession = data.session;
+      state.receipt = data.session.receipt;
+      if (Array.isArray(data.session.allMembers)) {
+        state.allMembers = data.session.allMembers;
+      }
+      console.log('[Sync] Receipt synced to session successfully');
+    }
+  } catch (err) {
+    console.error('[Sync] Failed to sync receipt to session:', err);
+  } finally {
+    isSyncingReceipt = false;
+  }
+}
+
 function startSessionPolling() {
   if (state.sessionPollTimer) clearInterval(state.sessionPollTimer);
   state.sessionPollTimer = setInterval(() => {
@@ -3128,7 +3185,11 @@ async function pollSessionNow(showToastOnSuccess = false) {
       return;
     }
   }
-  if (state.isSavingClaim) return;
+  if (state.isSavingClaim || isSyncingReceipt) return;
+  // Jangan menimpa perubahan saat user sedang me-review atau menambah menu di Step 1 atau Step 2
+  if (!showToastOnSuccess && (state.currentStep === 1 || state.currentStep === 2)) {
+    return;
+  }
   if (!showToastOnSuccess && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
     return;
   }
