@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import { SAMPLE_PRESETS, parseReceiptWithGemini, parseMultipleReceipts } from './services/geminiService.js';
 import sessionStore from './services/sessionStore.js';
 import { initWhatsAppBot, sendSplitBillToGroup, getBotStatus, logoutWhatsAppBot } from './services/whatsappBot.js';
+import financeService from './services/financeService.js';
 
 dotenv.config();
 
@@ -75,6 +76,115 @@ app.post('/api/wa/logout', async (req, res) => {
 app.get('/api/wa/status', (req, res) => {
   const statusInfo = getBotStatus();
   res.json(statusInfo);
+});
+
+// ==========================================
+// Finance Dashboard & Expenses Tracker Endpoints
+// ==========================================
+
+app.get('/finance', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'finance.html'));
+});
+
+app.get('/api/finance/overview', (req, res) => {
+  try {
+    const data = financeService.getFinanceOverview(req.query.month);
+    res.json({ success: true, ...data });
+  } catch (err) {
+    console.error('Error fetching finance overview:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/finance/transactions', (req, res) => {
+  try {
+    const { month, type, accountId, categoryId, search, limit, offset } = req.query;
+    const data = financeService.getTransactionsList({
+      month,
+      type,
+      accountId,
+      categoryId,
+      search,
+      limit: limit ? parseInt(limit, 10) : 50,
+      offset: offset ? parseInt(offset, 10) : 0
+    });
+    res.json({ success: true, ...data });
+  } catch (err) {
+    console.error('Error fetching transactions list:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/transactions', (req, res) => {
+  try {
+    const result = financeService.createManualTransaction(req.body);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error creating manual transaction:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/finance/transactions/:id', (req, res) => {
+  try {
+    const result = financeService.deleteTransactionById(req.params.id);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error deleting transaction:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/finance/accounts', (req, res) => {
+  try {
+    const accounts = financeService.getAllAccounts();
+    res.json({ success: true, accounts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/accounts', (req, res) => {
+  try {
+    const result = financeService.createOrUpdateAccount(req.body);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/finance/categories', (req, res) => {
+  try {
+    const categories = financeService.getAllCategoriesList();
+    res.json({ success: true, categories });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/quick-text', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ success: false, error: 'Teks tidak boleh kosong.' });
+    }
+    const result = await financeService.processFinanceText(text, 'web_text');
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Bill Session Endpoints (Hybrid WA + Web)

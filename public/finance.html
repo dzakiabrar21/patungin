@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PatungIn Finance — Catatan Keuangan & Dompet Pintar</title>
+  <meta name="description" content="Dashboard buku kas dan tracker keuangan pribadi dengan analisis visual, pencatatan cepat AI, dan sinkronisasi saldo dompet real-time.">
+  <meta name="theme-color" content="#0081a7">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/finance.css">
+</head>
+<body class="finance-body">
+
+  <div class="finance-container">
+
+    <!-- Header Navigation -->
+    <header class="fin-header">
+      <a href="/" class="fin-brand" title="Kembali ke Beranda PatungIn">
+        <div class="fin-logo-icon">📊</div>
+        <div class="fin-brand-text">
+          <h1>Patung<span>In</span></h1>
+          <span class="fin-brand-tag">Finance Tracker</span>
+        </div>
+      </a>
+      <div class="fin-nav-actions">
+        <a href="/" class="fin-btn-nav" title="Buka Pembagian Split Bill">
+          <span>🧾</span> Split Bill
+        </a>
+        <a href="/wa-login" class="fin-btn-nav" title="Status WhatsApp Bot">
+          <span>🤖</span> Bot WA
+        </a>
+        <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
+          <span>💳</span> Dompet
+        </button>
+        <button type="button" id="btn-open-add-tx" class="fin-btn-nav primary" title="Tambah Transaksi Manual">
+          <span>+</span> Catat
+        </button>
+      </div>
+    </header>
+
+    <!-- Quick AI Natural Text Input Box -->
+    <section class="fin-quick-box-section" aria-label="Pencatatan Cepat Berbasis Teks">
+      <form id="fin-quick-form" class="fin-quick-box">
+        <div class="fin-quick-icon">✨</div>
+        <input 
+          type="text" 
+          id="fin-quick-input" 
+          class="fin-quick-input" 
+          placeholder="Ketik santai, misal: 'makan siang padang 35k bca' atau 'bensin 50rb cash'..." 
+          autocomplete="off"
+        >
+        <button type="submit" class="fin-quick-submit" id="btn-quick-submit">
+          <span>Catat</span> ➔
+        </button>
+      </form>
+    </section>
+
+    <!-- Month Navigation Strip -->
+    <div class="fin-month-strip">
+      <div class="fin-month-selector">
+        <button type="button" id="btn-month-prev" class="fin-month-btn" aria-label="Bulan Sebelumnya">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <span id="month-display" class="fin-month-display">Memuat...</span>
+        <button type="button" id="btn-month-next" class="fin-month-btn" aria-label="Bulan Berikutnya">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <button type="button" id="btn-month-today" class="fin-today-btn">Bulan Ini</button>
+    </div>
+
+    <!-- Hero Net Worth Card -->
+    <section class="fin-hero-card" aria-label="Ringkasan Kekayaan & Arus Kas">
+      <div class="fin-hero-top">
+        <span class="fin-hero-label">Total Saldo Likuid (Seluruh Dompet)</span>
+      </div>
+      <div class="fin-hero-balance" id="hero-total-balance">Rp 0</div>
+      <div class="fin-hero-stats">
+        <div class="fin-stat-col">
+          <span class="fin-stat-title">Pemasukan</span>
+          <span class="fin-stat-val income" id="hero-total-income">+Rp 0</span>
+        </div>
+        <div class="fin-stat-col">
+          <span class="fin-stat-title">Pengeluaran</span>
+          <span class="fin-stat-val expense" id="hero-total-expense">-Rp 0</span>
+        </div>
+        <div class="fin-stat-col">
+          <span class="fin-stat-title">Arus Kas Bersih</span>
+          <span class="fin-stat-val saving" id="hero-net-savings">Rp 0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dompet & E-Wallet Section -->
+    <section class="fin-wallets-section" aria-label="Daftar Dompet dan Rekening">
+      <div class="fin-section-title">
+        <h2>💳 Dompet & Rekening</h2>
+        <span style="font-size:0.75rem; color:var(--fin-text-muted);">Klik dompet untuk filter transaksi</span>
+      </div>
+      <div id="wallets-container" class="fin-wallets-scroll">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- Analytics Grid (Categories Breakdown & Daily Trend) -->
+    <section class="fin-analytics-grid" aria-label="Grafik dan Analisis Pengeluaran">
+      
+      <!-- Category Breakdown Card -->
+      <div class="fin-card">
+        <div class="fin-card-header">
+          <h3 class="fin-card-title">🏷️ Kategori Pengeluaran Terbesar</h3>
+        </div>
+        <div id="cat-breakdown-list" class="fin-cat-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Daily Trend Card -->
+      <div class="fin-card">
+        <div class="fin-card-header">
+          <h3 class="fin-card-title">📈 Tren Pengeluaran Harian</h3>
+        </div>
+        <div id="daily-chart-container" class="fin-daily-chart-container">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Transaction Feed & Filters Section -->
+    <section class="fin-tx-section" aria-label="Daftar Transaksi">
+      
+      <div class="fin-filter-strip">
+        <div class="fin-type-pills">
+          <button type="button" class="fin-type-pill active" data-type="all">Semua</button>
+          <button type="button" class="fin-type-pill" data-type="expense">Pengeluaran</button>
+          <button type="button" class="fin-type-pill" data-type="income">Pemasukan</button>
+          <button type="button" class="fin-type-pill" data-type="transfer">Transfer</button>
+        </div>
+        <div>
+          <input 
+            type="text" 
+            id="tx-search-input" 
+            class="fin-search-input" 
+            placeholder="Cari toko / keterangan..."
+          >
+        </div>
+      </div>
+
+      <div id="transactions-list" class="fin-tx-list">
+        <!-- Rendered by JS -->
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- Modal: Tambah Transaksi Manual -->
+  <div id="modal-add-tx" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-tx-title">
+    <div class="fin-modal-card">
+      <div class="fin-modal-header">
+        <h3 id="modal-add-tx-title" class="fin-modal-title">Catat Transaksi Baru</h3>
+        <button type="button" id="btn-close-add-tx" class="fin-modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <form id="form-add-tx">
+        <div class="fin-modal-body">
+          
+          <div class="fin-form-group">
+            <label for="tx-modal-type" class="fin-form-label">Jenis Transaksi</label>
+            <select id="tx-modal-type" class="fin-form-select">
+              <option value="expense">Pengeluaran (Uang Keluar) 💸</option>
+              <option value="income">Pemasukan (Uang Masuk) 💰</option>
+              <option value="transfer">Pindah Saldo (Transfer Antar Dompet) 🔁</option>
+            </select>
+          </div>
+
+          <div class="fin-form-group">
+            <label for="tx-modal-amount" class="fin-form-label">Nominal (Rupiah)</label>
+            <input type="number" id="tx-modal-amount" class="fin-form-input" placeholder="Contoh: 35000" min="1" required>
+            <div class="fin-quick-nominal-pills">
+              <button type="button" class="fin-nom-pill" data-val="10000">+10rb</button>
+              <button type="button" class="fin-nom-pill" data-val="25000">+25rb</button>
+              <button type="button" class="fin-nom-pill" data-val="50000">+50rb</button>
+              <button type="button" class="fin-nom-pill" data-val="100000">+100rb</button>
+              <button type="button" class="fin-nom-pill" data-val="500000">+500rb</button>
+            </div>
+          </div>
+
+          <div class="fin-form-group">
+            <label for="tx-modal-account" class="fin-form-label">Sumber Dompet / Rekening</label>
+            <select id="tx-modal-account" class="fin-form-select">
+              <!-- Rendered by JS -->
+            </select>
+          </div>
+
+          <div id="tx-modal-to-account-group" class="fin-form-group" style="display: none;">
+            <label for="tx-modal-to-account" class="fin-form-label">Tujuan Transfer</label>
+            <select id="tx-modal-to-account" class="fin-form-select">
+              <!-- Rendered by JS -->
+            </select>
+          </div>
+
+          <div id="tx-modal-category-group" class="fin-form-group">
+            <label for="tx-modal-category" class="fin-form-label">Kategori</label>
+            <select id="tx-modal-category" class="fin-form-select">
+              <!-- Rendered by JS -->
+            </select>
+          </div>
+
+          <div class="fin-form-group">
+            <label for="tx-modal-merchant" class="fin-form-label">Tempat / Merchant (Opsional)</label>
+            <input type="text" id="tx-modal-merchant" class="fin-form-input" placeholder="Misal: Kopi Kenangan, SPBU, Warteg">
+          </div>
+
+          <div class="fin-form-group">
+            <label for="tx-modal-desc" class="fin-form-label">Catatan / Keterangan</label>
+            <input type="text" id="tx-modal-desc" class="fin-form-input" placeholder="Misal: Makan siang bareng tim" required>
+          </div>
+
+          <div class="fin-form-group">
+            <label for="tx-modal-date" class="fin-form-label">Waktu Transaksi</label>
+            <input type="datetime-local" id="tx-modal-date" class="fin-form-input">
+          </div>
+
+        </div>
+        <div class="fin-modal-footer">
+          <button type="button" id="btn-cancel-add-tx" class="fin-btn cancel">Batal</button>
+          <button type="submit" class="fin-btn primary">Simpan Transaksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Kelola Saldo Dompet & Tambah Rekening -->
+  <div id="modal-wallet-mgmt" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wallet-title">
+    <div class="fin-modal-card">
+      <div class="fin-modal-header">
+        <h3 id="modal-wallet-title" class="fin-modal-title">Kelola Dompet & Saldo</h3>
+        <button type="button" id="btn-close-wallets" class="fin-modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="fin-modal-body">
+        
+        <p style="font-size:0.82rem;color:var(--fin-text-muted);margin-bottom:14px;">
+          Sesuaikan saldo awal dompet kamu kapan saja di sini agar catatan keuangan selalu akurat:
+        </p>
+
+        <div id="wallet-mgmt-list">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--fin-border);">
+          <h4 style="font-size:0.88rem;font-weight:800;margin-bottom:10px;">+ Tambah Dompet Baru</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input type="text" id="new-wallet-name" class="fin-form-input" placeholder="Nama (e.g. Blu, Jago, Jenius)">
+            <select id="new-wallet-type" class="fin-form-select">
+              <option value="bank">Bank</option>
+              <option value="ewallet">E-Wallet</option>
+              <option value="cash">Cash / Tunai</option>
+            </select>
+          </div>
+          <input type="number" id="new-wallet-balance" class="fin-form-input" placeholder="Saldo Awal (Rp)" style="margin-bottom:10px;">
+          <button type="button" id="btn-add-wallet-submit" class="fin-btn primary" style="width:100%;">Tambah Dompet</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="fin-toast" class="fin-toast"></div>
+
+  <script src="js/finance.js"></script>
+</body>
+</html>

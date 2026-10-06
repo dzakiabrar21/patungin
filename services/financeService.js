@@ -726,6 +726,291 @@ export function getBalanceReport() {
   return { accounts, totalBalance };
 }
 
+export function getFinanceOverview(monthStr = null) {
+  const currentMonth = monthStr && /^\d{4}-\d{2}$/.test(monthStr)
+    ? monthStr
+    : new Date().toISOString().slice(0, 7);
+
+  const accounts = db.prepare("SELECT * FROM accounts ORDER BY balance DESC, name ASC").all();
+  const totalBalance = accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+
+  const rows = db.prepare(`
+    SELECT t.*, 
+           c.name as category_name, c.icon as category_icon,
+           a.name as account_name,
+           to_a.name as to_account_name
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN accounts to_a ON t.to_account_id = to_a.id
+    WHERE strftime('%Y-%m', t.transaction_date, 'localtime') = ?
+    ORDER BY t.transaction_date DESC, t.created_at DESC
+  `).all(currentMonth);
+
+  let totalExpense = 0;
+  let totalIncome = 0;
+  let totalTransfer = 0;
+  const categoryMap = {};
+  const dailyMap = {};
+
+  rows.forEach(r => {
+    const amt = Number(r.amount) || 0;
+    const dayStr = String(r.transaction_date).slice(0, 10);
+
+    if (!dailyMap[dayStr]) {
+      dailyMap[dayStr] = { date: dayStr, expense: 0, income: 0 };
+    }
+
+    if (r.type === 'expense') {
+      totalExpense += amt;
+      dailyMap[dayStr].expense += amt;
+      const catId = r.category_id || 'other';
+      const catName = r.category_name || 'Lain-lain';
+      const catIcon = r.category_icon || '📦';
+      if (!categoryMap[catId]) {
+        categoryMap[catId] = { id: catId, name: catName, icon: catIcon, amount: 0, count: 0 };
+      }
+      categoryMap[catId].amount += amt;
+      categoryMap[catId].count += 1;
+    } else if (r.type === 'income') {
+      totalIncome += amt;
+      dailyMap[dayStr].income += amt;
+    } else if (r.type === 'transfer') {
+      totalTransfer += amt;
+    }
+  });
+
+  const categoryBreakdown = Object.values(categoryMap)
+    .map(c => ({
+      ...c,
+      percentage: totalExpense > 0 ? Math.round((c.amount / totalExpense) * 100) : 0
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const dailyTrend = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    month: currentMonth,
+    totalBalance,
+    totalExpense,
+    totalIncome,
+    totalTransfer,
+    netSavings: totalIncome - totalExpense,
+    transactionCount: rows.length,
+    accounts,
+    categoryBreakdown,
+    dailyTrend,
+    recentTransactions: rows.slice(0, 15)
+  };
+}
+
+export function getTransactionsList({
+  month = null,
+  type = null,
+  accountId = null,
+  categoryId = null,
+  search = null,
+  limit = 50,
+  offset = 0
+} = {}) {
+  let whereClauses = [];
+  let params = [];
+
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    whereClauses.push("strftime('%Y-%m', t.transaction_date, 'localtime') = ?");
+    params.push(month);
+  }
+
+  if (type && type !== 'all') {
+    whereClauses.push("t.type = ?");
+    params.push(type);
+  }
+
+  if (accountId && accountId !== 'all') {
+    whereClauses.push("(t.account_id = ? OR t.to_account_id = ?)");
+    params.push(accountId, accountId);
+  }
+
+  if (categoryId && categoryId !== 'all') {
+    whereClauses.push("t.category_id = ?");
+    params.push(categoryId);
+  }
+
+  if (search && search.trim()) {
+    const term = `%${search.trim().toLowerCase()}%`;
+    whereClauses.push("(LOWER(t.merchant) LIKE ? OR LOWER(t.description) LIKE ? OR LOWER(t.raw_text) LIKE ?)");
+    params.push(term, term, term);
+  }
+
+  const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+  const countRow = db.prepare(`SELECT COUNT(*) as total FROM transactions t ${whereStr}`).get(...params);
+  const total = countRow ? countRow.total : 0;
+
+  const rows = db.prepare(`
+    SELECT t.*, 
+           c.name as category_name, c.icon as category_icon,
+           a.name as account_name,
+           to_a.name as to_account_name
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN accounts to_a ON t.to_account_id = to_a.id
+    ${whereStr}
+    ORDER BY t.transaction_date DESC, t.created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params, Number(limit) || 50, Number(offset) || 0);
+
+  return {
+    transactions: rows,
+    total,
+    limit: Number(limit) || 50,
+    offset: Number(offset) || 0
+  };
+}
+
+export function createManualTransaction(data) {
+  const {
+    type = 'expense',
+    amount = 0,
+    accountId,
+    toAccountId,
+    categoryId,
+    merchant,
+    description,
+    transactionDate
+  } = data;
+
+  const numAmount = Number(amount);
+  if (!numAmount || numAmount <= 0) {
+    return { success: false, error: 'Nominal transaksi harus lebih dari 0.' };
+  }
+
+  let account = accountId ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) : null;
+  if (!account) {
+    account = db.prepare("SELECT * FROM accounts ORDER BY id ASC LIMIT 1").get();
+  }
+
+  let toAccount = null;
+  if (type === 'transfer' && toAccountId) {
+    toAccount = db.prepare("SELECT * FROM accounts WHERE id = ?").get(toAccountId);
+    if (!toAccount) {
+      return { success: false, error: 'Akun tujuan transfer tidak valid.' };
+    }
+  }
+
+  let category = categoryId ? db.prepare("SELECT * FROM categories WHERE id = ?").get(categoryId) : null;
+  if (!category) {
+    category = db.prepare("SELECT * FROM categories WHERE type = ? LIMIT 1").get(type);
+  }
+
+  const txId = 'tx_' + Date.now().toString(36) + '_' + crypto.randomBytes(3).toString('hex');
+  const txDate = transactionDate || new Date().toISOString();
+  const nowIso = new Date().toISOString();
+
+  const logTx = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO transactions (
+        id, account_id, to_account_id, category_id, type, amount,
+        merchant, description, source, raw_text, transaction_date, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      txId,
+      account ? account.id : null,
+      toAccount ? toAccount.id : null,
+      category ? category.id : null,
+      type,
+      numAmount,
+      merchant || null,
+      description || merchant || 'Transaksi Manual',
+      'web_manual',
+      description || '',
+      txDate,
+      nowIso
+    );
+
+    if (type === 'expense' && account) {
+      db.prepare("UPDATE accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(numAmount, account.id);
+    } else if (type === 'income' && account) {
+      db.prepare("UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(numAmount, account.id);
+    } else if (type === 'transfer' && account && toAccount) {
+      db.prepare("UPDATE accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(numAmount, account.id);
+      db.prepare("UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(numAmount, toAccount.id);
+    }
+  });
+
+  logTx();
+
+  const savedTx = db.prepare(`
+    SELECT t.*, 
+           c.name as category_name, c.icon as category_icon,
+           a.name as account_name,
+           to_a.name as to_account_name
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN accounts to_a ON t.to_account_id = to_a.id
+    WHERE t.id = ?
+  `).get(txId);
+
+  return { success: true, transaction: savedTx };
+}
+
+export function deleteTransactionById(id) {
+  const tx = db.prepare("SELECT * FROM transactions WHERE id = ?").get(id);
+  if (!tx) {
+    return { success: false, error: 'Transaksi tidak ditemukan.' };
+  }
+
+  const revert = db.transaction(() => {
+    const amt = Number(tx.amount) || 0;
+    if (tx.type === 'expense' && tx.account_id) {
+      db.prepare("UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, tx.account_id);
+    } else if (tx.type === 'income' && tx.account_id) {
+      db.prepare("UPDATE accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, tx.account_id);
+    } else if (tx.type === 'transfer' && tx.account_id && tx.to_account_id) {
+      db.prepare("UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, tx.account_id);
+      db.prepare("UPDATE accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, tx.to_account_id);
+    }
+    db.prepare("DELETE FROM transactions WHERE id = ?").run(tx.id);
+  });
+
+  revert();
+  return { success: true, deleted: tx };
+}
+
+export function createOrUpdateAccount(data) {
+  const { id, name, type = 'bank', balance = 0 } = data;
+  if (!name || !name.trim()) {
+    return { success: false, error: 'Nama dompet/akun tidak boleh kosong.' };
+  }
+
+  const cleanName = name.trim();
+  const numBalance = Number(balance) || 0;
+
+  if (id) {
+    db.prepare(`
+      UPDATE accounts 
+      SET name = ?, type = ?, balance = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(cleanName, type, numBalance, id);
+    const updated = db.prepare("SELECT * FROM accounts WHERE id = ?").get(id);
+    return { success: true, account: updated };
+  } else {
+    const newId = 'acc_' + cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') + '_' + Date.now().toString(36).slice(-3);
+    db.prepare(`
+      INSERT INTO accounts (id, name, type, balance)
+      VALUES (?, ?, ?, ?)
+    `).run(newId, cleanName, type, numBalance);
+    const created = db.prepare("SELECT * FROM accounts WHERE id = ?").get(newId);
+    return { success: true, account: created };
+  }
+}
+
+export function getAllCategoriesList() {
+  return db.prepare("SELECT * FROM categories ORDER BY type ASC, name ASC").all();
+}
+
 // ==========================================
 // 8. WhatsApp Message Formatters
 // ==========================================
@@ -846,6 +1131,12 @@ export default {
   getTodayReport,
   getMonthReport,
   getBalanceReport,
+  getFinanceOverview,
+  getTransactionsList,
+  createManualTransaction,
+  deleteTransactionById,
+  createOrUpdateAccount,
+  getAllCategoriesList,
   formatConfirmationMessage,
   formatTodayMessage,
   formatMonthMessage,
