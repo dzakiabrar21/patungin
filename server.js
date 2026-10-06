@@ -239,6 +239,37 @@ app.post('/api/finance/import/commit', (req, res) => {
   }
 });
 
+app.get('/api/finance/google-sheet', (req, res) => {
+  try {
+    const url = financeService.getGoogleSheetUrl();
+    res.json({ success: true, url });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/google-sheet', (req, res) => {
+  try {
+    const { url } = req.body;
+    const saved = financeService.setGoogleSheetUrl(url);
+    res.json({ success: true, url: saved });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/google-sheet/sync-all', async (req, res) => {
+  try {
+    const result = await financeService.syncAllTransactionsToGoogleSheet();
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Bill Session Endpoints (Hybrid WA + Web)
 app.post('/api/bill/create', (req, res) => {
   try {

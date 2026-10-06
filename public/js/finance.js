@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupWalletModal();
   setupExportButtons();
   setupImportModal();
+  setupGoogleSheetModal();
   
   await loadCategories();
   await refreshDashboard();
@@ -841,5 +842,99 @@ function setupImportModal() {
       btnCommit.textContent = '💾 Simpan Transaksi Terpilih ke Dompet';
     }
   });
+}
+
+// 13. Google Spreadsheet Integration Logic
+function setupGoogleSheetModal() {
+  const modal = document.getElementById('modal-gsheet-config');
+  const btnOpen = document.getElementById('btn-open-gsheet');
+  const btnClose = document.getElementById('btn-close-gsheet');
+  const urlInput = document.getElementById('gsheet-webhook-url');
+  const btnSave = document.getElementById('btn-save-gsheet-url');
+  const btnSyncAll = document.getElementById('btn-sync-all-gsheet');
+  const btnCopyScript = document.getElementById('btn-copy-apps-script');
+  const scriptTemplate = document.getElementById('gsheet-script-template');
+
+  if (!modal || !btnOpen) return;
+
+  async function openModal() {
+    try {
+      const res = await fetch('/api/finance/google-sheet');
+      const data = await res.json();
+      if (data.success && data.url) {
+        urlInput.value = data.url;
+      }
+    } catch (_) {}
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    modal.classList.remove('active');
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+
+  // Copy apps script
+  if (btnCopyScript && scriptTemplate) {
+    btnCopyScript.addEventListener('click', () => {
+      scriptTemplate.select();
+      navigator.clipboard.writeText(scriptTemplate.value)
+        .then(() => showToast('Kode Apps Script berhasil disalin!'))
+        .catch(() => alert('Silakan blok dan salin teks script secara manual.'));
+    });
+  }
+
+  // Save webhook URL
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      const url = urlInput.value.trim();
+      btnSave.disabled = true;
+      try {
+        const res = await fetch('/api/finance/google-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('URL Google Sheet berhasil disimpan!');
+        } else {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert('Gagal menyimpan: ' + err.message);
+      } finally {
+        btnSave.disabled = false;
+      }
+    });
+  }
+
+  // Sync all transactions to Google Sheet
+  if (btnSyncAll) {
+    btnSyncAll.addEventListener('click', async () => {
+      if (!urlInput.value.trim()) {
+        return alert('Simpan URL Google Sheet terlebih dahulu.');
+      }
+      btnSyncAll.disabled = true;
+      const oldText = btnSyncAll.textContent;
+      btnSyncAll.textContent = '⏳ Menyinkronkan ke Sheet...';
+
+      try {
+        const res = await fetch('/api/finance/google-sheet/sync-all', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Berhasil menyinkronkan ${data.count} transaksi ke Google Sheet!`);
+        } else {
+          alert(data.error || 'Gagal sinkronisasi.');
+        }
+      } catch (err) {
+        alert('Gagal menghubungi server: ' + err.message);
+      } finally {
+        btnSyncAll.disabled = false;
+        btnSyncAll.textContent = oldText;
+      }
+    });
+  }
 }
 

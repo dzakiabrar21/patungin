@@ -337,23 +337,27 @@ export function recordFinanceTransaction(parsed, source = 'wa_dm', rawInput = ''
   const updatedAcc = account ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(account.id) : null;
   const updatedToAcc = toAccount ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(toAccount.id) : null;
 
+  const txData = {
+    id: txId,
+    type: parsed.type || 'expense',
+    amount: parsed.amount,
+    account: account ? account.name : 'Cash',
+    accountBalance: updatedAcc ? updatedAcc.balance : 0,
+    toAccount: toAccount ? toAccount.name : null,
+    toAccountBalance: updatedToAcc ? updatedToAcc.balance : null,
+    category: category ? category.name : 'Lain-lain',
+    categoryIcon: category ? category.icon : '🏷️',
+    merchant: parsed.merchant,
+    description: parsed.description || rawInput,
+    source,
+    date: nowIso
+  };
+
+  sendTransactionToGoogleSheet(txData).catch(() => {});
+
   return {
     success: true,
-    transaction: {
-      id: txId,
-      type: parsed.type || 'expense',
-      amount: parsed.amount,
-      account: account ? account.name : 'Cash',
-      accountBalance: updatedAcc ? updatedAcc.balance : 0,
-      toAccount: toAccount ? toAccount.name : null,
-      toAccountBalance: updatedToAcc ? updatedToAcc.balance : null,
-      category: category ? category.name : 'Lain-lain',
-      categoryIcon: category ? category.icon : '🏷️',
-      merchant: parsed.merchant,
-      description: parsed.description || rawInput,
-      source,
-      date: nowIso
-    }
+    transaction: txData
   };
 }
 
@@ -953,6 +957,10 @@ export function createManualTransaction(data) {
     WHERE t.id = ?
   `).get(txId);
 
+  if (savedTx) {
+    sendTransactionToGoogleSheet(savedTx).catch(() => {});
+  }
+
   return { success: true, transaction: savedTx };
 }
 
@@ -1461,6 +1469,73 @@ export function commitImportedTransactions(transactions, targetAccountId) {
   };
 }
 
+// ==========================================
+// 11. Integrasi Google Spreadsheet (Realtime Sync & Checksheet)
+// ==========================================
+
+export function getGoogleSheetUrl() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'google_sheet_url'").get();
+  if (row && row.value) return row.value.trim();
+  return (process.env.GOOGLE_SHEET_WEBHOOK_URL || '').trim();
+}
+
+export function setGoogleSheetUrl(url) {
+  const cleanUrl = (url || '').trim();
+  db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('google_sheet_url', ?, CURRENT_TIMESTAMP)").run(cleanUrl);
+  return cleanUrl;
+}
+
+export async function sendTransactionToGoogleSheet(tx) {
+  const sheetUrl = getGoogleSheetUrl();
+  if (!sheetUrl || !sheetUrl.startsWith('http')) return false;
+
+  try {
+    const res = await fetch(sheetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'append_single', transaction: tx }),
+      signal: AbortSignal.timeout(8000)
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[FinanceService] Gagal sync ke Google Sheet:', err.message);
+    return false;
+  }
+}
+
+export async function syncAllTransactionsToGoogleSheet() {
+  const sheetUrl = getGoogleSheetUrl();
+  if (!sheetUrl || !sheetUrl.startsWith('http')) {
+    return { success: false, error: 'URL Google Sheet belum dikonfigurasi. Silakan simpan Webhook URL terlebih dahulu.' };
+  }
+
+  const rows = db.prepare(`
+    SELECT t.id, t.transaction_date, t.type, t.amount,
+           a.name as account_name,
+           to_a.name as to_account_name,
+           c.name as category_name,
+           t.merchant, t.description, t.source
+    FROM transactions t
+    LEFT JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN accounts to_a ON t.to_account_id = to_a.id
+    LEFT JOIN categories c ON t.category_id = c.id
+    ORDER BY t.transaction_date ASC, t.created_at ASC
+  `).all();
+
+  try {
+    const res = await fetch(sheetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'sync_all', transactions: rows }),
+      signal: AbortSignal.timeout(25000)
+    });
+    if (!res.ok) throw new Error(`Google Sheet response code: ${res.status}`);
+    return { success: true, count: rows.length };
+  } catch (err) {
+    return { success: false, error: 'Gagal menghubungi Google Sheet: ' + err.message };
+  }
+}
+
 export default {
   processFinanceText,
   recordFinanceTransaction,
@@ -1481,6 +1556,10 @@ export default {
   exportTransactionsCsv,
   parseBankStatement,
   commitImportedTransactions,
+  getGoogleSheetUrl,
+  setGoogleSheetUrl,
+  sendTransactionToGoogleSheet,
+  syncAllTransactionsToGoogleSheet,
   formatConfirmationMessage,
   formatTodayMessage,
   formatMonthMessage,

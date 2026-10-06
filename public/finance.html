@@ -37,6 +37,9 @@
         <button type="button" id="btn-export-csv" class="fin-btn-nav" title="Ekspor Transaksi ke Excel/CSV">
           <span>📥</span> Ekspor
         </button>
+        <button type="button" id="btn-open-gsheet" class="fin-btn-nav" title="Koneksi Google Spreadsheet & Checksheet">
+          <span>📊</span> Sheet
+        </button>
         <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
           <span>💳</span> Dompet
         </button>
@@ -340,6 +343,80 @@
               💾 Simpan Transaksi Terpilih ke Dompet
             </button>
           </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Koneksi Google Spreadsheet & Checksheet -->
+  <div id="modal-gsheet-config" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-gsheet-title">
+    <div class="fin-modal-card" style="max-width: 600px;">
+      <div class="fin-modal-header">
+        <h3 id="modal-gsheet-title" class="fin-modal-title">📊 Hubungkan Google Spreadsheet</h3>
+        <button type="button" id="btn-close-gsheet" class="fin-modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="fin-modal-body">
+        
+        <p style="font-size:0.84rem;color:var(--fin-text-muted);margin-bottom:14px;line-height:1.5;">
+          Sinkronkan seluruh transaksi (dari WhatsApp DM, foto struk, voice note, maupun web) secara otomatis ke Google Spreadsheet pribadi kamu secara <i>real-time</i>:
+        </p>
+
+        <!-- Tutorial Steps -->
+        <div style="background:var(--fin-bg-subtle);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
+          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;">💡 Cara Pasang (Hanya 1 Menit, 100% Gratis):</div>
+          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);">
+            <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive kamu.</li>
+            <li>Buka menu <b>Ekstensi (Extensions) > Apps Script</b>.</li>
+            <li>Hapus semua teks yang ada di situ, lalu tempelkan kode script berikut:</li>
+          </ol>
+          <div style="margin-top:8px;position:relative;">
+            <textarea id="gsheet-script-template" readonly rows="4" style="width:100%;font-family:monospace;font-size:0.75rem;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("DATA TRANSAKSI");
+    if (!sheet) {
+      sheet = ss.insertSheet("DATA TRANSAKSI");
+      sheet.appendRow(["ID Transaksi", "Tanggal", "Jenis", "Nominal (Rp)", "Dompet Sumber", "Dompet Tujuan", "Kategori", "Tempat / Merchant", "Keterangan", "Sumber"]);
+      sheet.getRange(1, 1, 1, 10).setBackground("#0081a7").setFontColor("#ffffff").setFontWeight("bold");
+    }
+    var data = JSON.parse(e.postData.contents);
+    if (data.action === "sync_all" && Array.isArray(data.transactions)) {
+      data.transactions.forEach(function(t) {
+        sheet.appendRow([t.id, t.transaction_date || t.date, t.type, t.amount, t.account || t.account_name, t.toAccount || t.to_account_name || "-", t.category || t.category_name, t.merchant || "-", t.description || "", t.source]);
+      });
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    var tx = data.transaction || data;
+    sheet.appendRow([tx.id, tx.transaction_date || tx.date, tx.type, tx.amount, tx.account || tx.account_name, tx.toAccount || tx.to_account_name || "-", tx.category || tx.category_name, tx.merchant || "-", tx.description || "", tx.source]);
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</textarea>
+            <button type="button" id="btn-copy-apps-script" class="fin-nom-pill" style="margin-top:6px;width:100%;text-align:center;">
+              📋 Salin Kode Script di Atas
+            </button>
+          </div>
+          <div style="margin-top:10px;color:var(--fin-text-main);">
+            4. Klik tombol biru <b>Deploy > New deployment (Penerapan Baru)</b> > pilih <b>Web app</b>.<br>
+            5. Atur <i>Who has access (Yang memiliki akses)</i> ke: <b>Anyone (Siapa saja)</b>.<br>
+            6. Klik <b>Deploy</b>, lalu salin URL Web App (berakhiran <code>/exec</code>) dan tempel ke kolom di bawah:
+          </div>
+        </div>
+
+        <div class="fin-form-group">
+          <label for="gsheet-webhook-url" class="fin-form-label">URL Web App Google Apps Script</label>
+          <input type="url" id="gsheet-webhook-url" class="fin-form-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button type="button" id="btn-save-gsheet-url" class="fin-btn primary" style="flex:1;">
+            💾 Simpan URL
+          </button>
+          <button type="button" id="btn-sync-all-gsheet" class="fin-btn primary" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
+            🔄 Sinkronkan Semua Transaksi
+          </button>
         </div>
 
       </div>
