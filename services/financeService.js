@@ -1,6 +1,7 @@
 import db from './db.js';
 import crypto from 'crypto';
-import { executeGutsRequest, executeGeminiRequest, CANDIDATE_TEXT_MODELS, getGutsApiKey, getApiKeys } from './geminiService.js';
+import fs from 'fs';
+import { executeGutsRequest, executeGeminiRequest, CANDIDATE_TEXT_MODELS, CANDIDATE_VISION_MODELS, getGutsApiKey, getApiKeys } from './geminiService.js';
 
 // Format angka ke format Rupiah
 export function formatRupiah(num) {
@@ -149,6 +150,15 @@ export function parseQuickRegex(text) {
 // 4. Gemini AI NLP Parser (Untuk Bahasa Alami)
 // ==========================================
 
+function cleanJsonString(str) {
+  if (!str) return '{}';
+  let cleaned = str.trim();
+  if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+  if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+  return cleaned.trim();
+}
+
 export async function parseWithGeminiNLP(text) {
   const accounts = getAllAccounts().map(a => a.name);
   const categories = getAllCategories('expense').map(c => c.name);
@@ -194,7 +204,7 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
     });
     if (res?.success && res.content) {
       try {
-        const parsed = JSON.parse(res.content.trim());
+        const parsed = JSON.parse(cleanJsonString(res.content));
         return {
           success: true,
           type: parsed.type || 'expense',
@@ -225,7 +235,7 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
       });
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (rawText) {
-        const parsed = JSON.parse(rawText.trim());
+        const parsed = JSON.parse(cleanJsonString(rawText));
         return {
           success: true,
           type: parsed.type || 'expense',
@@ -248,44 +258,38 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
 // 5. Eksekusi Pencatatan Transaksi (Database)
 // ==========================================
 
-export async function processFinanceText(text, source = 'wa_dm') {
-  // Coba regex terlebih dahulu (super cepat)
-  let parsed = parseQuickRegex(text);
-
-  // Jika regex tidak cocok atau kurang jelas, gunakan AI NLP
-  if (!parsed || parsed.amount <= 0) {
-    parsed = await parseWithGeminiNLP(text);
-  }
-
+export function recordFinanceTransaction(parsed, source = 'wa_dm', rawInput = '') {
   if (!parsed || !parsed.amount || parsed.amount <= 0) {
     return {
       success: false,
-      error: 'Tidak dapat mengenali nominal transaksi. Contoh ketik: "makan 25k bca" atau "bensin 50rb cash"'
+      error: 'Tidak dapat mengenali nominal transaksi.'
     };
   }
 
   // Resolusi Akun Sumber
-  let account = findAccountByName(parsed.accountName);
+  const accountName = parsed.accountName || parsed.account || 'Cash';
+  let account = findAccountByName(accountName);
   if (!account) {
-    // Buat akun baru jika belum ada
-    const newAccId = 'acc_' + parsed.accountName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    db.prepare("INSERT OR IGNORE INTO accounts (id, name, type, balance) VALUES (?, ?, 'bank', 0)").run(newAccId, parsed.accountName);
+    const newAccId = 'acc_' + accountName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    db.prepare("INSERT OR IGNORE INTO accounts (id, name, type, balance) VALUES (?, ?, 'bank', 0)").run(newAccId, accountName);
     account = db.prepare("SELECT * FROM accounts WHERE id = ?").get(newAccId);
   }
 
   // Resolusi Akun Tujuan (jika Transfer)
   let toAccount = null;
-  if (parsed.type === 'transfer' && parsed.toAccountName) {
-    toAccount = findAccountByName(parsed.toAccountName);
+  const toAccountName = parsed.toAccountName || parsed.toAccount;
+  if (parsed.type === 'transfer' && toAccountName) {
+    toAccount = findAccountByName(toAccountName);
     if (!toAccount) {
-      const newToId = 'acc_' + parsed.toAccountName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      db.prepare("INSERT OR IGNORE INTO accounts (id, name, type, balance) VALUES (?, ?, 'bank', 0)").run(newToId, parsed.toAccountName);
+      const newToId = 'acc_' + toAccountName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      db.prepare("INSERT OR IGNORE INTO accounts (id, name, type, balance) VALUES (?, ?, 'bank', 0)").run(newToId, toAccountName);
       toAccount = db.prepare("SELECT * FROM accounts WHERE id = ?").get(newToId);
     }
   }
 
   // Resolusi Kategori
-  let category = findCategoryByName(parsed.categoryName, parsed.type);
+  const categoryName = parsed.categoryName || parsed.category || 'Lain-lain';
+  let category = findCategoryByName(categoryName, parsed.type);
   if (!category) {
     category = db.prepare("SELECT * FROM categories WHERE name = 'Lain-lain'").get() || { id: 'cat_other_expense', name: 'Lain-lain', icon: '📦' };
   }
@@ -306,12 +310,12 @@ export async function processFinanceText(text, source = 'wa_dm') {
       account ? account.id : null,
       toAccount ? toAccount.id : null,
       category ? category.id : null,
-      parsed.type,
+      parsed.type || 'expense',
       parsed.amount,
       parsed.merchant || null,
-      parsed.description || text,
+      parsed.description || rawInput,
       source,
-      text,
+      rawInput,
       nowIso,
       nowIso
     );
@@ -337,7 +341,7 @@ export async function processFinanceText(text, source = 'wa_dm') {
     success: true,
     transaction: {
       id: txId,
-      type: parsed.type,
+      type: parsed.type || 'expense',
       amount: parsed.amount,
       account: account ? account.name : 'Cash',
       accountBalance: updatedAcc ? updatedAcc.balance : 0,
@@ -346,9 +350,264 @@ export async function processFinanceText(text, source = 'wa_dm') {
       category: category ? category.name : 'Lain-lain',
       categoryIcon: category ? category.icon : '🏷️',
       merchant: parsed.merchant,
-      description: parsed.description,
+      description: parsed.description || rawInput,
+      source,
       date: nowIso
     }
+  };
+}
+
+export async function processFinanceText(text, source = 'wa_dm') {
+  // Coba regex terlebih dahulu (super cepat)
+  let parsed = parseQuickRegex(text);
+
+  // Jika regex tidak cocok atau kurang jelas, gunakan AI NLP
+  if (!parsed || parsed.amount <= 0) {
+    parsed = await parseWithGeminiNLP(text);
+  }
+
+  if (!parsed || !parsed.amount || parsed.amount <= 0) {
+    return {
+      success: false,
+      error: 'Tidak dapat mengenali nominal transaksi. Contoh ketik: "makan 25k bca" atau "bensin 50rb cash"'
+    };
+  }
+
+  return recordFinanceTransaction(parsed, source, text);
+}
+
+/**
+ * 5.B Ekstrak Bukti Transaksi dari Gambar (Struk / QRIS / m-Banking Transfer)
+ */
+export async function parseReceiptImageForFinance(filePath, mimeType = 'image/jpeg', caption = '') {
+  const accounts = getAllAccounts().map(a => a.name);
+  const categories = getAllCategories('expense').map(c => c.name);
+
+  const fileBuffer = fs.readFileSync(filePath);
+  const base64Data = fileBuffer.toString('base64');
+
+  const promptText = `
+Kamu adalah asisten keuangan pribadi cerdas dan teliti.
+Tugasmu: Periksa apakah gambar ini merupakan bukti transaksi keuangan (struk belanja fisik, bukti pembayaran QRIS, bukti transfer m-Banking, invoice/tagihan, struk ATM/EDC, e-wallet payment proof).
+${caption ? `Catatan dari pengguna: "${caption}"` : ''}
+
+Daftar Akun/Dompet yang tersedia: [${accounts.join(', ')}]
+Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "Transfer Antar Dompet"]
+
+Jika gambar ini JELAS BUKAN bukti transaksi keuangan (misalnya foto selfie, meme, makanan tanpa struk/harga, pemandangan, benda biasa):
+Kembalikan JSON:
+{
+  "isFinancial": false
+}
+
+Jika gambar ini ADALAH bukti pembayaran / struk / mutasi bank / QRIS:
+1. "isFinancial": true
+2. "type": 'expense' (pengeluaran), 'income' (pemasukan), atau 'transfer' (pindah saldo antar rekening).
+3. "amount": total nominal pembayaran akhir yang sah (angka integer Rupiah, abaikan desimal/sen).
+4. "merchant": Nama toko / merchant / penerima transfer (contoh: "Kopi Kenangan", "Indomaret", "SPBU Pertamina", "PLN", nama orang jika transfer).
+5. "account": Nama bank atau e-wallet sumber pembayaran jika terlihat di struk/screenshot (misal: "BCA", "Mandiri", "GoPay", "OVO", "ShopeePay", "Cash"). Default ke "BCA" jika m-banking BCA atau tidak yakin.
+6. "toAccount": Jika type 'transfer', bank tujuan. Jika bukan, null.
+7. "category": Kategori paling sesuai dari daftar kategori di atas.
+8. "description": Ringkasan singkat transaksi (misal: "Kopi Kenangan", "Beli Bensin", "Makan Siang", "Belanja Mingguan").
+
+KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
+{
+  "isFinancial": true,
+  "type": "expense",
+  "amount": 35000,
+  "merchant": "Kopi Kenangan",
+  "account": "BCA",
+  "toAccount": null,
+  "category": "Makanan & Minuman",
+  "description": "Kopi Kenangan"
+}
+`;
+
+  const gutsKey = getGutsApiKey();
+  if (gutsKey) {
+    try {
+      const gutsRes = await executeGutsRequest({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: promptText },
+              { type: 'image_url', image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${base64Data}` } }
+            ]
+          }
+        ],
+        isJson: true,
+        maxTokens: 500,
+        timeoutMs: 25000
+      });
+      if (gutsRes?.success && gutsRes.content) {
+        return JSON.parse(cleanJsonString(gutsRes.content));
+      }
+    } catch (_) {}
+  }
+
+  const apiKeys = getApiKeys();
+  if (apiKeys.length > 0) {
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: mimeType || 'image/jpeg',
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        response_mime_type: 'application/json',
+        temperature: 0.1
+      }
+    };
+    try {
+      const { data } = await executeGeminiRequest({
+        requestBody,
+        candidateModels: CANDIDATE_VISION_MODELS,
+        timeoutMs: 15000
+      });
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText) {
+        return JSON.parse(cleanJsonString(rawText));
+      }
+    } catch (err) {
+      console.warn('[FinanceService] Error parsing receipt image:', err.message);
+    }
+  }
+
+  return { isFinancial: false };
+}
+
+export async function processReceiptImage(filePath, mimeType = 'image/jpeg', caption = '', source = 'wa_image') {
+  const parsed = await parseReceiptImageForFinance(filePath, mimeType, caption);
+  if (!parsed || !parsed.isFinancial || !parsed.amount || parsed.amount <= 0) {
+    return { isFinancial: false };
+  }
+
+  const result = recordFinanceTransaction(parsed, source, caption || parsed.description || parsed.merchant || 'Struk/QRIS');
+  return {
+    isFinancial: true,
+    ...result
+  };
+}
+
+/**
+ * 5.C Ekstrak Catatan Keuangan dari Voice Note Audio (VN)
+ */
+export async function parseVoiceNoteForFinance(filePath, mimeType = 'audio/ogg') {
+  const accounts = getAllAccounts().map(a => a.name);
+  const categories = getAllCategories('expense').map(c => c.name);
+
+  const fileBuffer = fs.readFileSync(filePath);
+  const base64Data = fileBuffer.toString('base64');
+  let cleanMime = (mimeType || 'audio/ogg').split(';')[0].trim();
+  if (cleanMime === 'audio/opus') cleanMime = 'audio/ogg';
+
+  const promptText = `
+Kamu adalah asisten keuangan pribadi cerdas dan teliti.
+Dengarkan rekaman suara / voice note pengguna berikut dengan seksama.
+
+Tugasmu:
+Cek apakah pengguna bermaksud MENCATAT PENGELUARAN, PEMASUKAN, atau TRANSFER UANG.
+Contoh instruksi pencatatan keuangan yang valid:
+- "Win, tolong catat tadi beli bensin seratus ribu pake bca ya"
+- "tadi makan siang padang tiga puluh lima ribu gopay"
+- "catat barusan beli kopi 25rb"
+- "transfer bca ke gopay 100 ribu"
+- "gajian masuk 8 juta mandiri"
+- "beli martabak 40k cash"
+
+Daftar Akun/Dompet yang tersedia: [${accounts.join(', ')}]
+Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "Transfer Antar Dompet"]
+
+Jika rekaman suara ini BUKAN instruksi mencatat keuangan (misal: obrolan santai, tanya kabar, tanya cuaca, curhat, bercanda):
+Kembalikan JSON:
+{
+  "isFinancial": false
+}
+
+Jika rekaman suara ini ADALAH instruksi mencatat keuangan:
+1. "isFinancial": true
+2. "transcript": Kalimat asli yang diucapkan pengguna
+3. "type": 'expense' | 'income' | 'transfer'
+4. "amount": total nominal integer Rupiah (misal "seratus ribu" -> 100000, "25k" -> 25000)
+5. "merchant": Nama merchant / barang / toko jika ada
+6. "account": Akun sumber pembayaran (misal "BCA", "GoPay", "Cash", dll). Default "Cash" jika tidak disebut.
+7. "toAccount": Akun tujuan jika type 'transfer'
+8. "category": Kategori yang paling relevan dari daftar di atas
+9. "description": Keterangan singkat pengeluaran
+
+KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
+{
+  "isFinancial": true,
+  "transcript": "tadi beli bensin seratus ribu pake bca",
+  "type": "expense",
+  "amount": 100000,
+  "merchant": "Bensin",
+  "account": "BCA",
+  "toAccount": null,
+  "category": "Transportasi",
+  "description": "Beli Bensin"
+}
+`;
+
+  const apiKeys = getApiKeys();
+  if (apiKeys.length > 0) {
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: cleanMime,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        response_mime_type: 'application/json',
+        temperature: 0.1
+      }
+    };
+    try {
+      const { data } = await executeGeminiRequest({
+        requestBody,
+        candidateModels: CANDIDATE_VISION_MODELS,
+        timeoutMs: 15000
+      });
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText) {
+        return JSON.parse(cleanJsonString(rawText));
+      }
+    } catch (err) {
+      console.warn('[FinanceService] Error parsing voice note for finance:', err.message);
+    }
+  }
+
+  return { isFinancial: false };
+}
+
+export async function processVoiceNote(filePath, mimeType = 'audio/ogg', source = 'wa_vn') {
+  const parsed = await parseVoiceNoteForFinance(filePath, mimeType);
+  if (!parsed || !parsed.isFinancial || !parsed.amount || parsed.amount <= 0) {
+    return { isFinancial: false };
+  }
+
+  const result = recordFinanceTransaction(parsed, source, parsed.transcript || parsed.description || 'Voice Note');
+  return {
+    isFinancial: true,
+    transcript: parsed.transcript || '',
+    ...result
   };
 }
 
@@ -471,31 +730,51 @@ export function getBalanceReport() {
 // 8. WhatsApp Message Formatters
 // ==========================================
 
-export function formatConfirmationMessage(tx) {
+export function formatConfirmationMessage(tx, extraNote = '') {
   const isTransfer = tx.type === 'transfer';
   const isIncome = tx.type === 'income';
 
+  let title = '✅ *Pengeluaran Tercatat!*';
   if (isTransfer) {
-    return (
-      `🔁 *Transfer Antar Dompet Tercatat!*\n` +
-      `💸 Nominal: *Rp ${formatRupiah(tx.amount)}*\n` +
-      `📤 Dari: *${tx.account}*\n` +
-      `📥 Ke: *${tx.toAccount}*\n` +
-      `-----------------------------------\n` +
-      `💡 _Ketik *batal* dalam 30 menit jika salah catat_`
-    );
+    title = '🔁 *Transfer Antar Dompet Tercatat!*';
+  } else if (isIncome) {
+    title = '💰 *Pemasukan Tercatat!*';
+  } else if (tx.source === 'wa_image') {
+    title = '🧾 *Struk / QRIS Tercatat!*';
+  } else if (tx.source === 'wa_vn') {
+    title = '🎙️ *Voice Note Tercatat!*';
   }
 
-  const typeLabel = isIncome ? 'Pemasukan 💰' : 'Pengeluaran 💸';
-  return (
-    `✅ *${typeLabel} Tercatat!*\n` +
+  if (isTransfer) {
+    let msg =
+      `${title}\n` +
+      `💸 Nominal: *Rp ${formatRupiah(tx.amount)}*\n` +
+      `📤 Dari: *${tx.account}*\n` +
+      `📥 Ke: *${tx.toAccount}*\n`;
+    if (extraNote) {
+      msg += `🗣️ _"${extraNote}"_\n`;
+    }
+    msg +=
+      `-----------------------------------\n` +
+      `💡 _Ketik *batal* dalam 30 menit jika salah catat_`;
+    return msg;
+  }
+
+  let msg =
+    `${title}\n` +
     `💰 Nominal: *Rp ${formatRupiah(tx.amount)}*\n` +
     `${tx.categoryIcon || '🏷️'} Kategori: *${tx.category}*\n` +
     `💳 Dompet: *${tx.account}*\n` +
-    (tx.merchant ? `🏪 Tempat/Ket: *${tx.merchant}*\n` : '') +
+    (tx.merchant ? `🏪 Tempat/Ket: *${tx.merchant}*\n` : '');
+
+  if (extraNote && extraNote !== tx.merchant && extraNote !== tx.description) {
+    msg += `🗣️ _"${extraNote}"_\n`;
+  }
+
+  msg +=
     `-----------------------------------\n` +
-    `💡 _Ketik *batal* dalam 30 menit jika mau hapus_`
-  );
+    `💡 _Ketik *batal* dalam 30 menit jika mau hapus_`;
+  return msg;
 }
 
 export function formatTodayMessage(report) {
@@ -558,6 +837,11 @@ export function formatBalanceMessage(balanceReport) {
 
 export default {
   processFinanceText,
+  recordFinanceTransaction,
+  parseReceiptImageForFinance,
+  processReceiptImage,
+  parseVoiceNoteForFinance,
+  processVoiceNote,
   undoLastTransaction,
   getTodayReport,
   getMonthReport,

@@ -577,7 +577,88 @@ export async function initWhatsAppBot(port = null) {
               continue;
             }
 
-            // Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
+            // 1. Pencatatan Transaksi dari Gambar (Struk Belanja / Bukti Transfer / QRIS di DM)
+            if (hasImage && !isTrigger) {
+              let tempImgPath = null;
+              try {
+                const imageBuffer = await downloadMediaMessage({ key: m.key, message: rawMsg }, 'buffer', {});
+                if (imageBuffer && imageBuffer.length > 0) {
+                  tempImgPath = path.join(os.tmpdir(), `wa-receipt-${Date.now()}.jpg`);
+                  fs.writeFileSync(tempImgPath, imageBuffer);
+
+                  try {
+                    await sock.sendPresenceUpdate('composing', chatId);
+                  } catch (_) {}
+
+                  console.log(`[WhatsAppBot] 🧾 Memeriksa foto struk/QRIS dari owner di DM (${imageBuffer.length} bytes)...`);
+                  const imgResult = await financeService.processReceiptImage(
+                    tempImgPath,
+                    imageMessage?.mimetype || 'image/jpeg',
+                    text,
+                    'wa_image'
+                  );
+
+                  if (imgResult && imgResult.isFinancial && imgResult.success) {
+                    if (msgId) processedMessages.add(msgId);
+                    if (hasNoOwnerYet) {
+                      financeService.setOwnerPhone(senderClean);
+                    }
+                    const confMsg = financeService.formatConfirmationMessage(imgResult.transaction);
+                    await sock.sendMessage(chatId, { text: confMsg }, { quoted: m });
+                    continue;
+                  }
+                }
+              } catch (imgErr) {
+                console.warn('[WhatsAppBot] Error checking receipt image for finance:', imgErr.message);
+              } finally {
+                if (tempImgPath && fs.existsSync(tempImgPath)) {
+                  try { fs.unlinkSync(tempImgPath); } catch (_) {}
+                }
+              }
+            }
+
+            // 2. Pencatatan Transaksi dari Voice Note (VN) di DM
+            if (hasAudio) {
+              let tempAudioPath = null;
+              try {
+                const audioBuffer = await downloadMediaMessage({ key: m.key, message: rawMsg }, 'buffer', {});
+                if (audioBuffer && audioBuffer.length > 0) {
+                  const mime = audioMessage?.mimetype || 'audio/ogg';
+                  const ext = mime.includes('mp4') ? 'm4a' : 'ogg';
+                  tempAudioPath = path.join(os.tmpdir(), `wa-finance-vn-${Date.now()}.${ext}`);
+                  fs.writeFileSync(tempAudioPath, audioBuffer);
+
+                  try {
+                    await sock.sendPresenceUpdate('composing', chatId);
+                  } catch (_) {}
+
+                  console.log(`[WhatsAppBot] 🎙️ Memeriksa voice note dari owner di DM (${audioBuffer.length} bytes)...`);
+                  const vnResult = await financeService.processVoiceNote(
+                    tempAudioPath,
+                    mime,
+                    'wa_vn'
+                  );
+
+                  if (vnResult && vnResult.isFinancial && vnResult.success) {
+                    if (msgId) processedMessages.add(msgId);
+                    if (hasNoOwnerYet) {
+                      financeService.setOwnerPhone(senderClean);
+                    }
+                    const confMsg = financeService.formatConfirmationMessage(vnResult.transaction, vnResult.transcript);
+                    await sock.sendMessage(chatId, { text: confMsg }, { quoted: m });
+                    continue;
+                  }
+                }
+              } catch (vnErr) {
+                console.warn('[WhatsAppBot] Error checking voice note for finance:', vnErr.message);
+              } finally {
+                if (tempAudioPath && fs.existsSync(tempAudioPath)) {
+                  try { fs.unlinkSync(tempAudioPath); } catch (_) {}
+                }
+              }
+            }
+
+            // 3. Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
             const quickMatch = (financeService && typeof financeService.parseQuickRegex === 'function')
               ? financeService.parseQuickRegex(text)
               : null;
