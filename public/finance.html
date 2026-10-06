@@ -31,6 +31,12 @@
         <a href="/wa-login" class="fin-btn-nav" title="Status WhatsApp Bot">
           <span>🤖</span> Bot WA
         </a>
+        <button type="button" id="btn-open-import" class="fin-btn-nav" title="Import Mutasi Rekening / CSV">
+          <span>📤</span> Import
+        </button>
+        <button type="button" id="btn-export-csv" class="fin-btn-nav" title="Ekspor Transaksi ke Excel/CSV">
+          <span>📥</span> Ekspor
+        </button>
         <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
           <span>💳</span> Dompet
         </button>
@@ -143,13 +149,16 @@
           <button type="button" class="fin-type-pill" data-type="income">Pemasukan</button>
           <button type="button" class="fin-type-pill" data-type="transfer">Transfer</button>
         </div>
-        <div>
+        <div style="display: flex; gap: 8px; align-items: center;">
           <input 
             type="text" 
             id="tx-search-input" 
             class="fin-search-input" 
             placeholder="Cari toko / keterangan..."
           >
+          <button type="button" id="btn-export-filter-csv" class="fin-btn-nav" title="Download Excel/CSV Bulan Ini" style="padding: 8px 12px;">
+            <span>📥</span> CSV
+          </button>
         </div>
       </div>
 
@@ -266,6 +275,71 @@
           </div>
           <input type="number" id="new-wallet-balance" class="fin-form-input" placeholder="Saldo Awal (Rp)" style="margin-bottom:10px;">
           <button type="button" id="btn-add-wallet-submit" class="fin-btn primary" style="width:100%;">Tambah Dompet</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import Mutasi Rekening / e-Statement -->
+  <div id="modal-import-statement" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
+    <div class="fin-modal-card" style="max-width: 600px;">
+      <div class="fin-modal-header">
+        <h3 id="modal-import-title" class="fin-modal-title">📤 Import Mutasi Rekening / CSV</h3>
+        <button type="button" id="btn-close-import" class="fin-modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="fin-modal-body">
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button type="button" id="tab-import-text" class="fin-nom-pill" style="padding: 6px 14px; background: var(--fin-primary-light); color: var(--fin-primary); border-color: var(--fin-primary);">Tempel Teks Mutasi</button>
+          <button type="button" id="tab-import-file" class="fin-nom-pill" style="padding: 6px 14px;">Upload File CSV</button>
+        </div>
+
+        <div class="fin-form-group">
+          <label for="import-target-account" class="fin-form-label">Rekening / Dompet Tujuan</label>
+          <select id="import-target-account" class="fin-form-select">
+            <!-- Rendered by JS -->
+          </select>
+        </div>
+
+        <!-- Input Area: Text Paste -->
+        <div id="import-text-container" class="fin-form-group">
+          <label for="import-raw-text" class="fin-form-label">Teks Mutasi Bank (Salin dari m-BCA / Livin / GoPay / Shopee)</label>
+          <textarea id="import-raw-text" class="fin-form-input" rows="6" placeholder="Contoh format teks mutasi:&#10;01/10/2026 QRIS Kopi Kenangan Rp 35.000 DB&#10;02/10/2026 Gaji Masuk PT ABC Rp 8.000.000 CR&#10;03/10/2026 Beli Bensin SPBU Pertamina Rp 50.000 DB"></textarea>
+        </div>
+
+        <!-- Input Area: File Upload -->
+        <div id="import-file-container" class="fin-form-group" style="display: none;">
+          <label for="import-file-input" class="fin-form-label">Pilih File CSV Mutasi Rekening</label>
+          <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="fin-form-input">
+          <small style="color: var(--fin-text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">Mendukung CSV e-statement resmi dari BCA, Mandiri, BRI, Bank Jago, dll.</small>
+        </div>
+
+        <button type="button" id="btn-parse-statement" class="fin-btn primary" style="width: 100%; margin-bottom: 16px;">
+          🔍 Analisis & Pratinjau Mutasi
+        </button>
+
+        <!-- Preview Results Container -->
+        <div id="import-preview-box" style="display: none; border-top: 1px dashed var(--fin-border); padding-top: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="font-size: 0.86rem; font-weight: 700;">
+              Hasil Pratinjau: <span id="import-preview-count" style="color: var(--fin-primary);">0</span> transaksi
+            </div>
+            <div style="font-size: 0.78rem;">
+              <span id="import-preview-in" style="color: var(--fin-income); font-weight: 700;">+Rp 0</span> | 
+              <span id="import-preview-out" style="color: var(--fin-expense); font-weight: 700;">-Rp 0</span>
+            </div>
+          </div>
+
+          <div id="import-preview-list" style="max-height: 240px; overflow-y: auto; border: 1px solid var(--fin-border); border-radius: 8px; padding: 6px; background: var(--fin-bg-page); display: flex; flex-direction: column; gap: 6px;">
+            <!-- Items rendered by JS -->
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+            <button type="button" id="btn-commit-import" class="fin-btn primary" style="width: 100%;">
+              💾 Simpan Transaksi Terpilih ke Dompet
+            </button>
+          </div>
         </div>
 
       </div>

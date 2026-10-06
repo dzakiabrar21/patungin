@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSearchInput();
   setupTransactionModal();
   setupWalletModal();
+  setupExportButtons();
+  setupImportModal();
   
   await loadCategories();
   await refreshDashboard();
@@ -652,3 +654,192 @@ function setupWalletModal() {
     });
   }
 }
+
+// 11. Export CSV Logic
+function setupExportButtons() {
+  const btnExport = document.getElementById('btn-export-csv');
+  const btnExportFilter = document.getElementById('btn-export-filter-csv');
+
+  function doExport() {
+    window.location.href = `/api/finance/export?month=${state.currentMonth}`;
+    showToast('Mengunduh laporan CSV...');
+  }
+
+  if (btnExport) btnExport.addEventListener('click', doExport);
+  if (btnExportFilter) btnExportFilter.addEventListener('click', doExport);
+}
+
+// 12. Import Statement & Mutasi Rekening Logic
+function setupImportModal() {
+  const modal = document.getElementById('modal-import-statement');
+  const btnOpen = document.getElementById('btn-open-import');
+  const btnClose = document.getElementById('btn-close-import');
+  const tabText = document.getElementById('tab-import-text');
+  const tabFile = document.getElementById('tab-import-file');
+  const containerText = document.getElementById('import-text-container');
+  const containerFile = document.getElementById('import-file-container');
+  const btnParse = document.getElementById('btn-parse-statement');
+  const previewBox = document.getElementById('import-preview-box');
+  const previewList = document.getElementById('import-preview-list');
+  const previewCount = document.getElementById('import-preview-count');
+  const previewIn = document.getElementById('import-preview-in');
+  const previewOut = document.getElementById('import-preview-out');
+  const btnCommit = document.getElementById('btn-commit-import');
+  const accSelect = document.getElementById('import-target-account');
+
+  if (!modal || !btnOpen) return;
+
+  let activeTab = 'text';
+  let parsedTransactions = [];
+
+  function openModal() {
+    if (accSelect && state.accounts.length > 0) {
+      accSelect.innerHTML = state.accounts.map(a => `<option value="${a.id}">${a.name} (Rp ${formatRupiah(a.balance)})</option>`).join('');
+    }
+    previewBox.style.display = 'none';
+    parsedTransactions = [];
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    modal.classList.remove('active');
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+
+  // Tab switching
+  tabText.addEventListener('click', () => {
+    activeTab = 'text';
+    tabText.style.background = 'var(--fin-primary-light)';
+    tabText.style.color = 'var(--fin-primary)';
+    tabText.style.borderColor = 'var(--fin-primary)';
+    tabFile.style.background = 'var(--fin-bg-subtle)';
+    tabFile.style.color = 'var(--fin-text-main)';
+    tabFile.style.borderColor = 'var(--fin-border)';
+    containerText.style.display = 'block';
+    containerFile.style.display = 'none';
+  });
+
+  tabFile.addEventListener('click', () => {
+    activeTab = 'file';
+    tabFile.style.background = 'var(--fin-primary-light)';
+    tabFile.style.color = 'var(--fin-primary)';
+    tabFile.style.borderColor = 'var(--fin-primary)';
+    tabText.style.background = 'var(--fin-bg-subtle)';
+    tabText.style.color = 'var(--fin-text-main)';
+    tabText.style.borderColor = 'var(--fin-border)';
+    containerFile.style.display = 'block';
+    containerText.style.display = 'none';
+  });
+
+  // Parse mutasi statement
+  btnParse.addEventListener('click', async () => {
+    const targetAccountId = accSelect.value;
+    btnParse.disabled = true;
+    const oldText = btnParse.textContent;
+    btnParse.textContent = '⏳ Menganalisis Mutasi...';
+
+    try {
+      let res;
+      if (activeTab === 'text') {
+        const rawText = document.getElementById('import-raw-text').value.trim();
+        if (!rawText) throw new Error('Silakan tempel teks mutasi terlebih dahulu.');
+        res = await fetch('/api/finance/import/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText, targetAccountId })
+        });
+      } else {
+        const fileInput = document.getElementById('import-file-input');
+        if (!fileInput.files || fileInput.files.length === 0) {
+          throw new Error('Pilih file CSV mutasi terlebih dahulu.');
+        }
+        const fd = new FormData();
+        fd.append('statementFile', fileInput.files[0]);
+        fd.append('targetAccountId', targetAccountId);
+        res = await fetch('/api/finance/import/preview', {
+          method: 'POST',
+          body: fd
+        });
+      }
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      parsedTransactions = data.transactions || [];
+      previewCount.textContent = parsedTransactions.length;
+      previewIn.textContent = `+Rp ${formatRupiah(data.totalIncome)}`;
+      previewOut.textContent = `-Rp ${formatRupiah(data.totalExpense)}`;
+
+      previewList.innerHTML = parsedTransactions.map((t, idx) => {
+        const isExp = t.type === 'expense';
+        const sign = isExp ? '-' : '+';
+        const clr = isExp ? 'var(--fin-expense)' : 'var(--fin-income)';
+
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:6px;border:1px solid var(--fin-border);font-size:0.82rem;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <input type="checkbox" id="chk-import-${idx}" checked style="cursor:pointer;">
+              <div style="min-width:0;">
+                <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description || t.merchant}</div>
+                <div style="font-size:0.72rem;color:var(--fin-text-muted);">${t.date} • ${t.category}</div>
+              </div>
+            </div>
+            <div style="font-weight:800;color:${clr};flex-shrink:0;">
+              ${sign}Rp ${formatRupiah(t.amount)}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      previewBox.style.display = 'block';
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btnParse.disabled = false;
+      btnParse.textContent = oldText;
+    }
+  });
+
+  // Commit selected transactions
+  btnCommit.addEventListener('click', async () => {
+    const selected = [];
+    parsedTransactions.forEach((t, idx) => {
+      const chk = document.getElementById(`chk-import-${idx}`);
+      if (chk && chk.checked) {
+        selected.push(t);
+      }
+    });
+
+    if (selected.length === 0) {
+      return alert('Pilih setidaknya 1 transaksi untuk disimpan.');
+    }
+
+    btnCommit.disabled = true;
+    btnCommit.textContent = 'Menyimpan...';
+
+    try {
+      const res = await fetch('/api/finance/import/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactions: selected,
+          targetAccountId: accSelect.value
+        })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      closeModal();
+      showToast(`Berhasil menyimpan ${data.totalInserted} transaksi ke dompet ${data.account}!`);
+      await refreshDashboard();
+    } catch (err) {
+      alert('Gagal menyimpan: ' + err.message);
+    } finally {
+      btnCommit.disabled = false;
+      btnCommit.textContent = '💾 Simpan Transaksi Terpilih ke Dompet';
+    }
+  });
+}
+

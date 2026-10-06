@@ -187,6 +187,58 @@ app.post('/api/finance/quick-text', async (req, res) => {
   }
 });
 
+app.get('/api/finance/export', (req, res) => {
+  try {
+    const month = req.query.month || null;
+    const csvData = financeService.exportTransactionsCsv(month);
+    const filename = `Laporan_Keuangan_PatungIn_${month || 'Semua'}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvData);
+  } catch (err) {
+    console.error('Error exporting finance CSV:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/import/preview', upload.single('statementFile'), async (req, res) => {
+  try {
+    let content = req.body.rawText || '';
+    if (req.file) {
+      content = fs.readFileSync(req.file.path, 'utf8');
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, error: 'File CSV atau teks mutasi tidak boleh kosong.' });
+    }
+
+    const result = await financeService.parseBankStatement(content, req.body.targetAccountId);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error parsing bank statement:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/import/commit', (req, res) => {
+  try {
+    const { transactions, targetAccountId } = req.body;
+    const result = financeService.commitImportedTransactions(transactions, targetAccountId);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error committing imported transactions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Bill Session Endpoints (Hybrid WA + Web)
 app.post('/api/bill/create', (req, res) => {
   try {

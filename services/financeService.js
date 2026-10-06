@@ -1120,6 +1120,347 @@ export function formatBalanceMessage(balanceReport) {
   return text;
 }
 
+// ==========================================
+// 9. Ekspor Laporan Transaksi ke CSV
+// ==========================================
+
+export function exportTransactionsCsv(monthStr = null) {
+  let query = `
+    SELECT t.id, t.transaction_date, t.type, t.amount,
+           a.name as account_name,
+           to_a.name as to_account_name,
+           c.name as category_name,
+           t.merchant, t.description, t.source
+    FROM transactions t
+    LEFT JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN accounts to_a ON t.to_account_id = to_a.id
+    LEFT JOIN categories c ON t.category_id = c.id
+  `;
+  const params = [];
+  if (monthStr && /^\d{4}-\d{2}$/.test(monthStr)) {
+    query += ` WHERE strftime('%Y-%m', t.transaction_date, 'localtime') = ?`;
+    params.push(monthStr);
+  }
+  query += ` ORDER BY t.transaction_date DESC, t.created_at DESC`;
+
+  const rows = db.prepare(query).all(...params);
+
+  const headers = [
+    'ID Transaksi',
+    'Tanggal Transaksi',
+    'Jenis',
+    'Nominal (IDR)',
+    'Dompet Sumber',
+    'Dompet Tujuan',
+    'Kategori',
+    'Tempat / Merchant',
+    'Keterangan',
+    'Sumber Input'
+  ];
+
+  function escapeCsv(val) {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  }
+
+  const csvLines = [headers.join(',')];
+
+  rows.forEach(r => {
+    let typeName = 'Pengeluaran';
+    if (r.type === 'income') typeName = 'Pemasukan';
+    else if (r.type === 'transfer') typeName = 'Transfer Antar Dompet';
+
+    let sourceName = 'Web Manual';
+    if (r.source === 'wa_dm') sourceName = 'WhatsApp Chat';
+    else if (r.source === 'wa_image') sourceName = 'Foto Struk/QRIS';
+    else if (r.source === 'wa_vn') sourceName = 'Voice Note';
+    else if (r.source === 'import_csv') sourceName = 'Import Mutasi Rekening';
+
+    csvLines.push([
+      escapeCsv(r.id),
+      escapeCsv(r.transaction_date),
+      escapeCsv(typeName),
+      escapeCsv(r.amount),
+      escapeCsv(r.account_name || 'Cash'),
+      escapeCsv(r.to_account_name || '-'),
+      escapeCsv(r.category_name || 'Lain-lain'),
+      escapeCsv(r.merchant || '-'),
+      escapeCsv(r.description || ''),
+      escapeCsv(sourceName)
+    ].join(','));
+  });
+
+  return '\uFEFF' + csvLines.join('\r\n');
+}
+
+// ==========================================
+// 10. Import Mutasi Rekening (CSV / Statement Text)
+// ==========================================
+
+function guessCategoryForStatement(desc) {
+  const d = (desc || '').toLowerCase();
+  if (/\b(gaji|payroll|income|bonus|cashback|bunga tabungan|transfer masuk|topup)\b/.test(d)) return 'Gaji / Pemasukan';
+  if (/\b(makan|kopi|coffee|resto|bakso|ayam|nasi|warung|mcd|kfc|starbucks|burger|chatime|snack|jajan|solaria|hokben)\b/.test(d)) return 'Makanan & Minuman';
+  if (/\b(spbu|pertamina|shell|bensin|pertalite|pertamax|grab|gojek|gocar|goride|tol|parkir|mrt|kai|kereta|bus|bluebird)\b/.test(d)) return 'Transportasi';
+  if (/\b(indomaret|alfamart|superindo|transmart|hypermart|sayur|buah|pasar|sabun|shampoo|minyak|beras|telur)\b/.test(d)) return 'Belanja Harian';
+  if (/\b(listrik|pln|pdam|wifi|indihome|telkom|pulsa|paket data|netflix|spotify|youtube|iuran|bpjs)\b/.test(d)) return 'Tagihan & Langganan';
+  if (/\b(biaya adm|adm bulanan|pajak bunga|kartu debit|materai)\b/.test(d)) return 'Tagihan & Langganan';
+  if (/\b(bioskop|xxi|game|steam|playstation|topup|nonton|billiard)\b/.test(d)) return 'Hiburan & Nongkrong';
+  if (/\b(apotek|obat|dokter|klinik|panadol|vitamin|hospital)\b/.test(d)) return 'Kesehatan & Obat';
+  return 'Lain-lain';
+}
+
+export async function parseStatementWithAI(rawText) {
+  const accounts = getAllAccounts().map(a => a.name);
+  const categories = getAllCategories('expense').map(c => c.name);
+
+  const prompt = `
+Kamu adalah asisten keuangan AI cerdas dan teliti.
+Pengguna memberikan data teks mutasi rekening bank / e-statement berikut:
+"""
+${rawText.slice(0, 10000)}
+"""
+
+Tugasmu:
+Ekstrak semua baris mutasi / transaksi keuangan yang valid dari teks mutasi tersebut.
+Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "Transfer Antar Dompet"]
+
+Aturan:
+1. "date": Format ISO "YYYY-MM-DD" atau tanggal transaksi yang tertera (gunakan tahun 2026 jika tidak ada tahun eksplisit).
+2. "type": 'expense' (debit/uang keluar), 'income' (kredit/uang masuk), atau 'transfer' (pindah saldo).
+3. "amount": nominal integer positif Rupiah (tanpa tanda minus).
+4. "description": Keterangan asli atau nama merchant/pihak yang bertransaksi.
+5. "merchant": Nama toko/tempat/rekening tujuan/sumber jika terdeteksi.
+6. "category": Kategori yang paling sesuai dari daftar di atas.
+
+KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
+{
+  "transactions": [
+    {
+      "date": "2026-10-01",
+      "type": "expense",
+      "amount": 35000,
+      "merchant": "Kopi Kenangan",
+      "description": "QRIS Kopi Kenangan",
+      "category": "Makanan & Minuman"
+    }
+  ]
+}
+`;
+
+  const gutsKey = getGutsApiKey();
+  if (gutsKey) {
+    try {
+      const res = await executeGutsRequest({
+        messages: [{ role: 'user', content: prompt }],
+        isJson: true,
+        maxTokens: 2500,
+        timeoutMs: 30000
+      });
+      if (res?.success && res.content) {
+        const parsed = JSON.parse(cleanJsonString(res.content));
+        if (Array.isArray(parsed.transactions)) {
+          return parsed.transactions;
+        }
+      }
+    } catch (_) {}
+  }
+
+  const apiKeys = getApiKeys();
+  if (apiKeys.length > 0) {
+    try {
+      const { data } = await executeGeminiRequest({
+        requestBody: {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
+        },
+        candidateModels: CANDIDATE_TEXT_MODELS,
+        timeoutMs: 20000
+      });
+      const rawTextRes = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawTextRes) {
+        const parsed = JSON.parse(cleanJsonString(rawTextRes));
+        if (Array.isArray(parsed.transactions)) {
+          return parsed.transactions;
+        }
+      }
+    } catch (err) {
+      console.warn('[FinanceService] Statement AI parser error:', err.message);
+    }
+  }
+
+  return [];
+}
+
+export async function parseBankStatement(textOrCsv, targetAccountId = null) {
+  if (!textOrCsv || typeof textOrCsv !== 'string' || !textOrCsv.trim()) {
+    return { success: false, error: 'Data mutasi tidak boleh kosong.' };
+  }
+
+  const cleanRaw = textOrCsv.trim();
+  const lines = cleanRaw.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const detected = [];
+
+  // 1. Coba deteksi apakah ini file CSV standar dengan pemisah koma / titik koma
+  let isCsvFormat = false;
+  if (lines.length > 1 && (lines[0].includes(',') || lines[0].includes(';'))) {
+    const delim = lines[0].includes(';') ? ';' : ',';
+    const headerParts = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+
+    // Cari index kolom
+    let dateIdx = headerParts.findIndex(h => /tgl|tanggal|date/i.test(h));
+    let descIdx = headerParts.findIndex(h => /ket|keterangan|uraian|desc|narasi/i.test(h));
+    let amountIdx = headerParts.findIndex(h => /nominal|jumlah|amount/i.test(h));
+    let typeIdx = headerParts.findIndex(h => /tipe|type|d\/c|mutasi|db\/cr/i.test(h));
+    let debitIdx = headerParts.findIndex(h => /debit|db|keluar/i.test(h));
+    let creditIdx = headerParts.findIndex(h => /kredit|cr|masuk/i.test(h));
+
+    if (dateIdx !== -1 && (descIdx !== -1 || amountIdx !== -1 || debitIdx !== -1)) {
+      isCsvFormat = true;
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(delim).map(p => p.trim().replace(/^["']|["']$/g, ''));
+        if (parts.length < 2) continue;
+
+        const rawDate = parts[dateIdx] || '';
+        const rawDesc = descIdx !== -1 ? (parts[descIdx] || 'Transaksi') : 'Transaksi';
+        
+        let type = 'expense';
+        let amount = 0;
+
+        if (debitIdx !== -1 && creditIdx !== -1) {
+          const debVal = parseFloat((parts[debitIdx] || '0').replace(/[^\d.-]/g, '')) || 0;
+          const credVal = parseFloat((parts[creditIdx] || '0').replace(/[^\d.-]/g, '')) || 0;
+          if (credVal > 0) {
+            type = 'income';
+            amount = credVal;
+          } else {
+            type = 'expense';
+            amount = Math.abs(debVal);
+          }
+        } else if (amountIdx !== -1) {
+          const rawAmtStr = parts[amountIdx] || '0';
+          const numVal = parseFloat(rawAmtStr.replace(/[^\d.-]/g, '')) || 0;
+          if (typeIdx !== -1) {
+            const typeStr = (parts[typeIdx] || '').toLowerCase();
+            type = /cr|kredit|c|masuk/i.test(typeStr) ? 'income' : 'expense';
+          } else {
+            type = numVal < 0 || rawAmtStr.includes('-') ? 'expense' : 'income';
+          }
+          amount = Math.abs(numVal);
+        }
+
+        if (amount > 0) {
+          detected.push({
+            date: rawDate || new Date().toISOString().slice(0, 10),
+            type,
+            amount,
+            merchant: rawDesc.split(/[-/]/)[0].trim().slice(0, 40),
+            description: rawDesc,
+            category: guessCategoryForStatement(rawDesc)
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Jika bukan CSV standar atau hasil CSV kurang dari 1, gunakan AI Extractor cerdas
+  if (detected.length === 0) {
+    const aiTransactions = await parseStatementWithAI(cleanRaw);
+    if (aiTransactions.length > 0) {
+      detected.push(...aiTransactions);
+    }
+  }
+
+  if (detected.length === 0) {
+    return {
+      success: false,
+      error: 'Tidak ditemukan transaksi yang dapat dibaca dari data mutasi tersebut. Pastikan format teks atau CSV memuat tanggal, nominal, dan keterangan.'
+    };
+  }
+
+  // Hitung ringkasan
+  let totalExpense = 0;
+  let totalIncome = 0;
+  detected.forEach(t => {
+    if (t.type === 'expense') totalExpense += t.amount;
+    else if (t.type === 'income') totalIncome += t.amount;
+  });
+
+  return {
+    success: true,
+    count: detected.length,
+    totalExpense,
+    totalIncome,
+    transactions: detected
+  };
+}
+
+export function commitImportedTransactions(transactions, targetAccountId) {
+  if (!Array.isArray(transactions) || transactions.length === 0) {
+    return { success: false, error: 'Tidak ada transaksi yang dipilih untuk disimpan.' };
+  }
+
+  let account = targetAccountId ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(targetAccountId) : null;
+  if (!account) {
+    account = db.prepare("SELECT * FROM accounts WHERE name = 'BCA'").get() || db.prepare("SELECT * FROM accounts LIMIT 1").get();
+  }
+
+  const nowIso = new Date().toISOString();
+  let totalInserted = 0;
+  let totalExpense = 0;
+  let totalIncome = 0;
+
+  const insertBatch = db.transaction(() => {
+    for (const t of transactions) {
+      const amt = Number(t.amount) || 0;
+      if (amt <= 0) continue;
+
+      const txId = 'tx_imp_' + Date.now().toString(36) + '_' + crypto.randomBytes(3).toString('hex');
+      const cat = findCategoryByName(t.category, t.type) || { id: 'cat_other_expense' };
+      const txDate = t.date ? (t.date.includes('T') ? t.date : `${t.date}T12:00:00Z`) : nowIso;
+
+      db.prepare(`
+        INSERT INTO transactions (
+          id, account_id, category_id, type, amount,
+          merchant, description, source, raw_text, transaction_date, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'import_csv', ?, ?, ?)
+      `).run(
+        txId,
+        account ? account.id : null,
+        cat ? cat.id : null,
+        t.type || 'expense',
+        amt,
+        t.merchant || null,
+        t.description || t.merchant || 'Import Mutasi',
+        t.description || '',
+        txDate,
+        nowIso
+      );
+
+      if (t.type === 'expense' && account) {
+        db.prepare("UPDATE accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, account.id);
+        totalExpense += amt;
+      } else if (t.type === 'income' && account) {
+        db.prepare("UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(amt, account.id);
+        totalIncome += amt;
+      }
+
+      totalInserted++;
+    }
+  });
+
+  insertBatch();
+
+  return {
+    success: true,
+    totalInserted,
+    totalExpense,
+    totalIncome,
+    account: account ? account.name : 'Cash'
+  };
+}
+
 export default {
   processFinanceText,
   recordFinanceTransaction,
@@ -1137,6 +1478,9 @@ export default {
   deleteTransactionById,
   createOrUpdateAccount,
   getAllCategoriesList,
+  exportTransactionsCsv,
+  parseBankStatement,
+  commitImportedTransactions,
   formatConfirmationMessage,
   formatTodayMessage,
   formatMonthMessage,
