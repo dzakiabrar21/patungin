@@ -553,11 +553,25 @@ export async function initWhatsAppBot(port = null) {
               continue;
             }
 
+            // Perintah Buka Web Dashboard (/dashboard atau /web atau /keuangan)
+            if (lowerText === '/dashboard' || lowerText === '/web' || lowerText === '/keuangan' || lowerText === 'dashboard') {
+              if (msgId) processedMessages.add(msgId);
+              const baseUrl = await getAppBaseUrl();
+              const dashUrl = `${baseUrl}/finance`;
+              await sock.sendMessage(chatId, {
+                text: `📊 *Web Dashboard Catatan Keuangan*\n\nBuka link ini di browser HP atau laptop lu untuk melihat grafik, saldo dompet, dan daftar transaksi lengkap:\n👉 ${dashUrl}`
+              }, { quoted: m });
+              continue;
+            }
+
             // Perintah Cek Saldo (/saldo)
             if (lowerText === '/saldo' || lowerText === 'saldo' || lowerText === 'cek saldo') {
               if (msgId) processedMessages.add(msgId);
               const balRep = financeService.getBalanceReport();
-              await sock.sendMessage(chatId, { text: financeService.formatBalanceMessage(balRep) }, { quoted: m });
+              const baseUrl = await getAppBaseUrl();
+              let msg = financeService.formatBalanceMessage(balRep);
+              msg += `\n\n🌐 _Dashboard Web:_ ${baseUrl}/finance`;
+              await sock.sendMessage(chatId, { text: msg }, { quoted: m });
               continue;
             }
 
