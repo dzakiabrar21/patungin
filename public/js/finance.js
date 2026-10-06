@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupExportButtons();
   setupImportModal();
   setupGoogleSheetModal();
+  setupShortcutsModal();
   
   await loadCategories();
   await refreshDashboard();
@@ -937,4 +938,108 @@ function setupGoogleSheetModal() {
     });
   }
 }
+
+// 14. iOS Shortcuts / Android Widget Logic
+function setupShortcutsModal() {
+  const modal = document.getElementById('modal-shortcuts-config');
+  const btnOpen = document.getElementById('btn-open-shortcuts');
+  const btnClose = document.getElementById('btn-close-shortcuts');
+  const urlInput = document.getElementById('shortcut-webhook-url');
+  const btnCopy = document.getElementById('btn-copy-shortcut-url');
+  const testInput = document.getElementById('shortcut-test-input');
+  const btnTest = document.getElementById('btn-test-shortcut');
+  const resultBox = document.getElementById('shortcut-test-result');
+
+  if (!modal || !btnOpen) return;
+
+  async function openModal() {
+    try {
+      const res = await fetch('/api/finance/shortcut/info');
+      const data = await res.json();
+      if (data.success && data.endpoint) {
+        let ep = data.endpoint;
+        if (ep.includes('localhost') && window.location.hostname !== 'localhost') {
+          ep = `${window.location.origin}/api/finance/shortcut`;
+        }
+        urlInput.value = ep;
+      } else {
+        urlInput.value = `${window.location.origin}/api/finance/shortcut`;
+      }
+    } catch (_) {
+      urlInput.value = `${window.location.origin}/api/finance/shortcut`;
+    }
+    if (resultBox) resultBox.style.display = 'none';
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    modal.classList.remove('active');
+  }
+
+  btnOpen.addEventListener('click', openModal);
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+
+  // Copy Webhook URL
+  if (btnCopy && urlInput) {
+    btnCopy.addEventListener('click', () => {
+      urlInput.select();
+      navigator.clipboard.writeText(urlInput.value)
+        .then(() => showToast('Webhook URL Pintasan berhasil disalin!'))
+        .catch(() => alert('Silakan salin URL secara manual: ' + urlInput.value));
+    });
+  }
+
+  // Live Tester
+  if (btnTest && testInput && resultBox) {
+    btnTest.addEventListener('click', async () => {
+      const query = testInput.value.trim();
+      if (!query) return alert('Masukkan contoh teks transaksi terlebih dahulu.');
+
+      btnTest.disabled = true;
+      const oldText = btnTest.textContent;
+      btnTest.textContent = '⏳ Menguji...';
+      resultBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/finance/shortcut', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: query })
+        });
+        const data = await res.json();
+
+        resultBox.style.display = 'block';
+        if (data.success) {
+          resultBox.innerHTML = `
+            <div style="font-weight:700;color:var(--fin-income);margin-bottom:4px;">${data.title}</div>
+            <div style="color:var(--fin-text-main);">${data.message}</div>
+          `;
+          showToast('Pintasan sukses dieksekusi!');
+          await refreshDashboard();
+        } else {
+          resultBox.innerHTML = `
+            <div style="font-weight:700;color:var(--fin-expense);margin-bottom:4px;">${data.title || 'Gagal'}</div>
+            <div style="color:var(--fin-text-muted);">${data.message || data.error}</div>
+          `;
+        }
+      } catch (err) {
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `
+          <div style="font-weight:700;color:var(--fin-expense);margin-bottom:4px;">⚠️ Error Server</div>
+          <div style="color:var(--fin-text-muted);">${err.message}</div>
+        `;
+      } finally {
+        btnTest.disabled = false;
+        btnTest.textContent = oldText;
+      }
+    });
+
+    testInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        btnTest.click();
+      }
+    });
+  }
+}
+
 

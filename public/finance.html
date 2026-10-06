@@ -40,6 +40,9 @@
         <button type="button" id="btn-open-gsheet" class="fin-btn-nav" title="Koneksi Google Spreadsheet & Checksheet">
           <span>📊</span> Sheet
         </button>
+        <button type="button" id="btn-open-shortcuts" class="fin-btn-nav" title="Pintasan iPhone / Android (Action Button & Siri)">
+          <span>⚡</span> Pintasan
+        </button>
         <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
           <span>💳</span> Dompet
         </button>
@@ -417,6 +420,83 @@
           <button type="button" id="btn-sync-all-gsheet" class="fin-btn primary" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
             🔄 Sinkronkan Semua Transaksi
           </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Pintasan HP (iOS Shortcuts / Android Widget) -->
+  <div id="modal-shortcuts-config" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
+    <div class="fin-modal-card" style="max-width: 620px;">
+      <div class="fin-modal-header">
+        <h3 id="modal-shortcuts-title" class="fin-modal-title">⚡ Pintasan HP (Action Button & Siri)</h3>
+        <button type="button" id="btn-close-shortcuts" class="fin-modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="fin-modal-body">
+        
+        <p style="font-size:0.84rem;color:var(--fin-text-muted);margin-bottom:14px;line-height:1.5;">
+          Catat pengeluaran instan <b>hanya dalam 1 detik</b> via tombol <b>Action Button</b> iPhone, perintah suara <b>Siri</b>, atau widget di layar utama Android tanpa perlu buka WhatsApp/aplikasi apa pun!
+        </p>
+
+        <!-- Webhook URL Box -->
+        <div style="background:var(--fin-bg-subtle);border-radius:12px;padding:12px;margin-bottom:16px;border:1px solid var(--fin-border);">
+          <label style="font-size:0.75rem;font-weight:700;color:var(--fin-text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Webhook URL Pintasan Kamu:</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="shortcut-webhook-url" readonly class="fin-form-input" style="font-size:0.82rem;font-weight:600;background:#ffffff;" value="Memuat...">
+            <button type="button" id="btn-copy-shortcut-url" class="fin-btn primary" style="padding:6px 14px;font-size:0.8rem;flex-shrink:0;">
+              📋 Salin
+            </button>
+          </div>
+        </div>
+
+        <!-- Panduan iOS Shortcuts -->
+        <div style="background:#ffffff;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
+          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span>🍎</span> Panduan Pasang di iPhone (Aplikasi Shortcuts / Pintasan):
+          </div>
+          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);line-height:1.45;">
+            <li>Buka aplikasi bawaan <b>Shortcuts (Pintasan)</b> di iPhone kamu > tekan tanda <b>+</b> (Buat Pintasan Baru).</li>
+            <li>Beri nama pintasan, misalnya: <b>"Catat Pengeluaran"</b>.</li>
+            <li>Tambahkan Aksi 1: Cari <b>"Ask for Input (Minta Masukan)"</b> (Pertanyaan: <i>"Catat apa?"</i>, Jenis: <i>Teks</i>).</li>
+            <li>Tambahkan Aksi 2: Cari <b>"Get Contents of URL (Dapatkan Konten URL)"</b>:
+              <ul style="padding-left:16px;margin-top:3px;color:var(--fin-text-muted);">
+                <li>URL: Tempelkan <b>Webhook URL</b> di atas.</li>
+                <li>Metode (Method): <b>POST</b>.</li>
+                <li>Request Body: Pilih <b>JSON</b> > Tambahkan Field <code>text</code> bernilai <b>Provided Input</b>.</li>
+              </ul>
+            </li>
+            <li>Tambahkan Aksi 3: Cari <b>"Show Notification (Tampilkan Pemberitahuan)"</b> atau <b>"Speak Text"</b> (ambil teks balasan dari hasil server).</li>
+            <li><b>Selesai!</b> Sekarang kamu bisa panggil <i>"Hei Siri, Catat Pengeluaran"</i> atau pasang di <b>Action Button iPhone 15/16 Pro</b> via Settings > Action Button > Shortcut!</li>
+          </ol>
+        </div>
+
+        <!-- Panduan Android HTTP Shortcuts -->
+        <div style="background:#ffffff;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
+          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span>🤖</span> Panduan Pasang di Android (HTTP Shortcuts / Tasker):
+          </div>
+          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);line-height:1.45;">
+            <li>Install aplikasi gratis <b>HTTP Shortcuts</b> dari Google Play Store / F-Droid.</li>
+            <li>Buat Shortcut baru > pilih Method: <b>POST</b> > Tempelkan <b>Webhook URL</b> di atas.</li>
+            <li>Di tab <b>Request Body</b>: pilih <b>JSON</b>, isi dengan <code>{"text": "{input}"}</code>.</li>
+            <li>Di tab <b>Variables</b>: buat variabel <code>input</code> dengan tipe <b>Text input prompt</b> (pesan: <i>"Catat pengeluaran apa?"</i>).</li>
+            <li>Simpan, lalu tambahkan <b>Widget Shortcut</b> tersebut ke <b>Layar Utama (Home Screen)</b> Android!</li>
+          </ol>
+        </div>
+
+        <!-- Live Tester Box -->
+        <div style="border-top:1px dashed var(--fin-border);padding-top:14px;">
+          <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">🧪 Uji Coba Pintasan Langsung:</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="shortcut-test-input" class="fin-form-input" placeholder="Contoh: kopi 25k bca" value="kopi 25k bca" style="font-size:0.84rem;">
+            <button type="button" id="btn-test-shortcut" class="fin-btn primary" style="padding:8px 16px;font-size:0.82rem;flex-shrink:0;">
+              Kirim Tes
+            </button>
+          </div>
+          <div id="shortcut-test-result" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:0.8rem;background:var(--fin-bg-subtle);border:1px solid var(--fin-border);">
+            <!-- Test result -->
+          </div>
         </div>
 
       </div>

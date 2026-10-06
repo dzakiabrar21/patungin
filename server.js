@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { SAMPLE_PRESETS, parseReceiptWithGemini, parseMultipleReceipts } from './services/geminiService.js';
 import sessionStore from './services/sessionStore.js';
-import { initWhatsAppBot, sendSplitBillToGroup, getBotStatus, logoutWhatsAppBot } from './services/whatsappBot.js';
+import { initWhatsAppBot, sendSplitBillToGroup, getBotStatus, logoutWhatsAppBot, getAppBaseUrl } from './services/whatsappBot.js';
 import financeService from './services/financeService.js';
 
 dotenv.config();
@@ -267,6 +267,157 @@ app.post('/api/finance/google-sheet/sync-all', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// iOS Shortcuts / Android Widget Endpoints
+// ==========================================
+
+app.get('/api/finance/shortcut/info', async (req, res) => {
+  try {
+    const baseUrl = await getAppBaseUrl();
+    res.json({
+      success: true,
+      baseUrl,
+      endpoint: `${baseUrl}/api/finance/shortcut`,
+      scanEndpoint: `${baseUrl}/api/finance/shortcut/scan`,
+      summaryEndpoint: `${baseUrl}/api/finance/shortcut/summary`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/finance/shortcut', async (req, res) => {
+  try {
+    const text = req.body.text || req.body.query || req.body.input || req.query.text || '';
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        success: false,
+        title: '⚠️ Gagal Catat',
+        message: 'Teks pengeluaran tidak boleh kosong. Contoh: "makan siang 35k bca"'
+      });
+    }
+
+    const result = await financeService.processFinanceText(text.trim(), 'ios_shortcut');
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        title: '⚠️ Tidak Dikenali',
+        message: result.error || 'Format tidak dikenali. Contoh: "kopi 25k bca"'
+      });
+    }
+
+    const tx = result.transaction;
+    const amtStr = `Rp ${(Number(tx.amount) || 0).toLocaleString('id-ID')}`;
+    const balStr = `Rp ${(Number(tx.accountBalance) || 0).toLocaleString('id-ID')}`;
+
+    let title = '✅ Pengeluaran Dicatat';
+    let message = `${amtStr} (${tx.category}) via ${tx.account}. Sisa saldo: ${balStr}`;
+
+    if (tx.type === 'income') {
+      title = '💰 Pemasukan Dicatat';
+      message = `+${amtStr} via ${tx.account}. Total saldo: ${balStr}`;
+    } else if (tx.type === 'transfer') {
+      title = '🔁 Transfer Dicatat';
+      message = `${amtStr} dari ${tx.account} ke ${tx.toAccount}.`;
+    }
+
+    return res.json({
+      success: true,
+      title,
+      message,
+      amount: tx.amount,
+      formattedAmount: amtStr,
+      account: tx.account,
+      accountBalance: tx.accountBalance,
+      category: tx.category,
+      transaction: tx
+    });
+  } catch (err) {
+    console.error('Error processing shortcut:', err);
+    return res.status(500).json({
+      success: false,
+      title: '⚠️ Server Error',
+      message: err.message
+    });
+  }
+});
+
+app.post('/api/finance/shortcut/scan', upload.single('image'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        title: '⚠️ Gambar Tidak Ditemukan',
+        message: 'Kirim foto struk atau screenshot pembayaran QRIS.'
+      });
+    }
+
+    const caption = req.body.caption || req.body.text || '';
+    const result = await financeService.processReceiptImage(
+      file.path,
+      file.mimetype,
+      caption,
+      'shortcut_image'
+    );
+
+    try { fs.unlinkSync(file.path); } catch (_) {}
+
+    if (!result || !result.isFinancial || !result.success) {
+      return res.status(400).json({
+        success: false,
+        title: '⚠️ Bukan Bukti Pembayaran',
+        message: 'Gambar tidak terdeteksi sebagai struk belanja atau bukti transfer yang sah.'
+      });
+    }
+
+    const tx = result.transaction;
+    const amtStr = `Rp ${(Number(tx.amount) || 0).toLocaleString('id-ID')}`;
+    const balStr = `Rp ${(Number(tx.accountBalance) || 0).toLocaleString('id-ID')}`;
+
+    return res.json({
+      success: true,
+      title: '🧾 Struk Berhasil Dicatat!',
+      message: `${amtStr} (${tx.category}) di ${tx.merchant || 'Merchant'}. Sisa saldo: ${balStr}`,
+      amount: tx.amount,
+      formattedAmount: amtStr,
+      merchant: tx.merchant,
+      account: tx.account,
+      category: tx.category,
+      transaction: tx
+    });
+  } catch (err) {
+    console.error('Error in shortcut scan:', err);
+    return res.status(500).json({
+      success: false,
+      title: '⚠️ Error Server',
+      message: err.message
+    });
+  }
+});
+
+app.get('/api/finance/shortcut/summary', (req, res) => {
+  try {
+    const todayRep = financeService.getTodayReport();
+    const balRep = financeService.getBalanceReport();
+
+    const expStr = `Rp ${(Number(todayRep.totalExpense) || 0).toLocaleString('id-ID')}`;
+    const totalBalStr = `Rp ${(Number(balRep.totalBalance) || 0).toLocaleString('id-ID')}`;
+
+    const text = `Pengeluaran hari ini: ${expStr} (${todayRep.transactionCount} transaksi). Total saldo likuid: ${totalBalStr}.`;
+
+    return res.json({
+      success: true,
+      title: '📊 Ringkasan Hari Ini',
+      message: text,
+      todayExpense: todayRep.totalExpense,
+      totalBalance: balRep.totalBalance
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
