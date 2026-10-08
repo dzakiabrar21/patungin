@@ -3,6 +3,21 @@
  * Logic for overview, transactions, analytics, and modals
  */
 
+// Automatically skip Ngrok browser warning for all API fetch calls
+if (typeof window !== 'undefined' && window.fetch) {
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options = {}) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (options.headers instanceof Headers) {
+      options.headers.set('ngrok-skip-browser-warning', '1');
+    } else {
+      options.headers['ngrok-skip-browser-warning'] = '1';
+    }
+    return originalFetch(url, options);
+  };
+}
+
 // Application State
 const state = {
   currentMonth: new Date().toISOString().slice(0, 7), // 'YYYY-MM'
