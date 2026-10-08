@@ -1595,123 +1595,429 @@ body.finance-body {
 }
 
 /* ==========================================================================
-   MOBILE RESPONSIVENESS (HP Screen Focus <= 768px)
+   Sub-navigation & Mobile Elements (Desktop Default)
+   ========================================================================== */
+.fin-mobile-cta {
+  display: none;
+}
+
+.fin-header-subnav {
+  display: none;
+}
+
+.fin-fab-btn {
+  display: none;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS (HP Screen Focus <= 768px - Exact Figma Spec)
    ========================================================================== */
 @media (max-width: 768px) {
+  /* Header Top Tier 64px */
   .fin-header-inner {
     height: 64px;
-    padding: 0 14px;
+    padding: 0 15px;
   }
 
   .fin-brand-text h1 {
-    font-size: 16px;
+    font-size: 18px;
+    font-weight: 800;
   }
 
-  /* Compact Header Nav for mobile */
   .fin-nav-actions {
-    gap: 2px;
+    display: none; /* Replaced by mobile subnav & mobile CTA */
   }
 
-  .fin-btn-nav {
-    padding: 0 6px;
-    font-size: 10px;
+  .fin-mobile-cta {
+    display: flex;
+    align-items: center;
   }
 
-  .fin-btn-header-cta {
-    height: 32px;
-    padding: 0 10px;
-    font-size: 11px;
+  .fin-mobile-cta .fin-btn-header-cta {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    gap: 7px;
   }
 
+  /* Subnav 45px strip below header per Figma Spec */
+  .fin-header-subnav {
+    display: block;
+    height: 45px;
+    background: #FFFFFF;
+    border-top: 0.78px solid #EDF2F2;
+    border-bottom: 0.78px solid #DCE7E9;
+    overflow: hidden;
+  }
+
+  .fin-subnav-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 15px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .fin-subnav-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fin-subnav-pill {
+    height: 30px;
+    padding: 0 9px;
+    border-radius: 7px;
+    border: 0.78px solid #DCE7E9;
+    background: #FFFFFF;
+    color: #4B646B;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all var(--fin-transition);
+  }
+
+  .fin-subnav-pill:active {
+    background: #F0F5F5;
+    border-color: #007F88;
+    color: #007F88;
+  }
+
+  /* Floating Action Button (FAB) Mobile */
+  .fin-fab-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #007F88 0%, #00AAA7 100%);
+    box-shadow: 0px 12px 25px rgba(0, 127, 136, 0.32);
+    border: none;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 99;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  }
+
+  .fin-fab-btn:active {
+    transform: scale(0.92);
+  }
+
+  /* Main content container */
   .fin-main-content {
-    padding: 20px 14px 80px 14px;
-    gap: 18px;
+    padding: 20px 13px 95px 13px;
+    gap: 16px;
+    max-width: 440px;
+    margin: 0 auto;
   }
 
+  /* Greeting Section */
   .fin-greeting-strip {
     align-items: flex-start;
     flex-direction: column;
+    gap: 4px;
   }
 
   .fin-greeting-title {
     font-size: 22px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-top: 4px;
   }
 
-  /* Hero Card Mobile */
+  .fin-greeting-sub {
+    font-size: 13px;
+    margin-top: 3px;
+  }
+
+  .fin-status-pill {
+    display: none;
+  }
+
+  /* Quick Input Box */
+  .fin-quick-box {
+    padding: 9px 10px 9px 11px;
+    min-height: 72px;
+    border-radius: 15px;
+    box-shadow: 0px 12px 30px rgba(28, 73, 80, 0.08);
+  }
+
+  .fin-quick-label {
+    font-size: 8px;
+    letter-spacing: 0.8px;
+  }
+
+  .fin-quick-input {
+    font-size: 11px;
+  }
+
+  .fin-quick-submit {
+    width: 43px;
+    height: 44px;
+    min-width: 43px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .fin-quick-submit span {
+    display: none;
+  }
+
+  /* Period Selector */
+  .fin-month-strip {
+    margin-top: 4px;
+  }
+
+  .fin-month-selector {
+    gap: 17px;
+  }
+
+  .fin-month-period-tag {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .fin-month-display {
+    font-size: 13px;
+  }
+
+  /* Hero Card Mobile - Exact 3 Columns Side-by-Side */
   .fin-hero-card {
-    padding: 22px 18px 18px 18px;
+    padding: 22px 18px 20px 18px;
+    border-radius: 17px;
+    box-shadow: 0px 18px 35px rgba(3, 68, 76, 0.18);
   }
 
   .fin-hero-balance {
-    font-size: 28px;
+    font-size: 29px;
+    font-weight: 400;
+    line-height: 1.15;
+  }
+
+  .fin-hero-wallets-count {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.58);
   }
 
   .fin-hero-stats {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding-top: 16px;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 1fr;
+    gap: 0;
+    padding-top: 18px;
+    border-top: 0.78px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .fin-hero-stat-col {
+    padding: 0 4px;
   }
 
   .fin-hero-stat-col:not(:first-child) {
-    padding-left: 0;
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    padding-top: 12px;
+    padding-left: 10px;
+    border-left: 0.78px solid rgba(255, 255, 255, 0.14);
+    border-top: none;
+    padding-top: 0;
   }
 
-  /* Wallets Scroll horizontally on Mobile */
+  .fin-stat-head {
+    margin-bottom: 3px;
+    gap: 4px;
+  }
+
+  .fin-stat-icon-box {
+    display: none; /* Hide icon box inside mobile stats */
+  }
+
+  .fin-stat-title {
+    font-size: 7.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.66);
+    line-height: 1.2;
+  }
+
+  .fin-stat-val {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .fin-stat-sub {
+    font-size: 6.5px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  /* Wallets on Mobile: Horizontal Swipe */
   .fin-wallets-grid {
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    gap: 12px;
+    gap: 10px;
     padding-bottom: 6px;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .fin-wallets-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .fin-wallet-card {
-    flex: 0 0 200px;
+    flex: 0 0 205px;
+    min-width: 205px;
+    padding: 15px;
+    border-radius: 14px;
+    outline: 0.78px solid #DCE7E9;
     scroll-snap-align: start;
+    box-shadow: 0px 4px 15px rgba(26, 69, 76, 0.04);
   }
 
   /* Analytics Grid Stack */
   .fin-analytics-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  /* Filter bar Stack */
+  .fin-card {
+    padding: 18px 16px;
+    border-radius: 16px;
+  }
+
+  /* Daily Chart on Mobile */
+  .fin-daily-meta {
+    padding-left: 28px;
+  }
+
+  .fin-daily-chart-wrap {
+    height: 190px;
+  }
+
+  /* Transaction Filter Bar Stack */
   .fin-tx-filter-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
   .fin-filter-segmented {
     width: 100%;
-    justify-content: space-between;
+    display: flex;
+    background: #F0F5F5;
+    border-radius: 9px;
+    padding: 3px;
   }
 
   .fin-filter-pill {
     flex: 1;
     text-align: center;
+    padding: 7px 4px;
+    font-size: 8px;
+    font-weight: 700;
   }
 
   .fin-search-box {
     width: 100%;
+    height: 34px;
   }
 
-  /* Modal on Mobile: Bottom Sheet */
+  .fin-search-input {
+    font-size: 9px;
+  }
+
+  /* Transaction Items on Mobile */
+  .fin-tx-item {
+    min-height: 75px;
+    padding: 14px 0;
+  }
+
+  .fin-tx-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    font-size: 15px;
+  }
+
+  .fin-tx-desc {
+    font-size: 10px;
+    font-weight: 700;
+    max-width: 155px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .fin-tx-meta {
+    font-size: 8px;
+  }
+
+  .fin-tx-center {
+    display: none; /* Hide middle category column on mobile */
+  }
+
+  .fin-tx-amount {
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  .fin-tx-type-lbl {
+    font-size: 7.5px;
+  }
+
+  /* Modal Dialog (Centered Rounded Card per Screenshot 2) */
   .fin-modal-backdrop {
-    padding: 0;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(7, 33, 38, 0.60);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
   }
 
   .fin-modal-card {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    max-height: 85vh;
+    border-radius: 18px;
+    max-height: 90vh;
+    width: 100%;
+    max-width: 395px;
+    padding: 20px 20px;
+    box-shadow: 0px 30px 80px rgba(5, 35, 41, 0.30);
   }
 
+  .fin-nominal-input {
+    font-size: 27px;
+    font-weight: 800;
+  }
+
+  .fin-nominal-cur {
+    font-size: 16px;
+  }
+
+  .fin-nom-pill {
+    padding: 5px 9px;
+    font-size: 8px;
+  }
+
+  /* Keep 2 columns side-by-side inside modal form */
   .fin-form-grid-2 {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 }
+

@@ -31,6 +31,7 @@
         </div>
       </a>
 
+      <!-- Desktop Nav Actions (hidden on mobile) -->
       <div class="fin-nav-actions">
         <a href="/" class="fin-btn-nav" title="Buka Pembagian Split Bill">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -66,7 +67,50 @@
           Catat
         </button>
       </div>
+
+      <!-- Mobile Top Bar CTA (shown only on mobile <= 768px) -->
+      <div class="fin-mobile-cta">
+        <button type="button" id="btn-open-add-tx-mobile" class="fin-btn-header-cta" title="Tambah Transaksi Manual">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Catat
+        </button>
+      </div>
     </div>
+
+    <!-- Mobile Sub-Navigation Bar (Horizontal Pills per Figma Spec) -->
+    <nav class="fin-header-subnav" aria-label="Menu Fitur Cepat">
+      <div class="fin-subnav-scroll">
+        <a href="/" class="fin-subnav-pill" title="Split Bill">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <span>Split Bill</span>
+        </a>
+        <a href="/wa-login" class="fin-subnav-pill" title="Bot WhatsApp">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          <span>Bot WA</span>
+          <span class="fin-live-dot" title="Bot Online"></span>
+        </a>
+        <button type="button" id="btn-subnav-import" class="fin-subnav-pill" title="Import Mutasi Rekening">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Import</span>
+        </button>
+        <button type="button" id="btn-subnav-export" class="fin-subnav-pill" title="Ekspor CSV">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Ekspor</span>
+        </button>
+        <button type="button" id="btn-subnav-gsheet" class="fin-subnav-pill" title="Google Sheet">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Sheet</span>
+        </button>
+        <button type="button" id="btn-subnav-shortcuts" class="fin-subnav-pill" title="Pintasan iPhone / Android">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Pintasan</span>
+        </button>
+        <button type="button" id="btn-subnav-wallets" class="fin-subnav-pill" title="Kelola Dompet">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <span>Dompet</span>
+        </button>
+      </div>
+    </nav>
   </header>
 
   <!-- ==========================================
@@ -603,6 +647,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Action Button (FAB) Mobile per Figma Spec -->
+  <button type="button" id="fin-fab-add" class="fin-fab-btn" aria-label="Tambah Transaksi Cepat" title="Catat Transaksi">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </button>
 
   <!-- Toast Notification -->
   <div id="fin-toast" class="fin-toast" role="status" aria-live="polite">

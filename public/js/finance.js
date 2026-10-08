@@ -115,11 +115,13 @@ function setupMonthSelector() {
     refreshDashboard();
   });
 
-  btnToday.addEventListener('click', () => {
-    state.currentMonth = new Date().toISOString().slice(0, 7);
-    updateMonthLabel();
-    refreshDashboard();
-  });
+  if (btnToday) {
+    btnToday.addEventListener('click', () => {
+      state.currentMonth = new Date().toISOString().slice(0, 7);
+      updateMonthLabel();
+      refreshDashboard();
+    });
+  }
 
   updateMonthLabel();
 }
@@ -604,6 +606,30 @@ function setupTransactionModal() {
   }
 
   btnOpen.addEventListener('click', openModal);
+  
+  // Mobile Top CTA & FAB bindings
+  const btnOpenMobile = document.getElementById('btn-open-add-tx-mobile');
+  if (btnOpenMobile) btnOpenMobile.addEventListener('click', openModal);
+
+  const btnFabAdd = document.getElementById('fin-fab-add');
+  if (btnFabAdd) btnFabAdd.addEventListener('click', openModal);
+
+  // Mobile Sub-navigation bindings to existing modals
+  const btnSubImport = document.getElementById('btn-subnav-import');
+  if (btnSubImport) btnSubImport.addEventListener('click', () => document.getElementById('btn-open-import')?.click());
+
+  const btnSubExport = document.getElementById('btn-subnav-export');
+  if (btnSubExport) btnSubExport.addEventListener('click', () => document.getElementById('btn-export-csv')?.click());
+
+  const btnSubSheet = document.getElementById('btn-subnav-gsheet');
+  if (btnSubSheet) btnSubSheet.addEventListener('click', () => document.getElementById('btn-open-gsheet')?.click());
+
+  const btnSubShortcuts = document.getElementById('btn-subnav-shortcuts');
+  if (btnSubShortcuts) btnSubShortcuts.addEventListener('click', () => document.getElementById('btn-open-shortcuts')?.click());
+
+  const btnSubWallets = document.getElementById('btn-subnav-wallets');
+  if (btnSubWallets) btnSubWallets.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
+
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (btnCancel) btnCancel.addEventListener('click', closeModal);
 
