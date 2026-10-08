@@ -596,13 +596,32 @@
             <li>Tempel kode script berikut lalu Deploy sebagai Web App (Akses: Anyone):</li>
           </ol>
           <div style="margin-top:8px;">
-            <textarea id="gsheet-script-template" readonly rows="3" style="width:100%;font-family:monospace;font-size:11.5px;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("DATA TRANSAKSI") || ss.insertSheet("DATA TRANSAKSI");
-  var data = JSON.parse(e.postData.contents);
-  var tx = data.transaction || data;
-  sheet.appendRow([tx.id, tx.transaction_date || tx.date, tx.type, tx.amount, tx.account || tx.account_name, tx.toAccount || "-", tx.category || tx.category_name, tx.merchant || "-", tx.description || "", tx.source]);
-  return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+            <textarea id="gsheet-script-template" readonly rows="5" style="width:100%;font-family:monospace;font-size:11.5px;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("DATA TRANSAKSI");
+    if (!sheet) {
+      sheet = ss.insertSheet("DATA TRANSAKSI");
+      sheet.appendRow(["ID Transaksi", "Tanggal", "Jenis", "Nominal", "Dompet", "Tujuan", "Kategori", "Merchant", "Catatan", "Sumber"]);
+      sheet.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#007F88").setFontColor("#FFFFFF");
+      sheet.setFrozenRows(1);
+    }
+    var data = JSON.parse(e.postData.contents);
+    if (data.action === "sync_all" && Array.isArray(data.transactions)) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 10).clearContent();
+      var rows = data.transactions.map(function(t) {
+        return [t.id, t.transaction_date || t.date, t.type, t.amount, t.account_name || t.account || "-", t.to_account_name || t.toAccount || "-", t.category_name || t.category || "-", t.merchant || "-", t.description || "", t.source || "sync"];
+      });
+      if (rows.length > 0) sheet.getRange(2, 1, rows.length, 10).setValues(rows);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", count: rows.length })).setMimeType(ContentService.MimeType.JSON);
+    }
+    var tx = data.transaction || data;
+    sheet.appendRow([tx.id, tx.transaction_date || tx.date, tx.type, tx.amount, tx.account_name || tx.account || "-", tx.to_account_name || tx.toAccount || "-", tx.category_name || tx.category || "-", tx.merchant || "-", tx.description || "", tx.source || "manual"]);
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
 }</textarea>
             <button type="button" id="btn-copy-apps-script" class="fin-nom-pill" style="margin-top:6px;width:100%;text-align:center;">
               📋 Salin Kode Script Google Sheets

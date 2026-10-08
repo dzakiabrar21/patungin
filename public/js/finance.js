@@ -1126,7 +1126,7 @@ function setupGoogleSheetModal() {
   const modal = document.getElementById('modal-gsheet-config');
   const btnOpen = document.getElementById('btn-open-gsheet');
   const btnClose = document.getElementById('btn-close-gsheet');
-  const urlInput = document.getElementById('gsheet-webhook-url');
+  const urlInput = document.getElementById('gsheet-url-input') || document.getElementById('gsheet-webhook-url');
   const btnSave = document.getElementById('btn-save-gsheet-url');
   const btnSyncAll = document.getElementById('btn-sync-all-gsheet');
   const btnCopyScript = document.getElementById('btn-copy-apps-script');
@@ -1138,7 +1138,7 @@ function setupGoogleSheetModal() {
     try {
       const res = await fetch('/api/finance/google-sheet');
       const data = await res.json();
-      if (data.success && data.url) {
+      if (data.success && data.url && urlInput) {
         urlInput.value = data.url;
       }
     } catch (_) {}
