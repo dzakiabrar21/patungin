@@ -122,38 +122,13 @@
     <section class="fin-greeting-strip">
       <div class="fin-greeting-info">
         <div class="fin-micro-label">Ringkasan keuangan</div>
-        <h2 id="greeting-heading" class="fin-greeting-title">Selamat siang, Raka</h2>
+        <h2 id="greeting-heading" class="fin-greeting-title" title="Klik untuk mengubah nama panggilan">Selamat siang, Dzaki</h2>
         <div class="fin-greeting-sub">Semua keuanganmu terlihat sehat bulan ini.</div>
       </div>
       <div class="fin-status-pill">
         <div class="fin-status-dot"></div>
         <span>Kondisi finansial baik</span>
       </div>
-    </section>
-
-    <!-- Quick NLP Natural Text Input Box -->
-    <section class="fin-quick-box-section" aria-label="Pencatatan Cepat Berbasis Teks">
-      <form id="fin-quick-form" class="fin-quick-box">
-        <div class="fin-quick-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
-          </svg>
-        </div>
-        <div class="fin-quick-body">
-          <span class="fin-quick-label">Catat dengan kalimat biasa</span>
-          <input 
-            type="text" 
-            id="fin-quick-input" 
-            class="fin-quick-input" 
-            placeholder="Misal: makan siang padang 35k bca..." 
-            autocomplete="off"
-          >
-        </div>
-        <button type="submit" class="fin-quick-submit" id="btn-quick-submit">
-          <span>Catat</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </form>
     </section>
 
     <!-- Month Period Selector Strip -->
@@ -222,6 +197,31 @@
           <span class="fin-stat-sub" id="hero-savings-ratio">-</span>
         </div>
       </div>
+    </section>
+
+    <!-- Quick NLP Natural Text Input Box (Placed below Total Saldo Likuid Card) -->
+    <section class="fin-quick-box-section" aria-label="Pencatatan Cepat Berbasis Teks">
+      <form id="fin-quick-form" class="fin-quick-box">
+        <div class="fin-quick-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
+          </svg>
+        </div>
+        <div class="fin-quick-body">
+          <span class="fin-quick-label">Catat dengan kalimat biasa</span>
+          <input 
+            type="text" 
+            id="fin-quick-input" 
+            class="fin-quick-input" 
+            placeholder="Misal: makan siang padang 35k bca..." 
+            autocomplete="off"
+          >
+        </div>
+        <button type="submit" class="fin-quick-submit" id="btn-quick-submit">
+          <span>Catat</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </form>
     </section>
 
     <!-- Dompet & Rekening Section -->

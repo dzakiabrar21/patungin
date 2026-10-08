@@ -135,7 +135,24 @@ function updateGreeting() {
   if (hour >= 11 && hour < 15) timeStr = 'siang';
   else if (hour >= 15 && hour < 18) timeStr = 'sore';
   else if (hour >= 18 || hour < 4) timeStr = 'malam';
-  heading.textContent = `Selamat ${timeStr}, Raka`;
+  
+  const userName = localStorage.getItem('patungin_user_name') || 'Dzaki';
+  heading.textContent = `Selamat ${timeStr}, ${userName}`;
+
+  // Allow clicking on name to personalize it
+  if (!heading.dataset.hasRenameListener) {
+    heading.dataset.hasRenameListener = 'true';
+    heading.style.cursor = 'pointer';
+    heading.addEventListener('click', () => {
+      const current = localStorage.getItem('patungin_user_name') || 'Dzaki';
+      const input = prompt('Ubah nama panggilan kamu di dashboard:', current);
+      if (input !== null && input.trim()) {
+        localStorage.setItem('patungin_user_name', input.trim());
+        updateGreeting();
+        showToast(`Nama diubah menjadi ${input.trim()}`);
+      }
+    });
+  }
 }
 
 // 2. Fetch and Render Finance Overview
