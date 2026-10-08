@@ -553,13 +553,25 @@ export async function initWhatsAppBot(port = null) {
               continue;
             }
 
-            // Perintah Buka Web Dashboard (/dashboard atau /web atau /keuangan)
-            if (lowerText === '/dashboard' || lowerText === '/web' || lowerText === '/keuangan' || lowerText === 'dashboard') {
+            // Perintah Buka Web Dashboard (/dashboard atau kalimat natural: "kasih link dashboard", "minta link web", dll)
+            const isAskingDashboardLink = 
+              lowerText === '/dashboard' || 
+              lowerText === '/web' || 
+              lowerText === '/keuangan' || 
+              lowerText === 'dashboard' ||
+              lowerText === 'link dashboard' ||
+              lowerText === 'web dashboard' ||
+              Boolean(
+                (lowerText.includes('dashboard') || lowerText.includes('keuangan') || lowerText.includes('catatan')) &&
+                (lowerText.includes('link') || lowerText.includes('web') || lowerText.includes('url') || lowerText.includes('buka') || lowerText.includes('kasih') || lowerText.includes('minta') || lowerText.includes('bagi') || lowerText.includes('liat') || lowerText.includes('lihat'))
+              );
+
+            if (isAskingDashboardLink) {
               if (msgId) processedMessages.add(msgId);
               const baseUrl = await getAppBaseUrl();
               const dashUrl = `${baseUrl}/finance`;
               await sock.sendMessage(chatId, {
-                text: `📊 *Web Dashboard Catatan Keuangan*\n\nBuka link ini di browser HP atau laptop lu untuk melihat grafik, saldo dompet, dan daftar transaksi lengkap:\n👉 ${dashUrl}`
+                text: `nih dzak langsung buka aja lewat sini: ${dashUrl}\n\nkalo ada transaksi baru yg mau lu masukin lempar aja ke sini ntar gue bantu rekap`
               }, { quoted: m });
               continue;
             }
