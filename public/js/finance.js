@@ -66,6 +66,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   await loadCategories();
   await refreshDashboard();
+
+  // Register PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('[PWA] Service Worker registered with scope:', reg.scope);
+    }).catch((err) => {
+      console.log('[PWA] Service Worker registration failed:', err);
+    });
+  }
+
+  // Handle PWA Quick Action (e.g. from Home Screen app icon shortcut)
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'add' || window.location.hash === '#catat') {
+    setTimeout(() => {
+      document.getElementById('btn-open-add-tx')?.click();
+    }, 400);
+  }
 });
 
 // Refresh all data
