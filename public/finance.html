@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PatungIn Finance — Catatan Keuangan & Dompet Pintar</title>
   <meta name="description" content="Dashboard buku kas dan tracker keuangan pribadi dengan analisis visual, pencatatan cepat AI, dan sinkronisasi saldo dompet real-time.">
-  <meta name="theme-color" content="#0081a7">
+  <meta name="theme-color" content="#007F88">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,158 +13,278 @@
 </head>
 <body class="finance-body">
 
-  <div class="finance-container">
-
-    <!-- Header Navigation -->
-    <header class="fin-header">
-      <a href="/" class="fin-brand" title="Kembali ke Beranda PatungIn">
-        <div class="fin-logo-icon">📊</div>
+  <!-- ==========================================
+       Header Navigation (Sticky 72px)
+       ========================================== -->
+  <header class="fin-header-wrapper">
+    <div class="fin-header-inner">
+      <a href="/finance" class="fin-brand" title="Beranda PatungIn Finance">
+        <div class="fin-logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="3"></rect>
+            <line x1="2" y1="10" x2="22" y2="10"></line>
+          </svg>
+        </div>
         <div class="fin-brand-text">
           <h1>Patung<span>In</span></h1>
           <span class="fin-brand-tag">Finance Tracker</span>
         </div>
       </a>
+
       <div class="fin-nav-actions">
         <a href="/" class="fin-btn-nav" title="Buka Pembagian Split Bill">
-          <span>🧾</span> Split Bill
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Split Bill
         </a>
         <a href="/wa-login" class="fin-btn-nav" title="Status WhatsApp Bot">
-          <span>🤖</span> Bot WA
+          <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          Bot WA
+          <span class="fin-live-dot" title="Bot Online"></span>
         </a>
         <button type="button" id="btn-open-import" class="fin-btn-nav" title="Import Mutasi Rekening / CSV">
-          <span>📤</span> Import
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Import
         </button>
         <button type="button" id="btn-export-csv" class="fin-btn-nav" title="Ekspor Transaksi ke Excel/CSV">
-          <span>📥</span> Ekspor
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Ekspor
         </button>
         <button type="button" id="btn-open-gsheet" class="fin-btn-nav" title="Koneksi Google Spreadsheet & Checksheet">
-          <span>📊</span> Sheet
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          Sheet
         </button>
         <button type="button" id="btn-open-shortcuts" class="fin-btn-nav" title="Pintasan iPhone / Android (Action Button & Siri)">
-          <span>⚡</span> Pintasan
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          Pintasan
         </button>
         <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
-          <span>💳</span> Dompet
+          <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          Dompet
         </button>
-        <button type="button" id="btn-open-add-tx" class="fin-btn-nav primary" title="Tambah Transaksi Manual">
-          <span>+</span> Catat
+        <button type="button" id="btn-open-add-tx" class="fin-btn-header-cta" title="Tambah Transaksi Manual">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Catat
         </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Quick AI Natural Text Input Box -->
+  <!-- ==========================================
+       Main Dashboard Content
+       ========================================== -->
+  <main class="fin-main-content">
+
+    <!-- Greeting & Financial Health Row -->
+    <section class="fin-greeting-strip">
+      <div class="fin-greeting-info">
+        <div class="fin-micro-label">Ringkasan keuangan</div>
+        <h2 id="greeting-heading" class="fin-greeting-title">Selamat siang, Raka</h2>
+        <div class="fin-greeting-sub">Semua keuanganmu terlihat sehat bulan ini.</div>
+      </div>
+      <div class="fin-status-pill">
+        <div class="fin-status-dot"></div>
+        <span>Kondisi finansial baik</span>
+      </div>
+    </section>
+
+    <!-- Quick NLP Natural Text Input Box -->
     <section class="fin-quick-box-section" aria-label="Pencatatan Cepat Berbasis Teks">
       <form id="fin-quick-form" class="fin-quick-box">
-        <div class="fin-quick-icon">✨</div>
-        <input 
-          type="text" 
-          id="fin-quick-input" 
-          class="fin-quick-input" 
-          placeholder="Ketik santai, misal: 'makan siang padang 35k bca' atau 'bensin 50rb cash'..." 
-          autocomplete="off"
-        >
+        <div class="fin-quick-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
+          </svg>
+        </div>
+        <div class="fin-quick-body">
+          <span class="fin-quick-label">Catat dengan kalimat biasa</span>
+          <input 
+            type="text" 
+            id="fin-quick-input" 
+            class="fin-quick-input" 
+            placeholder="Misal: makan siang padang 35k bca..." 
+            autocomplete="off"
+          >
+        </div>
         <button type="submit" class="fin-quick-submit" id="btn-quick-submit">
-          <span>Catat</span> ➔
+          <span>Catat</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </form>
     </section>
 
-    <!-- Month Navigation Strip -->
-    <div class="fin-month-strip">
+    <!-- Month Period Selector Strip -->
+    <section class="fin-month-strip">
       <div class="fin-month-selector">
         <button type="button" id="btn-month-prev" class="fin-month-btn" aria-label="Bulan Sebelumnya">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <span id="month-display" class="fin-month-display">Memuat...</span>
+        <div class="fin-month-center">
+          <span class="fin-month-period-tag">Periode aktif</span>
+          <span id="month-display" class="fin-month-display">Oktober 2026</span>
+        </div>
         <button type="button" id="btn-month-next" class="fin-month-btn" aria-label="Bulan Berikutnya">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
-      <button type="button" id="btn-month-today" class="fin-today-btn">Bulan Ini</button>
-    </div>
+    </section>
 
-    <!-- Hero Net Worth Card -->
-    <section class="fin-hero-card" aria-label="Ringkasan Kekayaan & Arus Kas">
+    <!-- Hero Liquidity Balance Card -->
+    <section class="fin-hero-card" aria-label="Total Saldo Likuid">
       <div class="fin-hero-top">
-        <span class="fin-hero-label">Total Saldo Likuid (Seluruh Dompet)</span>
+        <div>
+          <div class="fin-hero-tag">
+            <span class="fin-hero-dot"></span>
+            <span>Total saldo likuid</span>
+          </div>
+          <div class="fin-hero-balance" id="hero-total-balance">Rp 0</div>
+          <div class="fin-hero-wallets-count" id="hero-wallets-count">Tersebar di dompet aktif</div>
+        </div>
+        <button type="button" class="fin-hero-menu-btn" id="btn-hero-options" title="Kelola Saldo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
+        </button>
       </div>
-      <div class="fin-hero-balance" id="hero-total-balance">Rp 0</div>
+
       <div class="fin-hero-stats">
-        <div class="fin-stat-col">
-          <span class="fin-stat-title">Pemasukan</span>
-          <span class="fin-stat-val income" id="hero-total-income">+Rp 0</span>
+        <div class="fin-hero-stat-col">
+          <div class="fin-stat-head">
+            <div class="fin-stat-icon-box income">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
+            <span class="fin-stat-title">Pemasukan</span>
+          </div>
+          <div class="fin-stat-val income" id="hero-total-income">+Rp 0</div>
+          <span class="fin-stat-sub">bulan ini</span>
         </div>
-        <div class="fin-stat-col">
-          <span class="fin-stat-title">Pengeluaran</span>
-          <span class="fin-stat-val expense" id="hero-total-expense">-Rp 0</span>
+
+        <div class="fin-hero-stat-col">
+          <div class="fin-stat-head">
+            <div class="fin-stat-icon-box expense">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"></line><polyline points="17 7 17 17 7 17"></polyline></svg>
+            </div>
+            <span class="fin-stat-title">Pengeluaran</span>
+          </div>
+          <div class="fin-stat-val expense" id="hero-total-expense">-Rp 0</div>
+          <span class="fin-stat-sub" id="hero-expense-ratio">-</span>
         </div>
-        <div class="fin-stat-col">
-          <span class="fin-stat-title">Arus Kas Bersih</span>
-          <span class="fin-stat-val saving" id="hero-net-savings">Rp 0</span>
+
+        <div class="fin-hero-stat-col">
+          <div class="fin-stat-head">
+            <div class="fin-stat-icon-box saving">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+            </div>
+            <span class="fin-stat-title">Arus kas bersih</span>
+          </div>
+          <div class="fin-stat-val saving" id="hero-net-savings">Rp 0</div>
+          <span class="fin-stat-sub" id="hero-savings-ratio">-</span>
         </div>
       </div>
     </section>
 
-    <!-- Dompet & E-Wallet Section -->
-    <section class="fin-wallets-section" aria-label="Daftar Dompet dan Rekening">
-      <div class="fin-section-title">
-        <h2>💳 Dompet & Rekening</h2>
-        <span style="font-size:0.75rem; color:var(--fin-text-muted);">Klik dompet untuk filter transaksi</span>
+    <!-- Dompet & Rekening Section -->
+    <section class="fin-wallets-section">
+      <div class="fin-section-title-strip">
+        <div>
+          <h2>Dompet & rekening</h2>
+          <div class="fin-section-subtitle">Pilih dompet untuk memfilter transaksi</div>
+        </div>
+        <button type="button" class="fin-section-action-btn" id="btn-manage-wallets-link">
+          <span>Kelola dompet</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
-      <div id="wallets-container" class="fin-wallets-scroll">
+
+      <div id="wallets-container" class="fin-wallets-grid">
         <!-- Rendered by JS -->
       </div>
     </section>
 
     <!-- Analytics Grid (Categories Breakdown & Daily Trend) -->
-    <section class="fin-analytics-grid" aria-label="Grafik dan Analisis Pengeluaran">
+    <section class="fin-analytics-grid">
       
       <!-- Category Breakdown Card -->
       <div class="fin-card">
         <div class="fin-card-header">
-          <h3 class="fin-card-title">🏷️ Kategori Pengeluaran Terbesar</h3>
+          <div class="fin-card-title-group">
+            <div class="fin-micro-label">Analisis kategori</div>
+            <h3>Pengeluaran terbesar</h3>
+          </div>
+          <button type="button" class="fin-hero-menu-btn" style="color:#587077;background:transparent;border:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
+          </button>
         </div>
         <div id="cat-breakdown-list" class="fin-cat-list">
           <!-- Rendered by JS -->
         </div>
+        <button type="button" class="fin-card-footer-btn" id="btn-see-all-cats">
+          <span>Lihat semua kategori</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
 
       <!-- Daily Trend Card -->
       <div class="fin-card">
         <div class="fin-card-header">
-          <h3 class="fin-card-title">📈 Tren Pengeluaran Harian</h3>
+          <div class="fin-card-title-group">
+            <div class="fin-micro-label">Aktivitas bulan ini</div>
+            <h3>Tren pengeluaran harian</h3>
+          </div>
+          <div style="text-align: right;">
+            <div style="color:#83959A;font-size:8px;">Rata-rata</div>
+            <div style="color:#102A32;font-size:11px;font-weight:700;" id="daily-avg-val">Rp 0</div>
+          </div>
         </div>
-        <div id="daily-chart-container" class="fin-daily-chart-container">
-          <!-- Rendered by JS -->
+
+        <div class="fin-daily-meta">
+          <div class="fin-daily-legend">
+            <span class="fin-legend-dot"></span>
+            <span>Pengeluaran harian</span>
+          </div>
+          <span class="fin-daily-peak" id="daily-peak-val">Hari tertinggi: -</span>
+        </div>
+
+        <div class="fin-daily-chart-wrap">
+          <div class="fin-daily-y-axis">
+            <span id="chart-y-max">600rb</span>
+            <span id="chart-y-mid">300rb</span>
+            <span>0</span>
+          </div>
+          <div id="daily-chart-container" class="fin-daily-bars-container">
+            <!-- Rendered by JS -->
+          </div>
         </div>
       </div>
 
     </section>
 
-    <!-- Transaction Feed & Filters Section -->
-    <section class="fin-tx-section" aria-label="Daftar Transaksi">
-      
-      <div class="fin-filter-strip">
-        <div class="fin-type-pills">
-          <button type="button" class="fin-type-pill active" data-type="all">Semua</button>
-          <button type="button" class="fin-type-pill" data-type="expense">Pengeluaran</button>
-          <button type="button" class="fin-type-pill" data-type="income">Pemasukan</button>
-          <button type="button" class="fin-type-pill" data-type="transfer">Transfer</button>
+    <!-- Riwayat Transaksi Card -->
+    <section class="fin-tx-card">
+      <div class="fin-tx-header">
+        <div>
+          <div class="fin-micro-label">Aktivitas terbaru</div>
+          <h3 style="color:#102A32;font-size:17px;font-weight:600;">Riwayat transaksi</h3>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <button type="button" class="fin-btn-export-csv" id="btn-export-tx-table">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Ekspor CSV
+        </button>
+      </div>
+
+      <div class="fin-tx-filter-bar">
+        <div class="fin-filter-segmented">
+          <button type="button" class="fin-filter-pill active" data-type="all">Semua</button>
+          <button type="button" class="fin-filter-pill" data-type="expense">Pengeluaran</button>
+          <button type="button" class="fin-filter-pill" data-type="income">Pemasukan</button>
+          <button type="button" class="fin-filter-pill" data-type="transfer">Transfer</button>
+        </div>
+
+        <div class="fin-search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input 
             type="text" 
             id="tx-search-input" 
             class="fin-search-input" 
-            placeholder="Cari toko / keterangan..."
+            placeholder="Cari toko atau keterangan..."
           >
-          <button type="button" id="btn-export-filter-csv" class="fin-btn-nav" title="Download Excel/CSV Bulan Ini" style="padding: 8px 12px;">
-            <span>📥</span> CSV
-          </button>
         </div>
       </div>
 
@@ -172,32 +292,45 @@
         <!-- Rendered by JS -->
       </div>
 
+      <button type="button" id="btn-load-more" class="fin-load-more-btn">
+        Tampilkan lebih banyak
+      </button>
     </section>
 
-  </div>
+  </main>
 
-  <!-- Modal: Tambah Transaksi Manual -->
+  <!-- ==========================================
+       Modal: Catat Transaksi Baru (Screenshot 2 Spec)
+       ========================================== -->
   <div id="modal-add-tx" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-tx-title">
     <div class="fin-modal-card">
       <div class="fin-modal-header">
-        <h3 id="modal-add-tx-title" class="fin-modal-title">Catat Transaksi Baru</h3>
+        <div class="fin-modal-title-group">
+          <div class="fin-micro-label">Transaksi baru</div>
+          <h3 id="modal-add-tx-title">Catat transaksi</h3>
+        </div>
         <button type="button" id="btn-close-add-tx" class="fin-modal-close" aria-label="Tutup">&times;</button>
       </div>
+
       <form id="form-add-tx">
         <div class="fin-modal-body">
           
-          <div class="fin-form-group">
-            <label for="tx-modal-type" class="fin-form-label">Jenis Transaksi</label>
-            <select id="tx-modal-type" class="fin-form-select">
-              <option value="expense">Pengeluaran (Uang Keluar) 💸</option>
-              <option value="income">Pemasukan (Uang Masuk) 💰</option>
-              <option value="transfer">Pindah Saldo (Transfer Antar Dompet) 🔁</option>
-            </select>
+          <!-- Segmented Type Selector -->
+          <div class="fin-modal-segmented">
+            <button type="button" class="fin-modal-tab active expense" data-val="expense">Pengeluaran</button>
+            <button type="button" class="fin-modal-tab" data-val="income">Pemasukan</button>
+            <button type="button" class="fin-modal-tab" data-val="transfer">Transfer</button>
           </div>
+          <!-- Hidden input keeping JS compatibility -->
+          <input type="hidden" id="tx-modal-type" value="expense">
 
-          <div class="fin-form-group">
-            <label for="tx-modal-amount" class="fin-form-label">Nominal (Rupiah)</label>
-            <input type="number" id="tx-modal-amount" class="fin-form-input" placeholder="Contoh: 35000" min="1" required>
+          <!-- Big Nominal Input -->
+          <div class="fin-nominal-group">
+            <label for="tx-modal-amount" class="fin-nominal-label">Nominal</label>
+            <div class="fin-nominal-field">
+              <span class="fin-nominal-cur">Rp</span>
+              <input type="number" id="tx-modal-amount" class="fin-nominal-input" placeholder="0" min="1" required>
+            </div>
             <div class="fin-quick-nominal-pills">
               <button type="button" class="fin-nom-pill" data-val="10000">+10rb</button>
               <button type="button" class="fin-nom-pill" data-val="25000">+25rb</button>
@@ -207,61 +340,77 @@
             </div>
           </div>
 
+          <!-- 2-Column: Wallet & Category -->
+          <div class="fin-form-grid-2">
+            <div class="fin-form-group">
+              <label for="tx-modal-account" class="fin-form-label">Dari dompet</label>
+              <select id="tx-modal-account" class="fin-form-select">
+                <!-- Rendered by JS -->
+              </select>
+            </div>
+
+            <div id="tx-modal-category-group" class="fin-form-group">
+              <label for="tx-modal-category" class="fin-form-label">Kategori</label>
+              <select id="tx-modal-category" class="fin-form-select">
+                <!-- Rendered by JS -->
+              </select>
+            </div>
+
+            <div id="tx-modal-to-account-group" class="fin-form-group" style="display: none;">
+              <label for="tx-modal-to-account" class="fin-form-label">Ke dompet tujuan</label>
+              <select id="tx-modal-to-account" class="fin-form-select">
+                <!-- Rendered by JS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- 2-Column: Merchant & Date -->
+          <div class="fin-form-grid-2">
+            <div class="fin-form-group">
+              <label for="tx-modal-merchant" class="fin-form-label">Merchant</label>
+              <input type="text" id="tx-modal-merchant" class="fin-form-input" placeholder="Nama toko atau penerima">
+            </div>
+
+            <div class="fin-form-group">
+              <label for="tx-modal-date" class="fin-form-label">Tanggal</label>
+              <input type="date" id="tx-modal-date" class="fin-form-input">
+            </div>
+          </div>
+
+          <!-- Catatan Opsional -->
           <div class="fin-form-group">
-            <label for="tx-modal-account" class="fin-form-label">Sumber Dompet / Rekening</label>
-            <select id="tx-modal-account" class="fin-form-select">
-              <!-- Rendered by JS -->
-            </select>
-          </div>
-
-          <div id="tx-modal-to-account-group" class="fin-form-group" style="display: none;">
-            <label for="tx-modal-to-account" class="fin-form-label">Tujuan Transfer</label>
-            <select id="tx-modal-to-account" class="fin-form-select">
-              <!-- Rendered by JS -->
-            </select>
-          </div>
-
-          <div id="tx-modal-category-group" class="fin-form-group">
-            <label for="tx-modal-category" class="fin-form-label">Kategori</label>
-            <select id="tx-modal-category" class="fin-form-select">
-              <!-- Rendered by JS -->
-            </select>
-          </div>
-
-          <div class="fin-form-group">
-            <label for="tx-modal-merchant" class="fin-form-label">Tempat / Merchant (Opsional)</label>
-            <input type="text" id="tx-modal-merchant" class="fin-form-input" placeholder="Misal: Kopi Kenangan, SPBU, Warteg">
-          </div>
-
-          <div class="fin-form-group">
-            <label for="tx-modal-desc" class="fin-form-label">Catatan / Keterangan</label>
-            <input type="text" id="tx-modal-desc" class="fin-form-input" placeholder="Misal: Makan siang bareng tim" required>
-          </div>
-
-          <div class="fin-form-group">
-            <label for="tx-modal-date" class="fin-form-label">Waktu Transaksi</label>
-            <input type="datetime-local" id="tx-modal-date" class="fin-form-input">
+            <label for="tx-modal-desc" class="fin-form-label">Catatan <span style="color:#91A2A7;font-weight:400;">Opsional</span></label>
+            <textarea id="tx-modal-desc" class="fin-form-input" rows="2" placeholder="Tambahkan detail transaksi..."></textarea>
           </div>
 
         </div>
+
         <div class="fin-modal-footer">
-          <button type="button" id="btn-cancel-add-tx" class="fin-btn cancel">Batal</button>
-          <button type="submit" class="fin-btn primary">Simpan Transaksi</button>
+          <button type="button" id="btn-cancel-add-tx" class="fin-btn-cancel">Batal</button>
+          <button type="submit" class="fin-btn-submit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Simpan transaksi
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal: Kelola Saldo Dompet & Tambah Rekening -->
+  <!-- ==========================================
+       Modal: Kelola Saldo Dompet & Tambah Rekening
+       ========================================== -->
   <div id="modal-wallet-mgmt" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wallet-title">
     <div class="fin-modal-card">
       <div class="fin-modal-header">
-        <h3 id="modal-wallet-title" class="fin-modal-title">Kelola Dompet & Saldo</h3>
+        <div class="fin-modal-title-group">
+          <div class="fin-micro-label">Konfigurasi</div>
+          <h3 id="modal-wallet-title">Kelola dompet & rekening</h3>
+        </div>
         <button type="button" id="btn-close-wallets" class="fin-modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:0.82rem;color:var(--fin-text-muted);margin-bottom:14px;">
+        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
           Sesuaikan saldo awal dompet kamu kapan saja di sini agar catatan keuangan selalu akurat:
         </p>
 
@@ -269,34 +418,41 @@
           <!-- Rendered by JS -->
         </div>
 
-        <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--fin-border);">
-          <h4 style="font-size:0.88rem;font-weight:800;margin-bottom:10px;">+ Tambah Dompet Baru</h4>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--fin-border);">
+          <div class="fin-micro-label">+ Tambah Dompet Baru</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;margin-top:6px;">
             <input type="text" id="new-wallet-name" class="fin-form-input" placeholder="Nama (e.g. Blu, Jago, Jenius)">
             <select id="new-wallet-type" class="fin-form-select">
-              <option value="bank">Bank</option>
+              <option value="bank">Rekening Bank</option>
               <option value="ewallet">E-Wallet</option>
-              <option value="cash">Cash / Tunai</option>
+              <option value="cash">Uang Fisik / Cash</option>
             </select>
           </div>
           <input type="number" id="new-wallet-balance" class="fin-form-input" placeholder="Saldo Awal (Rp)" style="margin-bottom:10px;">
-          <button type="button" id="btn-add-wallet-submit" class="fin-btn primary" style="width:100%;">Tambah Dompet</button>
+          <button type="button" id="btn-add-wallet-submit" class="fin-btn-submit" style="width:100%;justify-content:center;">
+            Tambah Dompet
+          </button>
         </div>
 
       </div>
     </div>
   </div>
 
-  <!-- Modal: Import Mutasi Rekening / e-Statement -->
+  <!-- ==========================================
+       Modal: Import Mutasi Rekening / CSV
+       ========================================== -->
   <div id="modal-import-statement" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
     <div class="fin-modal-card" style="max-width: 600px;">
       <div class="fin-modal-header">
-        <h3 id="modal-import-title" class="fin-modal-title">📤 Import Mutasi Rekening / CSV</h3>
+        <div class="fin-modal-title-group">
+          <div class="fin-micro-label">Data import</div>
+          <h3 id="modal-import-title">Import mutasi rekening</h3>
+        </div>
         <button type="button" id="btn-close-import" class="fin-modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div class="fin-modal-body">
         
-        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
           <button type="button" id="tab-import-text" class="fin-nom-pill" style="padding: 6px 14px; background: var(--fin-primary-light); color: var(--fin-primary); border-color: var(--fin-primary);">Tempel Teks Mutasi</button>
           <button type="button" id="tab-import-file" class="fin-nom-pill" style="padding: 6px 14px;">Upload File CSV</button>
         </div>
@@ -311,39 +467,38 @@
         <!-- Input Area: Text Paste -->
         <div id="import-text-container" class="fin-form-group">
           <label for="import-raw-text" class="fin-form-label">Teks Mutasi Bank (Salin dari m-BCA / Livin / GoPay / Shopee)</label>
-          <textarea id="import-raw-text" class="fin-form-input" rows="6" placeholder="Contoh format teks mutasi:&#10;01/10/2026 QRIS Kopi Kenangan Rp 35.000 DB&#10;02/10/2026 Gaji Masuk PT ABC Rp 8.000.000 CR&#10;03/10/2026 Beli Bensin SPBU Pertamina Rp 50.000 DB"></textarea>
+          <textarea id="import-raw-text" class="fin-form-input" rows="5" placeholder="Contoh:&#10;01/10/2026 QRIS Kopi Kenangan Rp 35.000 DB&#10;02/10/2026 Gaji Masuk PT ABC Rp 8.000.000 CR"></textarea>
         </div>
 
         <!-- Input Area: File Upload -->
         <div id="import-file-container" class="fin-form-group" style="display: none;">
-          <label for="import-file-input" class="fin-form-label">Pilih File CSV Mutasi Rekening</label>
+          <label for="import-file-input" class="fin-form-label">Pilih File CSV Mutasi</label>
           <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="fin-form-input">
-          <small style="color: var(--fin-text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">Mendukung CSV e-statement resmi dari BCA, Mandiri, BRI, Bank Jago, dll.</small>
         </div>
 
-        <button type="button" id="btn-parse-statement" class="fin-btn primary" style="width: 100%; margin-bottom: 16px;">
+        <button type="button" id="btn-parse-statement" class="fin-btn-submit" style="width: 100%; justify-content:center; margin-bottom: 12px;">
           🔍 Analisis & Pratinjau Mutasi
         </button>
 
         <!-- Preview Results Container -->
-        <div id="import-preview-box" style="display: none; border-top: 1px dashed var(--fin-border); padding-top: 16px;">
+        <div id="import-preview-box" style="display: none; border-top: 1px dashed var(--fin-border); padding-top: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-            <div style="font-size: 0.86rem; font-weight: 700;">
-              Hasil Pratinjau: <span id="import-preview-count" style="color: var(--fin-primary);">0</span> transaksi
+            <div style="font-size: 10px; font-weight: 700;">
+              Hasil: <span id="import-preview-count" style="color: var(--fin-primary);">0</span> transaksi
             </div>
-            <div style="font-size: 0.78rem;">
+            <div style="font-size: 9px;">
               <span id="import-preview-in" style="color: var(--fin-income); font-weight: 700;">+Rp 0</span> | 
               <span id="import-preview-out" style="color: var(--fin-expense); font-weight: 700;">-Rp 0</span>
             </div>
           </div>
 
-          <div id="import-preview-list" style="max-height: 240px; overflow-y: auto; border: 1px solid var(--fin-border); border-radius: 8px; padding: 6px; background: var(--fin-bg-page); display: flex; flex-direction: column; gap: 6px;">
-            <!-- Items rendered by JS -->
+          <div id="import-preview-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--fin-border); border-radius: 8px; padding: 6px; background: var(--fin-bg-page); display: flex; flex-direction: column; gap: 6px;">
+            <!-- Rendered by JS -->
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
-            <button type="button" id="btn-commit-import" class="fin-btn primary" style="width: 100%;">
-              💾 Simpan Transaksi Terpilih ke Dompet
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;">
+            <button type="button" id="btn-commit-import" class="fin-btn-submit" style="width: 100%; justify-content:center;">
+              💾 Simpan Transaksi ke Dompet
             </button>
           </div>
         </div>
@@ -352,73 +507,57 @@
     </div>
   </div>
 
-  <!-- Modal: Koneksi Google Spreadsheet & Checksheet -->
+  <!-- ==========================================
+       Modal: Google Spreadsheet
+       ========================================== -->
   <div id="modal-gsheet-config" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-gsheet-title">
     <div class="fin-modal-card" style="max-width: 600px;">
       <div class="fin-modal-header">
-        <h3 id="modal-gsheet-title" class="fin-modal-title">📊 Hubungkan Google Spreadsheet</h3>
+        <div class="fin-modal-title-group">
+          <div class="fin-micro-label">Cloud Sync</div>
+          <h3 id="modal-gsheet-title">Koneksi Google Spreadsheet</h3>
+        </div>
         <button type="button" id="btn-close-gsheet" class="fin-modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:0.84rem;color:var(--fin-text-muted);margin-bottom:14px;line-height:1.5;">
-          Sinkronkan seluruh transaksi (dari WhatsApp DM, foto struk, voice note, maupun web) secara otomatis ke Google Spreadsheet pribadi kamu secara <i>real-time</i>:
+        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
+          Sinkronkan transaksi secara otomatis ke Google Spreadsheet pribadi kamu secara real-time:
         </p>
 
-        <!-- Tutorial Steps -->
-        <div style="background:var(--fin-bg-subtle);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
-          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;">💡 Cara Pasang (Hanya 1 Menit, 100% Gratis):</div>
-          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);">
-            <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive kamu.</li>
-            <li>Buka menu <b>Ekstensi (Extensions) > Apps Script</b>.</li>
-            <li>Hapus semua teks yang ada di situ, lalu tempelkan kode script berikut:</li>
+        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid var(--fin-border);font-size:9px;">
+          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:6px;">Cara Pasang (Apps Script):</div>
+          <ol style="padding-left:16px;display:flex;flex-direction:column;gap:4px;color:var(--fin-text-main);">
+            <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive.</li>
+            <li>Buka menu <b>Ekstensi > Apps Script</b>.</li>
+            <li>Tempel kode script berikut lalu Deploy sebagai Web App (Akses: Anyone):</li>
           </ol>
-          <div style="margin-top:8px;position:relative;">
-            <textarea id="gsheet-script-template" readonly rows="4" style="width:100%;font-family:monospace;font-size:0.75rem;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("DATA TRANSAKSI");
-    if (!sheet) {
-      sheet = ss.insertSheet("DATA TRANSAKSI");
-      sheet.appendRow(["ID Transaksi", "Tanggal", "Jenis", "Nominal (Rp)", "Dompet Sumber", "Dompet Tujuan", "Kategori", "Tempat / Merchant", "Keterangan", "Sumber"]);
-      sheet.getRange(1, 1, 1, 10).setBackground("#0081a7").setFontColor("#ffffff").setFontWeight("bold");
-    }
-    var data = JSON.parse(e.postData.contents);
-    if (data.action === "sync_all" && Array.isArray(data.transactions)) {
-      data.transactions.forEach(function(t) {
-        sheet.appendRow([t.id, t.transaction_date || t.date, t.type, t.amount, t.account || t.account_name, t.toAccount || t.to_account_name || "-", t.category || t.category_name, t.merchant || "-", t.description || "", t.source]);
-      });
-      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
-    }
-    var tx = data.transaction || data;
-    sheet.appendRow([tx.id, tx.transaction_date || tx.date, tx.type, tx.amount, tx.account || tx.account_name, tx.toAccount || tx.to_account_name || "-", tx.category || tx.category_name, tx.merchant || "-", tx.description || "", tx.source]);
-    return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
+          <div style="margin-top:6px;">
+            <textarea id="gsheet-script-template" readonly rows="3" style="width:100%;font-family:monospace;font-size:8px;padding:6px;border-radius:6px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("DATA TRANSAKSI") || ss.insertSheet("DATA TRANSAKSI");
+  var data = JSON.parse(e.postData.contents);
+  var tx = data.transaction || data;
+  sheet.appendRow([tx.id, tx.transaction_date || tx.date, tx.type, tx.amount, tx.account || tx.account_name, tx.toAccount || "-", tx.category || tx.category_name, tx.merchant || "-", tx.description || "", tx.source]);
+  return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
 }</textarea>
             <button type="button" id="btn-copy-apps-script" class="fin-nom-pill" style="margin-top:6px;width:100%;text-align:center;">
-              📋 Salin Kode Script di Atas
+              📋 Salin Kode Script Google Sheets
             </button>
-          </div>
-          <div style="margin-top:10px;color:var(--fin-text-main);">
-            4. Klik tombol biru <b>Deploy > New deployment (Penerapan Baru)</b> > pilih <b>Web app</b>.<br>
-            5. Atur <i>Who has access (Yang memiliki akses)</i> ke: <b>Anyone (Siapa saja)</b>.<br>
-            6. Klik <b>Deploy</b>, lalu salin URL Web App (berakhiran <code>/exec</code>) dan tempel ke kolom di bawah:
           </div>
         </div>
 
         <div class="fin-form-group">
-          <label for="gsheet-webhook-url" class="fin-form-label">URL Web App Google Apps Script</label>
-          <input type="url" id="gsheet-webhook-url" class="fin-form-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+          <label for="gsheet-url-input" class="fin-form-label">URL Web App Google Apps Script</label>
+          <input type="url" id="gsheet-url-input" class="fin-form-input" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:16px;">
-          <button type="button" id="btn-save-gsheet-url" class="fin-btn primary" style="flex:1;">
-            💾 Simpan URL
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button type="button" id="btn-save-gsheet-url" class="fin-btn-submit" style="flex:1;justify-content:center;">
+            Simpan URL
           </button>
-          <button type="button" id="btn-sync-all-gsheet" class="fin-btn primary" style="flex:1;background:linear-gradient(135deg, #10b981, #059669);">
-            🔄 Sinkronkan Semua Transaksi
+          <button type="button" id="btn-sync-all-gsheet" class="fin-btn-cancel" style="flex:1;text-align:center;">
+            Sinkronkan Semua Transaksi
           </button>
         </div>
 
@@ -426,77 +565,39 @@
     </div>
   </div>
 
-  <!-- Modal: Pintasan HP (iOS Shortcuts / Android Widget) -->
-  <div id="modal-shortcuts-config" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
-    <div class="fin-modal-card" style="max-width: 620px;">
+  <!-- ==========================================
+       Modal: Pintasan iPhone & Siri
+       ========================================== -->
+  <div id="modal-shortcuts-info" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
+    <div class="fin-modal-card" style="max-width: 580px;">
       <div class="fin-modal-header">
-        <h3 id="modal-shortcuts-title" class="fin-modal-title">⚡ Pintasan HP (Action Button & Siri)</h3>
+        <div class="fin-modal-title-group">
+          <div class="fin-micro-label">Apple Shortcuts</div>
+          <h3 id="modal-shortcuts-title">Pintasan iPhone & Siri</h3>
+        </div>
         <button type="button" id="btn-close-shortcuts" class="fin-modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:0.84rem;color:var(--fin-text-muted);margin-bottom:14px;line-height:1.5;">
-          Catat pengeluaran instan <b>hanya dalam 1 detik</b> via tombol <b>Action Button</b> iPhone, perintah suara <b>Siri</b>, atau widget di layar utama Android tanpa perlu buka WhatsApp/aplikasi apa pun!
+        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
+          Catat pengeluaran lewat <b>Action Button</b>, <b>Back Tap (Ketuk Punggung)</b>, atau <b>Hey Siri</b> tanpa perlu membuka aplikasi:
         </p>
 
-        <!-- Webhook URL Box -->
-        <div style="background:var(--fin-bg-subtle);border-radius:12px;padding:12px;margin-bottom:16px;border:1px solid var(--fin-border);">
-          <label style="font-size:0.75rem;font-weight:700;color:var(--fin-text-muted);text-transform:uppercase;display:block;margin-bottom:4px;">Webhook URL Pintasan Kamu:</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="shortcut-webhook-url" readonly class="fin-form-input" style="font-size:0.82rem;font-weight:600;background:#ffffff;" value="Memuat...">
-            <button type="button" id="btn-copy-shortcut-url" class="fin-btn primary" style="padding:6px 14px;font-size:0.8rem;flex-shrink:0;">
-              📋 Salin
-            </button>
+        <div class="fin-form-group">
+          <label class="fin-form-label">Endpoint URL Catat Cepat (POST JSON)</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="shortcut-endpoint-url" readonly class="fin-form-input" style="background:#F7FAFA;">
+            <button type="button" id="btn-copy-shortcut-url" class="fin-nom-pill" style="white-space:nowrap;">Salin</button>
           </div>
         </div>
 
-        <!-- Panduan iOS Shortcuts -->
-        <div style="background:#ffffff;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
-          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-            <span>🍎</span> Panduan Pasang di iPhone (Aplikasi Shortcuts / Pintasan):
-          </div>
-          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);line-height:1.45;">
-            <li>Buka aplikasi bawaan <b>Shortcuts (Pintasan)</b> di iPhone kamu > tekan tanda <b>+</b> (Buat Pintasan Baru).</li>
-            <li>Beri nama pintasan, misalnya: <b>"Catat Pengeluaran"</b>.</li>
-            <li>Tambahkan Aksi 1: Cari <b>"Ask for Input (Minta Masukan)"</b> (Pertanyaan: <i>"Catat apa?"</i>, Jenis: <i>Teks</i>).</li>
-            <li>Tambahkan Aksi 2: Cari <b>"Get Contents of URL (Dapatkan Konten URL)"</b>:
-              <ul style="padding-left:16px;margin-top:3px;color:var(--fin-text-muted);">
-                <li>URL: Tempelkan <b>Webhook URL</b> di atas.</li>
-                <li>Metode (Method): <b>POST</b>.</li>
-                <li>Request Body: Pilih <b>JSON</b> > Tambahkan Field <code>text</code> bernilai <b>Provided Input</b>.</li>
-              </ul>
-            </li>
-            <li>Tambahkan Aksi 3: Cari <b>"Show Notification (Tampilkan Pemberitahuan)"</b> atau <b>"Speak Text"</b> (ambil teks balasan dari hasil server).</li>
-            <li><b>Selesai!</b> Sekarang kamu bisa panggil <i>"Hei Siri, Catat Pengeluaran"</i> atau pasang di <b>Action Button iPhone 15/16 Pro</b> via Settings > Action Button > Shortcut!</li>
-          </ol>
-        </div>
-
-        <!-- Panduan Android HTTP Shortcuts -->
-        <div style="background:#ffffff;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--fin-border);font-size:0.82rem;">
-          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-            <span>🤖</span> Panduan Pasang di Android (HTTP Shortcuts / Tasker):
-          </div>
-          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);line-height:1.45;">
-            <li>Install aplikasi gratis <b>HTTP Shortcuts</b> dari Google Play Store / F-Droid.</li>
-            <li>Buat Shortcut baru > pilih Method: <b>POST</b> > Tempelkan <b>Webhook URL</b> di atas.</li>
-            <li>Di tab <b>Request Body</b>: pilih <b>JSON</b>, isi dengan <code>{"text": "{input}"}</code>.</li>
-            <li>Di tab <b>Variables</b>: buat variabel <code>input</code> dengan tipe <b>Text input prompt</b> (pesan: <i>"Catat pengeluaran apa?"</i>).</li>
-            <li>Simpan, lalu tambahkan <b>Widget Shortcut</b> tersebut ke <b>Layar Utama (Home Screen)</b> Android!</li>
-          </ol>
-        </div>
-
-        <!-- Live Tester Box -->
-        <div style="border-top:1px dashed var(--fin-border);padding-top:14px;">
-          <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">🧪 Uji Coba Pintasan Langsung:</div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="shortcut-test-input" class="fin-form-input" placeholder="Contoh: kopi 25k bca" value="kopi 25k bca" style="font-size:0.84rem;">
-            <button type="button" id="btn-test-shortcut" class="fin-btn primary" style="padding:8px 16px;font-size:0.82rem;flex-shrink:0;">
-              Kirim Tes
-            </button>
-          </div>
-          <div id="shortcut-test-result" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:0.8rem;background:var(--fin-bg-subtle);border:1px solid var(--fin-border);">
-            <!-- Test result -->
-          </div>
+        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:12px;margin-top:12px;border:1px solid var(--fin-border);font-size:9.5px;color:var(--fin-text-main);">
+          <div style="font-weight:800;margin-bottom:6px;">Format Request JSON:</div>
+          <code style="display:block;background:#ffffff;padding:8px;border-radius:6px;border:1px solid var(--fin-border);font-family:monospace;font-size:8.5px;">
+            {<br>
+            &nbsp;&nbsp;"text": "makan siang padang 35k bca"<br>
+            }
+          </code>
         </div>
 
       </div>
@@ -504,8 +605,12 @@
   </div>
 
   <!-- Toast Notification -->
-  <div id="fin-toast" class="fin-toast"></div>
+  <div id="fin-toast" class="fin-toast" role="status" aria-live="polite">
+    <span>✅</span>
+    <span id="fin-toast-text">Berhasil disimpan</span>
+  </div>
 
+  <!-- Scripts -->
   <script src="js/finance.js"></script>
 </body>
 </html>

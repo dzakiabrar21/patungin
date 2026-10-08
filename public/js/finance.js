@@ -124,9 +124,22 @@ function setupMonthSelector() {
   updateMonthLabel();
 }
 
+// Helper: Update Dynamic Greeting
+function updateGreeting() {
+  const heading = document.getElementById('greeting-heading');
+  if (!heading) return;
+  const hour = new Date().getHours();
+  let timeStr = 'pagi';
+  if (hour >= 11 && hour < 15) timeStr = 'siang';
+  else if (hour >= 15 && hour < 18) timeStr = 'sore';
+  else if (hour >= 18 || hour < 4) timeStr = 'malam';
+  heading.textContent = `Selamat ${timeStr}, Raka`;
+}
+
 // 2. Fetch and Render Finance Overview
 async function loadOverview() {
   try {
+    updateGreeting();
     const res = await fetch(`/api/finance/overview?month=${state.currentMonth}`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
@@ -137,12 +150,30 @@ async function loadOverview() {
     // Render Net Worth & Stats
     document.getElementById('hero-total-balance').textContent = `Rp ${formatRupiah(data.totalBalance)}`;
     document.getElementById('hero-total-income').textContent = `+Rp ${formatRupiah(data.totalIncome)}`;
-    document.getElementById('hero-total-expense').textContent = `-Rp ${formatRupiah(data.totalExpense)}`;
+    document.getElementById('hero-total-expense').textContent = `−Rp ${formatRupiah(data.totalExpense)}`;
     
     const savingEl = document.getElementById('hero-net-savings');
-    const savingSign = data.netSavings >= 0 ? '+' : '-';
+    const savingSign = data.netSavings >= 0 ? '+' : '−';
     savingEl.textContent = `${savingSign}Rp ${formatRupiah(Math.abs(data.netSavings))}`;
     savingEl.className = 'fin-stat-val ' + (data.netSavings >= 0 ? 'income' : 'expense');
+
+    // Sub-ratios
+    const walletCountEl = document.getElementById('hero-wallets-count');
+    if (walletCountEl) {
+      walletCountEl.textContent = `Tersebar di ${state.accounts.length} dompet aktif`;
+    }
+
+    const expRatioEl = document.getElementById('hero-expense-ratio');
+    if (expRatioEl) {
+      const expPct = data.totalIncome > 0 ? Math.round((data.totalExpense / data.totalIncome) * 100) : 0;
+      expRatioEl.textContent = `${expPct}% dari pemasukan`;
+    }
+
+    const savRatioEl = document.getElementById('hero-savings-ratio');
+    if (savRatioEl) {
+      const savPct = data.totalIncome > 0 ? Math.max(0, Math.round((data.netSavings / data.totalIncome) * 100)) : 0;
+      savRatioEl.textContent = `${savPct}% berhasil disimpan`;
+    }
 
     // Render Wallets
     renderWallets(data.accounts);
@@ -158,42 +189,62 @@ async function loadOverview() {
   }
 }
 
-// Render Wallets Horizontal Cards
+// Render Wallets Horizontal Cards (Figma Specification)
 function renderWallets(accounts) {
   const container = document.getElementById('wallets-container');
   if (!container) return;
 
   if (!accounts || accounts.length === 0) {
-    container.innerHTML = '<div style="color:var(--fin-text-muted);font-size:0.85rem;">Belum ada dompet terdaftar.</div>';
+    container.innerHTML = '<div style="color:var(--fin-text-muted);font-size:11px;padding:12px 0;">Belum ada dompet terdaftar.</div>';
     return;
   }
 
-  // Predefined wallet brand colors
-  const brandColors = {
-    'bca': '#00509d',
-    'mandiri': '#0b3b60',
-    'gopay': '#0081a7',
-    'ovo': '#4c1d95',
-    'shopeepay': '#ea580c',
-    'cash': '#10b981',
-    'tunai': '#10b981',
-    'dana': '#118eea',
-    'seabank': '#ff5a00'
+  // Predefined brand styling from Figma
+  const brandStyles = {
+    'bca': { grad: 'linear-gradient(135deg, #086DB4 0%, #20A8DE 100%)', tag: 'Rekening bank', abbr: 'BCA' },
+    'mandiri': { grad: 'linear-gradient(135deg, #0B54A0 0%, #F7B824 100%)', tag: 'Rekening bank', abbr: 'M' },
+    'gopay': { grad: 'linear-gradient(135deg, #12A5DC 0%, #0877BD 100%)', tag: 'E-Wallet', abbr: 'GP' },
+    'tunai': { grad: 'linear-gradient(135deg, #11966F 0%, #45C68F 100%)', tag: 'Uang fisik', abbr: 'Rp' },
+    'cash': { grad: 'linear-gradient(135deg, #11966F 0%, #45C68F 100%)', tag: 'Uang fisik', abbr: 'Rp' },
+    'ovo': { grad: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)', tag: 'E-Wallet', abbr: 'OVO' },
+    'dana': { grad: 'linear-gradient(135deg, #118EEA 0%, #0D6EFD 100%)', tag: 'E-Wallet', abbr: 'DANA' },
+    'shopeepay': { grad: 'linear-gradient(135deg, #EA580C 0%, #FB923C 100%)', tag: 'E-Wallet', abbr: 'SP' },
+    'seabank': { grad: 'linear-gradient(135deg, #FF5A00 0%, #FFA100 100%)', tag: 'Bank Digital', abbr: 'SEA' }
   };
 
   container.innerHTML = accounts.map(acc => {
-    const nameLower = acc.name.toLowerCase();
-    let bg = brandColors[nameLower] || '#0081a7';
+    const key = acc.name.toLowerCase().replace(/[^a-z]/g, '');
+    let matched = brandStyles[key];
+    if (!matched) {
+      if (key.includes('bca')) matched = brandStyles.bca;
+      else if (key.includes('mandiri')) matched = brandStyles.mandiri;
+      else if (key.includes('gopay')) matched = brandStyles.gopay;
+      else if (key.includes('cash') || key.includes('tunai')) matched = brandStyles.cash;
+      else if (key.includes('ovo')) matched = brandStyles.ovo;
+      else if (key.includes('dana')) matched = brandStyles.dana;
+      else {
+        matched = {
+          grad: 'linear-gradient(135deg, #007F88 0%, #24B9B4 100%)',
+          tag: acc.type === 'bank' ? 'Rekening bank' : (acc.type === 'ewallet' ? 'E-Wallet' : 'Dompet'),
+          abbr: acc.name.slice(0, 3).toUpperCase()
+        };
+      }
+    }
+
     const isActive = state.currentAccount === acc.id;
 
     return `
       <div class="fin-wallet-card ${isActive ? 'active' : ''}" onclick="filterByWallet('${acc.id}')">
-        <div class="fin-wallet-top">
-          <div class="fin-wallet-badge" style="background:${bg}">${acc.name.slice(0, 2).toUpperCase()}</div>
-          <span class="fin-wallet-type">${acc.type}</span>
+        <div class="fin-wallet-card-head">
+          <div class="fin-wallet-badge" style="background:${matched.grad}">${matched.abbr}</div>
+          <span class="fin-wallet-type-pill">${matched.tag}</span>
         </div>
         <div class="fin-wallet-name" title="${acc.name}">${acc.name}</div>
         <div class="fin-wallet-balance">Rp ${formatRupiah(acc.balance)}</div>
+        <div class="fin-wallet-footer">
+          <span>Tersedia</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
       </div>
     `;
   }).join('');
@@ -210,66 +261,109 @@ window.filterByWallet = function(accId) {
   loadTransactions();
 };
 
-// Render Category Breakdown
+// Render Category Breakdown (Figma Pastel Palette)
 function renderCategoriesBreakdown(categories, totalExpense) {
   const listEl = document.getElementById('cat-breakdown-list');
   if (!listEl) return;
 
   if (!categories || categories.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:0.85rem;padding:12px 0;">Belum ada pengeluaran di bulan ini.</div>';
+    listEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:10px;padding:12px 0;">Belum ada pengeluaran di bulan ini.</div>';
     return;
   }
 
-  listEl.innerHTML = categories.slice(0, 6).map(c => {
+  const pastelPalettes = [
+    { bg: '#FEEEEE', text: '#D94E4E', bar: '#ED6865' },
+    { bg: '#EAF2FE', text: '#3478E5', bar: '#4F8DE9' },
+    { bg: '#F1EDFB', text: '#805ACB', bar: '#8C6BD2' },
+    { bg: '#FFF5DF', text: '#C27B19', bar: '#E5A13D' },
+    { bg: '#E5F7EF', text: '#0B9D70', bar: '#10B981' },
+    { bg: '#EEFAFA', text: '#007F88', bar: '#24B9B4' }
+  ];
+
+  listEl.innerHTML = categories.slice(0, 5).map((c, idx) => {
+    const theme = pastelPalettes[idx % pastelPalettes.length];
     return `
       <div class="fin-cat-item">
-        <div class="fin-cat-item-top">
-          <div class="fin-cat-item-name">
-            <span>${c.icon || '🏷️'}</span>
-            <span>${c.name}</span>
+        <div class="fin-cat-icon-box" style="background:${theme.bg};color:${theme.text}">
+          ${c.icon || '🏷️'}
+        </div>
+        <div class="fin-cat-item-content">
+          <div class="fin-cat-item-top">
+            <span class="fin-cat-item-name" title="${c.name}">${c.name}</span>
+            <span class="fin-cat-item-amt">Rp ${formatRupiah(c.amount)}</span>
           </div>
-          <div class="fin-cat-item-amt">Rp ${formatRupiah(c.amount)} <small style="color:var(--fin-text-muted)">(${c.percentage}%)</small></div>
+          <div class="fin-cat-bar-bg">
+            <div class="fin-cat-bar-fill" style="width: ${c.percentage}%; background: ${theme.bar};"></div>
+          </div>
         </div>
-        <div class="fin-cat-bar-bg">
-          <div class="fin-cat-bar-fill" style="width: ${c.percentage}%"></div>
-        </div>
+        <div class="fin-cat-pct">${c.percentage}%</div>
       </div>
     `;
   }).join('');
 }
 
-// Render Daily Bar Chart
+// Render Daily Bar Chart (Figma Specification)
 function renderDailyTrend(dailyTrend, monthStr) {
   const chartEl = document.getElementById('daily-chart-container');
   if (!chartEl) return;
 
   if (!dailyTrend || dailyTrend.length === 0) {
-    chartEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:0.85rem;margin:auto;">Belum ada aktivitas transaksi harian.</div>';
+    chartEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:10px;margin:auto;">Belum ada aktivitas transaksi harian.</div>';
     return;
   }
 
-  const maxExpense = Math.max(...dailyTrend.map(d => d.expense), 100000);
+  const maxExpense = Math.max(...dailyTrend.map(d => d.expense), 200000);
+  const totalExp = dailyTrend.reduce((sum, d) => sum + (d.expense || 0), 0);
+  const daysWithExp = dailyTrend.filter(d => d.expense > 0).length || 1;
+  const avgExp = Math.round(totalExp / daysWithExp);
 
+  // Set Header Stats
+  const avgEl = document.getElementById('daily-avg-val');
+  if (avgEl) {
+    avgEl.textContent = avgExp >= 1000 ? `Rp ${Math.round(avgExp / 1000)}rb` : `Rp ${formatRupiah(avgExp)}`;
+  }
+
+  // Find Peak Day
+  const peakDay = dailyTrend.reduce((max, d) => (d.expense > max.expense ? d : max), { expense: 0, date: '' });
+  const peakEl = document.getElementById('daily-peak-val');
+  if (peakEl && peakDay.expense > 0) {
+    const pDate = new Date(peakDay.date);
+    const dayN = pDate.getDate();
+    const moN = MONTH_NAMES[pDate.getMonth()].slice(0, 3);
+    peakEl.textContent = `Hari tertinggi: ${dayN} ${moN}`;
+  } else if (peakEl) {
+    peakEl.textContent = 'Hari tertinggi: -';
+  }
+
+  // Set Y-Axis Markers
+  const yMaxEl = document.getElementById('chart-y-max');
+  const yMidEl = document.getElementById('chart-y-mid');
+  if (yMaxEl) yMaxEl.textContent = maxExpense >= 1000000 ? `${(maxExpense / 1000000).toFixed(1)}jt` : `${Math.round(maxExpense / 1000)}rb`;
+  if (yMidEl) yMidEl.textContent = (maxExpense / 2) >= 1000000 ? `${((maxExpense / 2) / 1000000).toFixed(1)}jt` : `${Math.round(maxExpense / 2000)}rb`;
+
+  // Render Day Bars
   chartEl.innerHTML = dailyTrend.map(d => {
-    const dayNum = d.date.split('-')[2];
-    const heightPct = Math.max(Math.round((d.expense / maxExpense) * 100), 5);
+    const dayNum = parseInt(d.date.split('-')[2], 10);
+    const heightPct = Math.max(Math.round((d.expense / maxExpense) * 100), 4);
+    const isPeak = peakDay.expense > 0 && d.date === peakDay.date;
+    const isLabeled = [1, 6, 12, 18, 24, 30].includes(dayNum) || dayNum === dailyTrend.length;
     const tooltip = `Tgl ${dayNum}: Rp ${formatRupiah(d.expense)}`;
 
     return `
       <div class="fin-daily-col" title="${tooltip}">
-        <div class="fin-daily-bar" style="height: ${heightPct}%;"></div>
-        <span class="fin-daily-lbl">${dayNum}</span>
+        <div class="fin-daily-bar ${isPeak ? 'peak' : ''}" style="height: ${heightPct}%;"></div>
+        ${isLabeled ? `<span class="fin-daily-lbl">${dayNum}</span>` : ''}
       </div>
     `;
   }).join('');
 }
 
-// 3. Fetch and Render Transactions List
+// 3. Fetch and Render Transactions List (Figma Table Spec)
 async function loadTransactions() {
   const listContainer = document.getElementById('transactions-list');
   if (!listContainer) return;
 
-  listContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fin-text-muted);">Memuat transaksi...</div>';
+  listContainer.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fin-text-muted);font-size:11px;">Memuat riwayat transaksi...</div>';
 
   const params = new URLSearchParams({
     month: state.currentMonth,
@@ -289,9 +383,9 @@ async function loadTransactions() {
     const rows = data.transactions || [];
     if (rows.length === 0) {
       listContainer.innerHTML = `
-        <div class="fin-empty-state">
-          <div class="fin-empty-state-icon">💸</div>
-          <p>Belum ada transaksi pada filter ini.</p>
+        <div style="text-align:center;padding:32px 16px;color:var(--fin-text-muted);">
+          <div style="font-size:24px;margin-bottom:6px;">💸</div>
+          <div style="font-size:11px;font-weight:600;">Belum ada transaksi pada filter ini.</div>
         </div>
       `;
       return;
@@ -302,48 +396,65 @@ async function loadTransactions() {
       const isIncome = tx.type === 'income';
       const isTransfer = tx.type === 'transfer';
 
-      let sign = '-';
+      let sign = '−';
       let typeClass = 'expense';
+      let typeLabel = 'Pengeluaran';
       let icon = tx.category_icon || '🏷️';
 
       if (isIncome) {
         sign = '+';
         typeClass = 'income';
+        typeLabel = 'Pemasukan';
         icon = tx.category_icon || '💰';
       } else if (isTransfer) {
-        sign = '';
+        sign = '−';
         typeClass = 'transfer';
+        typeLabel = 'Transfer';
         icon = '🔁';
       }
 
-      // Source label
-      let srcBadge = 'Web';
-      if (tx.source === 'wa_dm') srcBadge = 'WA Chat';
-      else if (tx.source === 'wa_image') srcBadge = 'Struk/QRIS';
-      else if (tx.source === 'wa_vn') srcBadge = 'Voice Note';
-
       const walletLabel = isTransfer
-        ? `${tx.account_name || 'Cash'} ➔ ${tx.to_account_name || 'Dompet'}`
-        : (tx.account_name || 'Cash');
+        ? `${tx.account_name || 'BCA'} → ${tx.to_account_name || 'Dompet'}`
+        : (tx.account_name || 'BCA');
+
+      // Date formatting for subtitle: e.g. "12 Okt · 12.34"
+      const d = new Date(tx.transaction_date);
+      let dateMeta = tx.transaction_date;
+      if (!isNaN(d.getTime())) {
+        const day = d.getDate();
+        const mo = MONTH_NAMES[d.getMonth()].slice(0, 3);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        dateMeta = `${day} ${mo} · ${hh}.${mm}`;
+      }
 
       return `
         <div class="fin-tx-item">
           <div class="fin-tx-left">
             <div class="fin-tx-icon ${typeClass}">${icon}</div>
             <div class="fin-tx-info">
-              <div class="fin-tx-desc">${tx.merchant || tx.description || 'Transaksi'}</div>
+              <div class="fin-tx-desc" title="${tx.merchant || tx.description || 'Transaksi'}">
+                ${tx.merchant || tx.description || 'Transaksi'}
+              </div>
               <div class="fin-tx-meta">
-                <span>${formatDateIndo(tx.transaction_date)}</span>
+                <span>${dateMeta}</span>
                 <span>•</span>
                 <span class="fin-tx-badge">${walletLabel}</span>
-                <span class="fin-tx-badge">${srcBadge}</span>
               </div>
             </div>
           </div>
+          
+          <div class="fin-tx-center">
+            ${tx.category_name || (isTransfer ? 'Transfer Antar Dompet' : (tx.description || '-'))}
+          </div>
+
           <div class="fin-tx-right">
-            <div class="fin-tx-amount ${typeClass}">${sign}Rp ${formatRupiah(tx.amount)}</div>
+            <div class="fin-tx-amount-group">
+              <div class="fin-tx-amount ${typeClass}">${sign}Rp ${formatRupiah(tx.amount)}</div>
+              <div class="fin-tx-type-lbl">${typeLabel}</div>
+            </div>
             <button type="button" class="fin-tx-del-btn" title="Hapus Transaksi" onclick="confirmDeleteTransaction('${tx.id}', '${tx.description || tx.merchant || 'transaksi'}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
@@ -355,7 +466,7 @@ async function loadTransactions() {
 
   } catch (err) {
     console.error('Failed to load transactions:', err);
-    listContainer.innerHTML = '<div style="color:var(--fin-expense);text-align:center;padding:20px;">Gagal memuat daftar transaksi.</div>';
+    listContainer.innerHTML = '<div style="color:var(--fin-expense);text-align:center;padding:20px;font-size:11px;">Gagal memuat riwayat transaksi.</div>';
   }
 }
 
@@ -402,7 +513,7 @@ function setupQuickChatInput() {
 
 // 5. Filter Tabs (Semua, Pengeluaran, Pemasukan, Transfer)
 function setupFilterTabs() {
-  const pills = document.querySelectorAll('.fin-type-pill');
+  const pills = document.querySelectorAll('.fin-filter-pill, .fin-type-pill');
   pills.forEach(pill => {
     pill.addEventListener('click', () => {
       pills.forEach(p => p.classList.remove('active'));
@@ -474,18 +585,41 @@ function setupTransactionModal() {
 
   function openModal() {
     populateModalDropdowns();
-    document.getElementById('tx-modal-date').value = new Date().toISOString().slice(0, 16);
+    document.getElementById('tx-modal-date').value = new Date().toISOString().slice(0, 10);
     modal.classList.add('active');
   }
 
   function closeModal() {
     modal.classList.remove('active');
     form.reset();
+    // Reset modal tabs to expense
+    const modalTabs = document.querySelectorAll('.fin-modal-tab');
+    modalTabs.forEach(t => t.className = 'fin-modal-tab');
+    const firstTab = document.querySelector('.fin-modal-tab[data-val="expense"]');
+    if (firstTab) firstTab.className = 'fin-modal-tab active expense';
+    if (typeSelect) {
+      typeSelect.value = 'expense';
+      typeSelect.dispatchEvent(new Event('change'));
+    }
   }
 
   btnOpen.addEventListener('click', openModal);
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+  // Segmented Type Tabs in Modal (Figma Spec)
+  const modalTabs = document.querySelectorAll('.fin-modal-tab');
+  modalTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const val = tab.getAttribute('data-val');
+      modalTabs.forEach(t => t.className = 'fin-modal-tab');
+      tab.className = `fin-modal-tab active ${val}`;
+      if (typeSelect) {
+        typeSelect.value = val;
+        typeSelect.dispatchEvent(new Event('change'));
+      }
+    });
+  });
 
   typeSelect.addEventListener('change', () => {
     const val = typeSelect.value;
@@ -508,6 +642,23 @@ function setupTransactionModal() {
       amtInput.value = current + val;
     });
   });
+
+  // Connect Figma Extra Buttons
+  const btnManageWallets = document.getElementById('btn-manage-wallets-link');
+  const btnHeroOptions = document.getElementById('btn-hero-options');
+  if (btnManageWallets) btnManageWallets.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
+  if (btnHeroOptions) btnHeroOptions.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
+  
+  const btnExportTx = document.getElementById('btn-export-tx-table');
+  if (btnExportTx) btnExportTx.addEventListener('click', () => document.getElementById('btn-export-csv')?.click());
+
+  const btnSeeCats = document.getElementById('btn-see-all-cats');
+  if (btnSeeCats) btnSeeCats.addEventListener('click', () => {
+    document.querySelector('.fin-tx-card')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  const btnLoadMore = document.getElementById('btn-load-more');
+  if (btnLoadMore) btnLoadMore.addEventListener('click', () => showToast('Semua transaksi telah dimuat.'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
