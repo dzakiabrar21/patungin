@@ -292,8 +292,8 @@
             <h3>Tren pengeluaran harian</h3>
           </div>
           <div style="text-align: right;">
-            <div style="color:#83959A;font-size:8px;">Rata-rata</div>
-            <div style="color:#102A32;font-size:11px;font-weight:700;" id="daily-avg-val">Rp 0</div>
+            <div style="color:#83959A;font-size:11.5px;font-weight:600;">Rata-rata</div>
+            <div style="color:#102A32;font-size:14px;font-weight:700;" id="daily-avg-val">Rp 0</div>
           </div>
         </div>
 
@@ -473,7 +473,7 @@
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
+        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
           Sesuaikan saldo awal dompet kamu kapan saja di sini agar catatan keuangan selalu akurat:
         </p>
 
@@ -546,10 +546,10 @@
         <!-- Preview Results Container -->
         <div id="import-preview-box" style="display: none; border-top: 1px dashed var(--fin-border); padding-top: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-            <div style="font-size: 10px; font-weight: 700;">
+            <div style="font-size: 13px; font-weight: 700;">
               Hasil: <span id="import-preview-count" style="color: var(--fin-primary);">0</span> transaksi
             </div>
-            <div style="font-size: 9px;">
+            <div style="font-size: 12.5px;">
               <span id="import-preview-in" style="color: var(--fin-income); font-weight: 700;">+Rp 0</span> | 
               <span id="import-preview-out" style="color: var(--fin-expense); font-weight: 700;">-Rp 0</span>
             </div>
@@ -584,19 +584,19 @@
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
+        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
           Sinkronkan transaksi secara otomatis ke Google Spreadsheet pribadi kamu secara real-time:
         </p>
 
-        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid var(--fin-border);font-size:9px;">
+        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--fin-border);font-size:12.5px;">
           <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:6px;">Cara Pasang (Apps Script):</div>
-          <ol style="padding-left:16px;display:flex;flex-direction:column;gap:4px;color:var(--fin-text-main);">
+          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);">
             <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive.</li>
             <li>Buka menu <b>Ekstensi > Apps Script</b>.</li>
             <li>Tempel kode script berikut lalu Deploy sebagai Web App (Akses: Anyone):</li>
           </ol>
-          <div style="margin-top:6px;">
-            <textarea id="gsheet-script-template" readonly rows="3" style="width:100%;font-family:monospace;font-size:8px;padding:6px;border-radius:6px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
+          <div style="margin-top:8px;">
+            <textarea id="gsheet-script-template" readonly rows="3" style="width:100%;font-family:monospace;font-size:11.5px;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("DATA TRANSAKSI") || ss.insertSheet("DATA TRANSAKSI");
   var data = JSON.parse(e.postData.contents);
@@ -642,7 +642,7 @@
       </div>
       <div class="fin-modal-body">
         
-        <p style="font-size:10px;color:var(--fin-text-muted);margin-bottom:12px;">
+        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
           Catat pengeluaran lewat <b>Action Button</b>, <b>Back Tap (Ketuk Punggung)</b>, atau <b>Hey Siri</b> tanpa perlu membuka aplikasi:
         </p>
 
@@ -654,9 +654,9 @@
           </div>
         </div>
 
-        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:12px;margin-top:12px;border:1px solid var(--fin-border);font-size:9.5px;color:var(--fin-text-main);">
+        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:14px;margin-top:14px;border:1px solid var(--fin-border);font-size:12.5px;color:var(--fin-text-main);">
           <div style="font-weight:800;margin-bottom:6px;">Format Request JSON:</div>
-          <code style="display:block;background:#ffffff;padding:8px;border-radius:6px;border:1px solid var(--fin-border);font-family:monospace;font-size:8.5px;">
+          <code style="display:block;background:#ffffff;padding:10px;border-radius:8px;border:1px solid var(--fin-border);font-family:monospace;font-size:12px;">
             {<br>
             &nbsp;&nbsp;"text": "makan siang padang 35k bca"<br>
             }

@@ -409,12 +409,34 @@ function renderDailyTrend(dailyTrend, monthStr) {
   }).join('');
 }
 
-// 3. Fetch and Render Transactions List (Figma Table Spec)
+// 3. Fetch and Render Transactions List (Livin' by Mandiri Date-Grouped Layout)
+function formatTxDateGroup(dateStr) {
+  if (!dateStr) return { groupKey: 'Lainnya', headerLabel: 'Lainnya', timeLabel: '' };
+  const clean = String(dateStr).replace(' ', 'T');
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) {
+    return { groupKey: String(dateStr).slice(0, 10), headerLabel: String(dateStr).slice(0, 10), timeLabel: '' };
+  }
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const moIdx = d.getMonth();
+  const mo = MONTH_NAMES[moIdx] ? MONTH_NAMES[moIdx].slice(0, 3) : '';
+  const yr = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+
+  const groupKey = `${yr}-${String(moIdx + 1).padStart(2, '0')}-${day}`;
+  const headerLabel = `${day} ${mo} ${yr}`;
+  const timeLabel = `${hh}.${mm}`;
+
+  return { groupKey, headerLabel, timeLabel };
+}
+
 async function loadTransactions() {
   const listContainer = document.getElementById('transactions-list');
   if (!listContainer) return;
 
-  listContainer.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fin-text-muted);font-size:11px;">Memuat riwayat transaksi...</div>';
+  listContainer.innerHTML = '<div style="text-align:center;padding:28px;color:var(--fin-text-muted);font-size:13px;font-weight:500;">Memuat riwayat transaksi...</div>';
 
   const params = new URLSearchParams({
     month: state.currentMonth,
@@ -434,15 +456,19 @@ async function loadTransactions() {
     const rows = data.transactions || [];
     if (rows.length === 0) {
       listContainer.innerHTML = `
-        <div style="text-align:center;padding:32px 16px;color:var(--fin-text-muted);">
-          <div style="font-size:24px;margin-bottom:6px;">💸</div>
-          <div style="font-size:11px;font-weight:600;">Belum ada transaksi pada filter ini.</div>
+        <div style="text-align:center;padding:40px 16px;color:var(--fin-text-muted);">
+          <div style="font-size:28px;margin-bottom:8px;">💸</div>
+          <div style="font-size:13.5px;font-weight:600;color:var(--fin-text-main);">Belum ada transaksi pada filter ini.</div>
+          <div style="font-size:12px;color:var(--fin-text-muted);margin-top:4px;">Gunakan tombol "Catat" untuk menambah transaksi baru.</div>
         </div>
       `;
       return;
     }
 
-    listContainer.innerHTML = rows.map(tx => {
+    let html = '';
+    let lastGroupKey = null;
+
+    rows.forEach(tx => {
       const isExpense = tx.type === 'expense';
       const isIncome = tx.type === 'income';
       const isTransfer = tx.type === 'transfer';
@@ -465,30 +491,52 @@ async function loadTransactions() {
       }
 
       const walletLabel = isTransfer
-        ? `${tx.account_name || 'BCA'} → ${tx.to_account_name || 'Dompet'}`
-        : (tx.account_name || 'BCA');
+        ? `${tx.account_name || 'Dompet'} → ${tx.to_account_name || 'Dompet'}`
+        : (tx.account_name || 'Dompet');
 
-      // Date formatting for subtitle: e.g. "12 Okt · 12.34"
-      const d = new Date(tx.transaction_date);
-      let dateMeta = tx.transaction_date;
-      if (!isNaN(d.getTime())) {
-        const day = d.getDate();
-        const mo = MONTH_NAMES[d.getMonth()].slice(0, 3);
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
-        dateMeta = `${day} ${mo} · ${hh}.${mm}`;
+      const dateInfo = formatTxDateGroup(tx.transaction_date);
+
+      // Date Header Divider (e.g. "08 Okt 2026")
+      if (dateInfo.groupKey !== lastGroupKey) {
+        lastGroupKey = dateInfo.groupKey;
+        html += `
+          <div class="fin-tx-date-header">
+            <span>${dateInfo.headerLabel}</span>
+          </div>
+        `;
       }
 
-      return `
+      // Title & Subtitle Hierarchy inspired by Livin' by Mandiri
+      let primaryTitle = tx.merchant;
+      let secondaryNote = tx.description || '';
+
+      if (isTransfer) {
+        primaryTitle = 'Transfer Rupiah';
+        secondaryNote = `${tx.account_name || 'Dompet'} ke ${tx.to_account_name || 'Dompet'}${tx.description ? ' • ' + tx.description : ''}`;
+      } else if (!primaryTitle) {
+        primaryTitle = tx.category_name || tx.description || 'Transaksi';
+        if (primaryTitle === tx.description) {
+          secondaryNote = tx.category_name || '';
+        }
+      } else {
+        if (!secondaryNote && tx.category_name) {
+          secondaryNote = tx.category_name;
+        }
+      }
+
+      const safeDeleteTitle = (primaryTitle || 'transaksi').replace(/'/g, "\\'");
+
+      html += `
         <div class="fin-tx-item">
           <div class="fin-tx-left">
             <div class="fin-tx-icon ${typeClass}">${icon}</div>
             <div class="fin-tx-info">
-              <div class="fin-tx-desc" title="${tx.merchant || tx.description || 'Transaksi'}">
-                ${tx.merchant || tx.description || 'Transaksi'}
+              <div class="fin-tx-desc" title="${primaryTitle}">
+                ${primaryTitle}
               </div>
+              ${secondaryNote ? `<div class="fin-tx-subdesc" title="${secondaryNote}">${secondaryNote}</div>` : ''}
               <div class="fin-tx-meta">
-                <span>${dateMeta}</span>
+                <span>${dateInfo.timeLabel}</span>
                 <span>•</span>
                 <span class="fin-tx-badge">${walletLabel}</span>
               </div>
@@ -504,8 +552,8 @@ async function loadTransactions() {
               <div class="fin-tx-amount ${typeClass}">${sign}Rp ${formatRupiah(tx.amount)}</div>
               <div class="fin-tx-type-lbl">${typeLabel}</div>
             </div>
-            <button type="button" class="fin-tx-del-btn" title="Hapus Transaksi" onclick="confirmDeleteTransaction('${tx.id}', '${tx.description || tx.merchant || 'transaksi'}')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="fin-tx-del-btn" title="Hapus Transaksi" onclick="confirmDeleteTransaction('${tx.id}', '${safeDeleteTitle}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
@@ -513,11 +561,13 @@ async function loadTransactions() {
           </div>
         </div>
       `;
-    }).join('');
+    });
+
+    listContainer.innerHTML = html;
 
   } catch (err) {
     console.error('Failed to load transactions:', err);
-    listContainer.innerHTML = '<div style="color:var(--fin-expense);text-align:center;padding:20px;font-size:11px;">Gagal memuat riwayat transaksi.</div>';
+    listContainer.innerHTML = '<div style="color:var(--fin-expense);text-align:center;padding:24px;font-size:13px;font-weight:600;">Gagal memuat riwayat transaksi.</div>';
   }
 }
 
