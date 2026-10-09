@@ -249,7 +249,8 @@ app.post('/api/finance/import/commit', (req, res) => {
 app.get('/api/finance/google-sheet', (req, res) => {
   try {
     const url = financeService.getGoogleSheetUrl();
-    res.json({ success: true, url });
+    const viewUrl = financeService.getGoogleSheetViewUrl();
+    res.json({ success: true, url, viewUrl });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -1529,11 +1529,26 @@ export async function syncAllTransactionsToGoogleSheet() {
       body: JSON.stringify({ action: 'sync_all', transactions: rows }),
       signal: AbortSignal.timeout(25000)
     });
+    const resData = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`Google Sheet response code: ${res.status}`);
-    return { success: true, count: rows.length };
+    
+    if (resData.spreadsheetUrl) {
+      db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('google_sheet_view_url', ?, CURRENT_TIMESTAMP)").run(resData.spreadsheetUrl);
+    }
+    
+    return { 
+      success: true, 
+      count: rows.length, 
+      spreadsheetUrl: resData.spreadsheetUrl || getGoogleSheetViewUrl() 
+    };
   } catch (err) {
     return { success: false, error: 'Gagal menghubungi Google Sheet: ' + err.message };
   }
+}
+
+export function getGoogleSheetViewUrl() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'google_sheet_view_url'").get();
+  return row && row.value ? row.value.trim() : null;
 }
 
 export default {

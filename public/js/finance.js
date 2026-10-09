@@ -1132,6 +1132,16 @@ function setupGoogleSheetModal() {
   const btnCopyScript = document.getElementById('btn-copy-apps-script');
   const scriptTemplate = document.getElementById('gsheet-script-template');
 
+  const openWrap = document.getElementById('gsheet-open-link-wrap');
+  const openLink = document.getElementById('btn-open-gsheet-direct');
+
+  function updateDirectLink(viewUrl) {
+    if (viewUrl && openWrap && openLink) {
+      openLink.href = viewUrl;
+      openWrap.style.display = 'block';
+    }
+  }
+
   if (!modal || !btnOpen) return;
 
   async function openModal() {
@@ -1140,6 +1150,9 @@ function setupGoogleSheetModal() {
       const data = await res.json();
       if (data.success && data.url && urlInput) {
         urlInput.value = data.url;
+      }
+      if (data.success && data.viewUrl) {
+        updateDirectLink(data.viewUrl);
       }
     } catch (_) {}
     modal.classList.add('active');
@@ -1202,6 +1215,9 @@ function setupGoogleSheetModal() {
         const data = await res.json();
         if (data.success) {
           showToast(`Berhasil menyinkronkan ${data.count} transaksi ke Google Sheet!`);
+          if (data.spreadsheetUrl) {
+            updateDirectLink(data.spreadsheetUrl);
+          }
         } else {
           alert(data.error || 'Gagal sinkronisasi.');
         }
