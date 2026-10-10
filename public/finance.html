@@ -635,6 +635,13 @@ function onOpen() {
 
 function createDashboardTab(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var txSheet = ss.getSheetByName("DATA TRANSAKSI");
+  if (!txSheet) {
+    txSheet = ss.insertSheet("DATA TRANSAKSI");
+    txSheet.appendRow(["ID Transaksi", "Tanggal", "Jenis", "Nominal", "Dompet", "Tujuan", "Kategori", "Merchant", "Catatan", "Sumber"]);
+    txSheet.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#007F88").setFontColor("#FFFFFF");
+    txSheet.setFrozenRows(1);
+  }
   var dash = ss.getSheetByName("DASHBOARD");
   if (!dash) { dash = ss.insertSheet("DASHBOARD", 0); }
   else {
@@ -643,26 +650,19 @@ function createDashboardTab(ss) {
     for (var i = 0; i < charts.length; i++) dash.removeChart(charts[i]);
   }
   try { dash.setHiddenGridlines(true); } catch (_) {}
-  var sep = ";";
-  try {
-    dash.getRange("A1").setFormula("=SUM(1,2)");
-    SpreadsheetApp.flush();
-    if (dash.getRange("A1").getValue() === 3) sep = ",";
-    dash.getRange("A1").clear();
-  } catch (e) { sep = ";"; }
   dash.setColumnWidth(1, 24); dash.setColumnWidth(2, 175); dash.setColumnWidth(3, 175); dash.setColumnWidth(4, 175); dash.setColumnWidth(5, 175); dash.setColumnWidth(6, 210); dash.setColumnWidth(7, 130);
   var banner = dash.getRange("B2:G2"); banner.merge(); banner.setValue("📊 PATUNGIN - FINANCIAL OVERVIEW DASHBOARD"); banner.setBackground("#007F88").setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(13); banner.setHorizontalAlignment("center").setVerticalAlignment("middle"); dash.setRowHeight(2, 45);
   dash.getRange("B4").setValue("TOTAL PEMASUKAN").setFontSize(9).setFontWeight("bold").setFontColor("#075F68").setHorizontalAlignment("center");
-  dash.getRange("B5").setFormula('=SUMIF(\'DATA TRANSAKSI\'!C:C' + sep + ' "income"' + sep + ' \'DATA TRANSAKSI\'!D:D)').setFontSize(15).setFontWeight("bold").setFontColor("#0B9D70").setNumberFormat('"Rp"#,##0').setHorizontalAlignment("center");
+  dash.getRange("B5").setFormula('=SUMIF(\'DATA TRANSAKSI\'!C:C, "income", \'DATA TRANSAKSI\'!D:D)').setFontSize(15).setFontWeight("bold").setFontColor("#0B9D70").setNumberFormat('"Rp"#,##0').setHorizontalAlignment("center");
   dash.getRange("B4:B5").setBackground("#E5F7EF").setBorder(true, true, true, true, false, false, "#BEEADB", SpreadsheetApp.BorderStyle.SOLID);
   dash.getRange("C4").setValue("TOTAL PENGELUARAN").setFontSize(9).setFontWeight("bold").setFontColor("#7A1C1C").setHorizontalAlignment("center");
-  dash.getRange("C5").setFormula('=SUMIF(\'DATA TRANSAKSI\'!C:C' + sep + ' "expense"' + sep + ' \'DATA TRANSAKSI\'!D:D)').setFontSize(15).setFontWeight("bold").setFontColor("#E24B4B").setNumberFormat('"Rp"#,##0').setHorizontalAlignment("center");
+  dash.getRange("C5").setFormula('=SUMIF(\'DATA TRANSAKSI\'!C:C, "expense", \'DATA TRANSAKSI\'!D:D)').setFontSize(15).setFontWeight("bold").setFontColor("#E24B4B").setNumberFormat('"Rp"#,##0').setHorizontalAlignment("center");
   dash.getRange("C4:C5").setBackground("#FEEEEE").setBorder(true, true, true, true, false, false, "#FBD0D0", SpreadsheetApp.BorderStyle.SOLID);
   dash.getRange("D4").setValue("ARUS KAS BERSIH").setFontSize(9).setFontWeight("bold").setFontColor("#1E40AF").setHorizontalAlignment("center");
   dash.getRange("D5").setFormula('=B5-C5').setFontSize(15).setFontWeight("bold").setFontColor("#2563EB").setNumberFormat('"Rp"#,##0').setHorizontalAlignment("center");
   dash.getRange("D4:D5").setBackground("#EAF2FE").setBorder(true, true, true, true, false, false, "#BFDBFE", SpreadsheetApp.BorderStyle.SOLID);
   dash.getRange("E4").setValue("TOTAL TRANSAKSI").setFontSize(9).setFontWeight("bold").setFontColor("#334155").setHorizontalAlignment("center");
-  dash.getRange("E5").setFormula('=MAX(0' + sep + ' COUNTA(\'DATA TRANSAKSI\'!A2:A))').setFontSize(15).setFontWeight("bold").setFontColor("#1E293B").setHorizontalAlignment("center");
+  dash.getRange("E5").setFormula('=MAX(0, COUNTA(\'DATA TRANSAKSI\'!A2:A))').setFontSize(15).setFontWeight("bold").setFontColor("#1E293B").setHorizontalAlignment("center");
   dash.getRange("E4:E5").setBackground("#F1F5F9").setBorder(true, true, true, true, false, false, "#CBD5E1", SpreadsheetApp.BorderStyle.SOLID);
   dash.setRowHeight(4, 24); dash.setRowHeight(5, 38);
   dash.getRange("B7:C7").merge().setValue("💳 Ringkasan Dompet").setFontWeight("bold").setFontSize(11).setFontColor("#102A32");
@@ -672,7 +672,7 @@ function createDashboardTab(ss) {
   for (var w = 0; w < wallets.length; w++) {
     var r = 9 + w;
     dash.getRange("B" + r).setValue(wallets[w]).setFontSize(10).setFontColor("#1E293B");
-    dash.getRange("C" + r).setFormula('=SUMIFS(\'DATA TRANSAKSI\'!D:D' + sep + ' \'DATA TRANSAKSI\'!E:E' + sep + ' B' + r + sep + ' \'DATA TRANSAKSI\'!C:C' + sep + ' "income") - SUMIFS(\'DATA TRANSAKSI\'!D:D' + sep + ' \'DATA TRANSAKSI\'!E:E' + sep + ' B' + r + sep + ' \'DATA TRANSAKSI\'!C:C' + sep + ' "expense")').setFontSize(10).setFontWeight("bold").setNumberFormat('"Rp"#,##0');
+    dash.getRange("C" + r).setFormula('=SUMIFS(\'DATA TRANSAKSI\'!D:D, \'DATA TRANSAKSI\'!E:E, B' + r + ', \'DATA TRANSAKSI\'!C:C, "income") - SUMIFS(\'DATA TRANSAKSI\'!D:D, \'DATA TRANSAKSI\'!E:E, B' + r + ', \'DATA TRANSAKSI\'!C:C, "expense")').setFontSize(10).setFontWeight("bold").setNumberFormat('"Rp"#,##0');
     dash.getRange("B" + r + ":C" + r).setBackground(w % 2 === 0 ? "#FFFFFF" : "#F8FAFB").setBorder(true, true, true, true, false, false, "#E2E8F0", SpreadsheetApp.BorderStyle.SOLID);
   }
   dash.getRange("E7:G7").merge().setValue("🏷️ Pengeluaran per Kategori").setFontWeight("bold").setFontSize(11).setFontColor("#102A32");
@@ -683,8 +683,8 @@ function createDashboardTab(ss) {
   for (var c = 0; c < categories.length; c++) {
     var r2 = 9 + c;
     dash.getRange("E" + r2).setValue(categories[c]).setFontSize(10).setFontColor("#1E293B");
-    dash.getRange("F" + r2).setFormula('=SUMIFS(\'DATA TRANSAKSI\'!D:D' + sep + ' \'DATA TRANSAKSI\'!G:G' + sep + ' E' + r2 + sep + ' \'DATA TRANSAKSI\'!C:C' + sep + ' "expense")').setFontSize(10).setFontWeight("bold").setNumberFormat('"Rp"#,##0');
-    dash.getRange("G" + r2).setFormula('=IF(C5>0' + sep + ' F' + r2 + '/C5' + sep + ' 0)').setFontSize(10).setNumberFormat('0.0%');
+    dash.getRange("F" + r2).setFormula('=SUMIFS(\'DATA TRANSAKSI\'!D:D, \'DATA TRANSAKSI\'!G:G, E' + r2 + ', \'DATA TRANSAKSI\'!C:C, "expense")').setFontSize(10).setFontWeight("bold").setNumberFormat('"Rp"#,##0');
+    dash.getRange("G" + r2).setFormula('=IF(C5>0, F' + r2 + '/C5, 0)').setFontSize(10).setNumberFormat('0.0%');
     dash.getRange("E" + r2 + ":G" + r2).setBackground(c % 2 === 0 ? "#FFFFFF" : "#F8FAFB").setBorder(true, true, true, true, false, false, "#E2E8F0", SpreadsheetApp.BorderStyle.SOLID);
   }
   try {

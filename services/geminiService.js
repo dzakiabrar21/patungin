@@ -152,6 +152,10 @@ export async function executeGutsRequest({
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content?.trim();
         if (content) {
+          if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(content)) {
+            console.warn(`[GutsService] Model ${model} returned policy error text, skipping...`);
+            continue;
+          }
           return { success: true, content, usage: data.usage };
         }
       } else {
@@ -757,7 +761,9 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     ];
 
     if (Array.isArray(history) && history.length > 0) {
-      const recentHistory = history.slice(-10);
+      const recentHistory = history
+        .filter(turn => !/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(turn.text || ''))
+        .slice(-10);
       recentHistory.forEach(turn => {
         if (turn.role && turn.text) {
           messages.push({
@@ -778,6 +784,9 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     });
 
     if (gutsRes?.success && gutsRes.content) {
+      if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(gutsRes.content)) {
+        return { success: true, text: 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja' };
+      }
       const text = cleanCoolResponse(gutsRes.content);
       return { success: true, text };
     }
@@ -800,7 +809,9 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
   });
 
   if (Array.isArray(history) && history.length > 0) {
-    const recentHistory = history.slice(-10);
+    const recentHistory = history
+      .filter(turn => !/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(turn.text || ''))
+      .slice(-10);
     recentHistory.forEach(turn => {
       if (turn.role && turn.text) {
         contents.push({
@@ -834,6 +845,9 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (text) {
+      if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(text)) {
+        return { success: true, text: 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja' };
+      }
       text = cleanCoolResponse(text);
       return { success: true, text };
     }

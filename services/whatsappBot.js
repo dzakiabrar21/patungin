@@ -51,6 +51,8 @@ let botUser = null;
 
 // Track processed messages to avoid duplicate executions
 const processedMessages = new Set();
+// Track messages sent by bot to distinguish bot replies from manual user chats in groups
+const botSentMessageIds = new Set();
 
 // Base URL for session links
 let activeAppPort = Number(process.env.PORT) || 3000;
@@ -723,14 +725,22 @@ export async function initWhatsAppBot(port = null) {
           return (botPhone && cleanJid.includes(botPhone)) || (botLid && cleanJid.includes(botLid));
         });
 
+        const quotedStanzaId = contextInfo?.stanzaId;
         const replyParticipant = contextInfo?.participant ? contextInfo.participant.split('@')[0].split(':')[0] : '';
-        const isReplyToBot = Boolean(
+        const isQuotedFromBotAccount = Boolean(
           (botPhone && replyParticipant.includes(botPhone)) ||
           (botLid && replyParticipant.includes(botLid))
         );
 
-        // Deteksi panggilan spesifik ke nama Bot (Edwin, Jarvis, Ed, Win, Vis, Jar) atau command /tanya
-        const hasBotNameKeyword = /\b(edwin|jarvis|ed\b|win\b|vis\b|jar\b)\b/i.test(lowerText);
+        // Di grup: hanya anggap me-reply bot JIKA pesan yang di-quote memang dikirim otomatis oleh bot (ada di botSentMessageIds)
+        // Ini mencegah bot ikut campur ketika teman me-reply chat pribadi/manual Dzaki di grup tongkrongan!
+        const isReplyToBot = isGroup
+          ? Boolean(isQuotedFromBotAccount && quotedStanzaId && botSentMessageIds.has(quotedStanzaId))
+          : isQuotedFromBotAccount;
+
+        // Deteksi panggilan spesifik ke nama Bot (Edwin, Jarvis) atau command /tanya
+        // Hindari kata pendek seperti "win", "ed", "jar", "vis" karena sering salah deteksi kata sehari-hari
+        const hasBotNameKeyword = /\b(edwin|jarvis)\b/i.test(lowerText);
         const startsWithBotCommand = /^(\/tanya|@bot\b)/i.test(lowerText);
 
         // Deteksi apakah pesan menyertakan gambar atau me-reply gambar
@@ -907,6 +917,11 @@ export async function initWhatsAppBot(port = null) {
           }
 
           if (aiRes.success) {
+            // Filter sensor jika ada teks kebijakan Google yang tembus
+            if (/prohibited use policy|violates google'?s|sensitive words/i.test(aiRes.text)) {
+              aiRes.text = 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja';
+            }
+
             const turnPrompt = (hasDirectAudio || hasQuotedAudio)
               ? `[Voice Note dari ${senderName}]`
               : cleanPrompt;
@@ -916,6 +931,11 @@ export async function initWhatsAppBot(port = null) {
             const sentMsg = await sock.sendMessage(chatId, { text: aiRes.text }, { quoted: m });
             if (sentMsg?.key?.id) {
               processedMessages.add(sentMsg.key.id);
+              botSentMessageIds.add(sentMsg.key.id);
+              if (botSentMessageIds.size > 2000) {
+                const oldest = Array.from(botSentMessageIds).slice(0, 500);
+                oldest.forEach(id => botSentMessageIds.delete(id));
+              }
             }
             console.log(`[WhatsAppBot] ✅ Edwin Jarvis berhasil membalas ke ${chatId}`);
           } else {
@@ -925,6 +945,7 @@ export async function initWhatsAppBot(port = null) {
             }, { quoted: m });
             if (sentErr?.key?.id) {
               processedMessages.add(sentErr.key.id);
+              botSentMessageIds.add(sentErr.key.id);
             }
           }
           continue;
