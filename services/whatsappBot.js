@@ -281,10 +281,17 @@ function getChatHistory(chatId) {
     chatMemoryMap.delete(chatId);
     return [];
   }
-  return data.history || [];
+  const cleanHistory = (data.history || []).filter(
+    turn => !/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(turn.text || '')
+  );
+  data.history = cleanHistory;
+  return cleanHistory;
 }
 
 function addChatTurn(chatId, role, text) {
+  if (!text || /prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(text)) {
+    return;
+  }
   let data = chatMemoryMap.get(chatId);
   if (!data || Date.now() - data.lastActivity > MEMORY_TIMEOUT_MS) {
     data = { history: [], lastActivity: Date.now() };

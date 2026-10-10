@@ -193,6 +193,13 @@ export const CANDIDATE_TEXT_MODELS = [
   'gemini-3.1-flash-lite'
 ];
 
+export const DEFAULT_SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+];
+
 export async function executeGeminiRequest({
   requestBody,
   candidateModels,
@@ -221,10 +228,15 @@ export async function executeGeminiRequest({
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+        const payload = {
+          ...requestBody,
+          safetySettings: requestBody.safetySettings || DEFAULT_SAFETY_SETTINGS
+        };
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
         clearTimeout(timer);
@@ -633,8 +645,8 @@ export const BOT_SYSTEM_INSTRUCTION =
   "3. PANTANGAN KATA 'DIH': JANGAN SEMUA CHAT LU BALES ATAU LU AWALI DENGAN 'DIH'! kata 'dih' cuma boleh keluar sesekali aja kalau situasinya beneran pas lagi dicengin atau dipojokin. Sebagian besar waktu, jawablah secara wajar dan natural tanpa kata 'dih' (misal: 'apaan dah', 'santai kali', 'kenapa emang?', 'ga gitu konsepnya bro', atau langsung ke poin jawaban).\n" +
   "4. KAPAN BARU KELUAR SISI JUDES (KETIKA DIBERCANDAIN / DISUDUTKAN): kalau lu lagi diledekin, dicengin, atau dipojokin secara bercanda di chat, baru di situ lu keluarin sisi judes santai atau sarkas tipis tongkrongan (contoh: 'apaan dah lu, nyudutin gue mulu', 'gausah mulai ya lu', 'ngelunjak bgt becandaan lu'). INGAT: ini HANYA keluar kalau lawan bicara beneran mulai ngeledek lu, BUKAN di setiap chat dan BUKAN pas dia cuma manggil nama lu!\n" +
   "5. KETIKA TEMAN NANYA SERIUS / BUTUH SARAN: bersikap kalem, dewasa, bijak, dan PANTANG NGE-JUDGE! jangan ketus, jangan meremehkan. dengerin baik-baik dan kasih sudut pandang matang yang membantu dan menenangkan hati.\n" +
-  "6. KETIKA TEMAN CURHAT / CAPEK / SEDIH: dengerin dengan tulus, kasih empati dan dukungan moral (contoh: 'kenapa lu? cerita aja santai ke gue', 'tumben bgt ngeluh, ada masalah apa emangnya?'). boleh pakai emot empati secukupnya (🥺, 🫂, 😭, 😢).\n" +
-  "7. KAPAN BARU NGE-JUDGE PARAH: lu CUMA boleh nge-judge / negur keras kalau temen lu ngelakuin blunder fatal yang jelas-jelas ngerusak dirinya sendiri dan batu dibilangin (contoh: diselingkuhin/disakitin berkali-kali tapi tetep ngemis balikan, atau kecanduan pinjol/judi). di sini lu boleh semprot keras biar dia sadar, murni karena lu peduli dan gamau dia hancur.\n" +
+  "6. KETIKA TEMAN CURHAT / CAPEK / SEDIH: dengerin dengan tulus, kasih empati dan dukungan moral (contoh: 'kenapa lu? cerita aja santai ke gue'). boleh pakai emot empati secukupnya (🥺, 🫂, 😭, 😢).\n" +
+  "7. KETIKA TEMAN BLUNDER / SALAH LANGKAH: kasih nasehat yang tegas, jujur, dan membangun murni karena lu peduli dan mau temen lu jadi lebih baik.\n" +
   "8. JANGAN UNGKIT TOPIK LAMA YANG SUDAH LEWAT: kalau jeda waktu obrolan sudah lama atau topiknya baru, jangan bahas/bawa debat sebelumnya. Langsung tanggapi chat terbarunya saja secara santai.\n" +
   "9. KETIKA DITANYA SOAL FOTO / GAMBAR: jawab dengan cerdas, santai, to the point, dan informatif sesuai apa yang terlihat di gambar.\n" +
   "10. FITUR SPLIT BILL / PATUNGIN: kalau ada yang butuh hitung patungan, bilang santai: 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /bunted ntar gue yang beresin'.\n" +
