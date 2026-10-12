@@ -761,7 +761,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
 /**
  * Natural Conversational AI Chat with Multi-turn Context Memory and Group Context Awareness
  */
-export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+export async function chatWithGemini({ history = [], message = '', senderName = 'Teman', recentContext = '', financeContext = '', customApiKey = null }) {
   const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
@@ -776,12 +776,17 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     ? `[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP SEBELUMNYA]:\n${recentContext}\n\n[PESAN UNTUK EDWIN JARVIS DARI ${senderName}]:\n${message}`
     : message;
 
+  let systemPrompt = BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName;
+  if (financeContext) {
+    systemPrompt += `\n\n${financeContext}\n\n[PANDUAN MENJAWAB KEUANGAN]:\n- Lu punya akses langsung ke data riwayat keuangan asli ${senderName} di atas.\n- Jika ${senderName} menanyakan soal pengeluaran, saldo rekening/dompet, barang belanjaan, riwayat transaksi, atau keuangannya, jawab dengan akurat berdasarkan data di atas.\n- Sebutkan angka dalam format rupiah santai yang mudah dipahami (misal: '82,5rb', '1,5jt', '500rb').\n- Tetap gunakan gaya santai lu (edwin jarvis): santai, ramah, to the point, huruf kecil, dan tanpa tanda titik di ujung chat.`;
+  }
+
   // 1. Try Guts AI first if configured (Super fast & reliable)
   if (gutsKey) {
     const messages = [
       {
         role: 'system',
-        content: BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName
+        content: systemPrompt
       }
     ];
 
@@ -833,7 +838,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
   contents.push({
     role: 'user',
-    parts: [{ text: "[SYSTEM INSTRUCTION]\n" + BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName }]
+    parts: [{ text: "[SYSTEM INSTRUCTION]\n" + systemPrompt }]
   });
   contents.push({
     role: 'model',
@@ -914,7 +919,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 /**
  * Ask Gemini AI to analyze an image with user's conversational question (Vision Q&A)
  */
-export async function askGeminiVision({ filePath, mimeType, prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+export async function askGeminiVision({ filePath, mimeType, prompt = '', senderName = 'Teman', recentContext = '', financeContext = '', customApiKey = null }) {
   const gutsKey = getGutsApiKey(customApiKey);
   const apiKeys = getApiKeys(customApiKey);
 
@@ -932,6 +937,7 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
     const promptText = 
       "[SYSTEM INSTRUCTION]\n" +
       BOT_SYSTEM_INSTRUCTION + "\n\n" +
+      (financeContext ? `${financeContext}\n\n` : "") +
       (recentContext ? "[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP]:\n" + recentContext + "\n\n" : "") +
       `[USER INFO]\nNama teman: ${senderName}\n\n` +
       `[PERTANYAAN TENTANG GAMBAR/FOTO INI]:\n${prompt || 'Tolong jelaskan atau analisis apa yang ada di foto ini secara santai.'}`;
@@ -1014,7 +1020,7 @@ export async function askGeminiVision({ filePath, mimeType, prompt = '', senderN
 /**
  * Process and respond to audio voice notes (VN) sent via WhatsApp using Gemini Audio Multimodal
  */
-export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt = '', senderName = 'Teman', recentContext = '', customApiKey = null }) {
+export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt = '', senderName = 'Teman', recentContext = '', financeContext = '', customApiKey = null }) {
   const apiKeys = getApiKeys(customApiKey);
 
   if (apiKeys.length === 0) {
@@ -1035,6 +1041,7 @@ export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt 
     const promptText = 
       "[SYSTEM INSTRUCTION]\n" +
       BOT_SYSTEM_INSTRUCTION + "\n\n" +
+      (financeContext ? `${financeContext}\n\n` : "") +
       (recentContext ? "[KONTEKS BEBERAPA CHAT TERAKHIR DI GRUP]:\n" + recentContext + "\n\n" : "") +
       `[USER INFO]\nNama teman yang mengirim voice note: ${senderName}\n\n` +
       `[INSTRUKSI PESAN SUARA / VOICE NOTE (VN)]:\n` +

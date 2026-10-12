@@ -695,10 +695,16 @@ export async function initWhatsAppBot(port = null) {
             }
 
             // 3. Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
-            const quickMatch = (financeService && typeof financeService.parseQuickRegex === 'function')
+            const isFinanceQuestion = 
+              text.includes('?') ||
+              /\b(berapa|apa|apakah|kapan|kenapa|mengapa|mana|gimana|bagaimana|siapa|kok|rekap|cek|lihat|tanya)\b/i.test(lowerText) ||
+              /\b(masuk mana|masuk apa|kategori apa|tercatat apa|sudah abis|udah abis|total|kemarin|bulan lalu|tadi)\b/i.test(lowerText) ||
+              /\b(edwin|jarvis)\b/i.test(lowerText);
+
+            const quickMatch = (!isFinanceQuestion && financeService && typeof financeService.parseQuickRegex === 'function')
               ? financeService.parseQuickRegex(text)
               : null;
-            const hasFinanceMarkers = /\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText);
+            const hasFinanceMarkers = !isFinanceQuestion && /\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText);
 
             if (quickMatch || hasFinanceMarkers) {
               if (msgId) processedMessages.add(msgId);
@@ -835,6 +841,16 @@ export async function initWhatsAppBot(port = null) {
           const history = getChatHistory(chatId);
           const recentContext = isGroup ? getRecentContextText(chatId, text) : '';
 
+          // Konteks data keuangan pribadi (Buku Kas Dzaki):
+          // Diizinkan jika di Private Chat (DM) atau jika penanya di grup adalah Owner sendiri
+          const isUserOwner = (financeService && typeof financeService.isOwner === 'function')
+            ? financeService.isOwner(senderClean)
+            : false;
+          const allowFinance = !isGroup || isUserOwner;
+          const financeContext = (allowFinance && financeService && typeof financeService.getFinanceContextForAI === 'function')
+            ? financeService.getFinanceContextForAI(cleanPrompt)
+            : '';
+
           let aiRes = null;
 
           // 1. Jika ada Voice Note / Audio (langsung atau dari reply audio), proses dengan Gemini Audio
@@ -867,7 +883,8 @@ export async function initWhatsAppBot(port = null) {
                   mimeType,
                   prompt: cleanPrompt,
                   senderName,
-                  recentContext
+                  recentContext,
+                  financeContext
                 });
               }
             } catch (aErr) {
@@ -902,7 +919,8 @@ export async function initWhatsAppBot(port = null) {
                   mimeType: 'image/jpeg',
                   prompt: cleanPrompt,
                   senderName,
-                  recentContext
+                  recentContext,
+                  financeContext
                 });
               }
             } catch (vErr) {
@@ -920,7 +938,8 @@ export async function initWhatsAppBot(port = null) {
               history,
               message: cleanPrompt,
               senderName,
-              recentContext
+              recentContext,
+              financeContext
             });
           }
 

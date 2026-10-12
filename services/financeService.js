@@ -1207,6 +1207,135 @@ export function formatBalanceMessage(balanceReport) {
   return text;
 }
 
+/**
+ * 8.B Konteks Ringkasan Keuangan Pintar untuk Asisten AI (Edwin Jarvis)
+ */
+export function getFinanceContextForAI(query = '') {
+  try {
+    const now = new Date();
+    const currentMonthStr = now.toISOString().slice(0, 7);
+    
+    // Bulan lalu
+    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const prevMonthNum = now.getMonth() === 0 ? 12 : now.getMonth();
+    const prevMonthStr = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+
+    // 1. Overview Bulan Ini & Bulan Lalu
+    const curOverview = getFinanceOverview(currentMonthStr);
+    const prevOverview = getFinanceOverview(prevMonthStr);
+
+    // 2. Overview Hari Ini
+    const todayRep = getTodayReport();
+
+    // 3. Saldo Dompet
+    const accounts = db.prepare(`
+      SELECT name, type, balance 
+      FROM accounts 
+      WHERE balance != 0 OR name IN ('BSI', 'Mandiri', 'Jago', 'GoPay', 'RDN Stockbit', 'Cash')
+      ORDER BY balance DESC, name ASC
+    `).all();
+
+    // 4. 10 Transaksi Terakhir
+    const recentTx = db.prepare(`
+      SELECT t.transaction_date, t.type, t.amount, t.merchant, t.description,
+             c.name as category_name, a.name as account_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN accounts a ON t.account_id = a.id
+      ORDER BY t.transaction_date DESC, t.created_at DESC
+      LIMIT 10
+    `).all();
+
+    // 5. Pencarian Pintar jika query menanyakan nama barang / merchant / kategori tertentu
+    let searchResults = [];
+    if (query && typeof query === 'string') {
+      const cleanQ = query.toLowerCase();
+      const stopWords = new Set([
+        'apa', 'aja', 'nih', 'dong', 'gue', 'lu', 'gw', 'kamu', 'aku', 'ada',
+        'di', 'ke', 'dari', 'dan', 'atau', 'ini', 'itu', 'berapa', 'kapan',
+        'pernah', 'terakhir', 'beli', 'bayar', 'pengeluaran', 'pemasukan',
+        'jajan', 'makan', 'duit', 'uang', 'total', 'habis', 'bulan', 'hari',
+        'win', 'edwin', 'jarvis', 'bro', 'bang', 'tolong', 'cek', 'lihat', 'punya'
+      ]);
+      const words = cleanQ.split(/[\s,?.!]+/).filter(w => w.length >= 3 && !stopWords.has(w));
+      
+      if (words.length > 0) {
+        for (const w of words.slice(0, 3)) {
+          const matched = db.prepare(`
+            SELECT t.transaction_date, t.type, t.amount, t.merchant, t.description,
+                   c.name as category_name, a.name as account_name
+            FROM transactions t
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN accounts a ON t.account_id = a.id
+            WHERE LOWER(t.description) LIKE ? OR LOWER(t.merchant) LIKE ? OR LOWER(c.name) LIKE ?
+            ORDER BY t.transaction_date DESC
+            LIMIT 5
+          `).all(`%${w}%`, `%${w}%`, `%${w}%`);
+          
+          matched.forEach(m => {
+            if (!searchResults.some(s => s.transaction_date === m.transaction_date && s.amount === m.amount)) {
+              searchResults.push(m);
+            }
+          });
+        }
+      }
+    }
+
+    let summaryText = `=== DATA KEUANGAN PRIBADI PENGGUNA (DZAKI) ===\n`;
+    summaryText += `Tanggal Hari Ini: ${now.toLocaleDateString('id-ID', { dateStyle: 'full' })}\n\n`;
+
+    summaryText += `[HARI INI (${now.toISOString().slice(0, 10)})]:\n`;
+    summaryText += `- Total Pengeluaran Hari Ini: Rp ${formatRupiah(todayRep.totalExpense)} (${todayRep.transactionCount} transaksi)\n`;
+    if (todayRep.transactions && todayRep.transactions.length > 0) {
+      summaryText += `- Transaksi Hari Ini: ` + todayRep.transactions.map(t => `${t.description || t.merchant} (Rp ${formatRupiah(t.amount)}, ${t.category_name})`).join(', ') + '\n';
+    }
+
+    summaryText += `\n[BULAN INI (${currentMonthStr})]:\n`;
+    summaryText += `- Total Pengeluaran: Rp ${formatRupiah(curOverview.totalExpense)} (${curOverview.transactionCount} transaksi)\n`;
+    summaryText += `- Total Pemasukan: Rp ${formatRupiah(curOverview.totalIncome)}\n`;
+    summaryText += `- Arus Kas Bersih: Rp ${formatRupiah(curOverview.netSavings)}\n`;
+    if (curOverview.categoryBreakdown && curOverview.categoryBreakdown.length > 0) {
+      summaryText += `- Top Kategori Pengeluaran Bulan Ini:\n`;
+      curOverview.categoryBreakdown.slice(0, 5).forEach((c, idx) => {
+        summaryText += `  ${idx + 1}. ${c.name} (${c.icon}): Rp ${formatRupiah(c.amount)} (${c.percentage}%)\n`;
+      });
+    }
+
+    summaryText += `\n[BULAN LALU (${prevMonthStr})]:\n`;
+    summaryText += `- Total Pengeluaran: Rp ${formatRupiah(prevOverview.totalExpense)} (${prevOverview.transactionCount} transaksi)\n`;
+
+    summaryText += `\n[POSISI SALDO DOMPET SAAT INI]:\n`;
+    accounts.forEach(a => {
+      summaryText += `- ${a.name} (${a.type}): Rp ${formatRupiah(a.balance)}\n`;
+    });
+    summaryText += `Catatan: RDN Stockbit difungsikan sebagai wadah tabungan/investasi agar tidak terpakai belanja harian.\n`;
+
+    if (searchResults.length > 0) {
+      summaryText += `\n[HASIL PENCARIAN TRANSAKSI TERKAIT PERTANYAAN]:\n`;
+      searchResults.slice(0, 6).forEach(s => {
+        const dStr = s.transaction_date ? String(s.transaction_date).slice(0, 10) : '';
+        summaryText += `• Tanggal ${dStr}: ${s.description || s.merchant} - Rp ${formatRupiah(s.amount)} (Kategori: ${s.category_name}, Dompet: ${s.account_name})\n`;
+      });
+    } else if (recentTx.length > 0) {
+      summaryText += `\n[5 TRANSAKSI TERAKHIR]:\n`;
+      recentTx.slice(0, 5).forEach(t => {
+        const dStr = t.transaction_date ? String(t.transaction_date).slice(0, 10) : '';
+        summaryText += `• ${dStr}: ${t.description || t.merchant} - Rp ${formatRupiah(t.amount)} (${t.category_name}, ${t.account_name})\n`;
+      });
+    }
+
+    summaryText += `\n[DAFTAR KATEGORI & SISTEM PENYIMPANAN]:\n`;
+    summaryText += `- Akun/Dompet tersedia: BSI, Mandiri, Jago, GoPay, RDN Stockbit, Cash, Bank Accounts.\n`;
+    summaryText += `- Default dompet jika user tidak menyebutkan dompet adalah: 'Bank Accounts'.\n`;
+    summaryText += `- Kategori pengeluaran: Makanan & Minuman (naspad, resto, dll), Snack and drink (kopi, jajan), Bensin, Transportasi (cuci motor, ojol, grab), Kereta, Parkir, Shopping (barang umum), Apparel & Pakaian (baju, knitwear, celana), Hiburan, Listrik & Tagihan, Internet, Laundry, Tabungan.\n`;
+
+    return summaryText.trim();
+  } catch (err) {
+    console.warn('[FinanceService] Error generating finance context for AI:', err.message);
+    return null;
+  }
+}
+
 // ==========================================
 // 9. Ekspor Laporan Transaksi ke CSV
 // ==========================================
@@ -1666,5 +1795,6 @@ export default {
   getAllAccounts,
   getAllCategories,
   findAccountByName,
-  findCategoryByName
+  findCategoryByName,
+  getFinanceContextForAI
 };
