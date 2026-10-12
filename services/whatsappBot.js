@@ -924,9 +924,15 @@ export async function initWhatsAppBot(port = null) {
           }
 
           if (aiRes.success) {
-            // Filter sensor jika ada teks kebijakan Google yang tembus
+            // Jika ada teks kebijakan Google yang tembus, ganti dengan respon santai tongkrongan bebas
             if (/prohibited use policy|violates google'?s|sensitive words/i.test(aiRes.text)) {
-              aiRes.text = 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja';
+              const casualBanter = [
+                'wkwk santai ngapa bro ngegas amat lu',
+                'apaan dah lu kocak, santai aja kali',
+                'lah ngapa jadi ngegas dah wkwk',
+                'santai kali bro gausah emosi gitu wkwk'
+              ];
+              aiRes.text = casualBanter[Math.floor(Math.random() * casualBanter.length)];
             }
 
             const turnPrompt = (hasDirectAudio || hasQuotedAudio)
@@ -948,7 +954,7 @@ export async function initWhatsAppBot(port = null) {
           } else {
             console.error('[WhatsAppBot] ❌ Error Edwin Jarvis:', aiRes.error);
             const sentErr = await sock.sendMessage(chatId, {
-              text: 'lagi pusing bentar, ntar colek lagi aja'
+              text: 'wkwk santai kali bro, apaan dah'
             }, { quoted: m });
             if (sentErr?.key?.id) {
               processedMessages.add(sentErr.key.id);

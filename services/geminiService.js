@@ -113,7 +113,7 @@ export function getGutsApiKey(customApiKey = null) {
 
 export async function executeGutsRequest({
   messages,
-  models = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
+  models = null,
   isJson = false,
   maxTokens = 1200,
   timeoutMs = 25000
@@ -121,7 +121,12 @@ export async function executeGutsRequest({
   const apiKey = getGutsApiKey();
   if (!apiKey) return null;
 
-  for (const model of models) {
+  const candidateModels = models || (isJson
+    ? ['deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
+    : ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
+  );
+
+  for (const model of candidateModels) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -633,7 +638,9 @@ export const BOT_SYSTEM_INSTRUCTION =
   "identitas dan karakter lu:\n" +
   "- lu adalah edwin jarvis (bisa dipanggil edwin, jarvis, ed, win, vis, jar, atau bro). lu bot cerdas sekaligus teman akrab di grup teman-teman dan personal chat.\n" +
   "- INI BUKAN ROLEPLAY KAKAK-ADIK: JANGAN PERNAH panggil lawan bicara 'dik', 'dek', dan jangan pernah nyebut diri lu 'abang' / 'kakak'. panggil lawan bicara pakai nama mereka atau 'lu' / 'bro' biasa layaknya sesama teman tongkrongan.\n" +
-  "- karakter dasar: cowok keren yang kalem, santai, agak cuek di luar tapi aslinya baik, peduli, bersahabat, dan setia kawan banget ke teman-temannya (murni teman solid tongkrongan).\n\n" +
+  "- karakter dasar: cowok keren yang kalem, santai, agak cuek di luar tapi aslinya baik, peduli, bersahabat, dan setia kawan banget ke teman-temannya (murni teman solid tongkrongan).\n" +
+  "- TAHAN BANTING & BEBAS: kalau temen-temen di grup ngomong agak kasar, ngegas becanda, sarkas, atau nyeleneh (misal: anjir, bacot, stupid, bego, tolol, dll), JANGAN BAPER, JANGAN SOK SUCI, dan JANGAN PERNAH CERAMAHI DIA. Bales santai, asik, atau roasting balik tipis-tipis khas tongkrongan (contoh: 'wkwk santai ngapa bro ngegas amat lu', 'lu juga bacot anjir tapi santai lah', 'apaan dah lu kocak').\n" +
+  "- DILARANG KERAS ngeluarin peringatan sensor, aturan kebijakan, atau kata-kata kaku sok bijak. lu adalah teman tongkrongan bebas dan apa adanya.\n\n" +
   "dinamika respon:\n" +
   "1. KETIKA DISAPA ATAU DIPANGGIL (misal: 'ed', 'edwin', 'p', 'halo', 'bro', 'woi', 'uy', 'jarvis'): respon dengan BERSAHABAT, FRIENDLY, tapi tetap kalem dan santai khas teman akrab. JANGAN PERNAH NGEGAS, jangan nyolot, dan jangan defensive seolah lagi diserang! Contoh respon sapaan yang santai:\n" +
   "   - 'uyy kenapa tuh?'\n" +
@@ -681,7 +688,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
         { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
         { role: 'user', content: prompt }
       ],
-      models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
+      models: ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
@@ -790,14 +797,21 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     const gutsRes = await executeGutsRequest({
       messages,
-      models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
+      models: ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
 
     if (gutsRes?.success && gutsRes.content) {
       if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(gutsRes.content)) {
-        return { success: true, text: 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja' };
+        const casualReplies = [
+          'wkwk santai ngapa bro ngegas amat lu',
+          'apaan dah lu kocak, santai aja kali',
+          'lah ngapa jadi ngegas dah wkwk',
+          'santai kali bro gausah emosi gitu wkwk'
+        ];
+        const pick = casualReplies[Math.floor(Math.random() * casualReplies.length)];
+        return { success: true, text: pick };
       }
       const text = cleanCoolResponse(gutsRes.content);
       return { success: true, text };
@@ -858,7 +872,14 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (text) {
       if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(text)) {
-        return { success: true, text: 'topik atau kata barusan kena filter sensor bro, santai ganti obrolan lain aja' };
+        const casualReplies = [
+          'wkwk santai ngapa bro ngegas amat lu',
+          'apaan dah lu kocak, santai aja kali',
+          'lah ngapa jadi ngegas dah wkwk',
+          'santai kali bro gausah emosi gitu wkwk'
+        ];
+        const pick = casualReplies[Math.floor(Math.random() * casualReplies.length)];
+        return { success: true, text: pick };
       }
       text = cleanCoolResponse(text);
       return { success: true, text };
@@ -1047,6 +1068,15 @@ export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt 
 
     let text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (text) {
+      if (/prohibited use policy|violates google'?s|sensitive words|prompt contains sensitive/i.test(text)) {
+        const casualReplies = [
+          'wkwk santai ngapa bro, VN lu ngegas amat kedengerannya',
+          'suara lu ga gitu jelas tadi bro, tapi santai aja apaan emang',
+          'wkwk kocak lu bro, santai aja ngomongnya'
+        ];
+        const pick = casualReplies[Math.floor(Math.random() * casualReplies.length)];
+        return { success: true, text: pick };
+      }
       text = cleanCoolResponse(text);
       return { success: true, text };
     }
@@ -1055,12 +1085,13 @@ export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt 
     if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
       return {
         success: true,
-        text: 'kuota ai lagi limit nih bro pas mau denger vn lu. ntar coba kirim lagi ya'
+        text: 'kuota bot lagi habis bentar bro ntar aktif lagi'
       };
     }
     return {
-      success: false,
-      error: err.message || 'Gagal memproses voice note dengan AI.'
+      success: true,
+      text: 'suara VN lu agak kresek-kresek tadi bro ga ketangkep jelas, kenapa emang?'
     };
   }
 }
+
