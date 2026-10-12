@@ -121,9 +121,15 @@ export async function executeGutsRequest({
   const apiKey = getGutsApiKey();
   if (!apiKey) return null;
 
-  const candidateModels = models || (isJson
-    ? ['deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
-    : ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
+  const hasImage = Array.isArray(messages) && messages.some(m =>
+    Array.isArray(m.content) && m.content.some(c => c.type === 'image_url')
+  );
+
+  const candidateModels = models || (hasImage
+    ? ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
+    : isJson
+      ? ['deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
+      : ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
   );
 
   for (const model of candidateModels) {

@@ -440,6 +440,7 @@ KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
             ]
           }
         ],
+        models: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'],
         isJson: true,
         maxTokens: 500,
         timeoutMs: 25000
