@@ -94,40 +94,98 @@ export function parseQuickRegex(text) {
   }
 
   // Pola Pengeluaran/Pemasukan umum:
-  // Contoh: "makan siang padang 35k bca", "kopi 25000 gopay", "bensin 50rb cash", "gaji 8jt mandiri"
-  // Regex mencari: [keterangan...] [angka + satuan] [opsional: akun]
-  const generalPattern = /^(.*?)\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)\s*([a-zA-Z]+)?$/i;
+  // Contoh: "makan siang padang 35k bca", "kopi 25000 gopay", "bensin 50rb cash", "cuci motor 20", "naspad 15k"
+  // Regex mencari: [keterangan...] [angka] [opsional satuan k/rb/ribu/jt/juta] [opsional: akun]
+  const generalPattern = /^(.*?)\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?(?:\s+([a-zA-Z]+))?$/i;
   const genMatch = cleanText.match(generalPattern);
 
   if (genMatch) {
     const desc = genMatch[1].trim();
     const rawNum = parseFloat(genMatch[2].replace(/[.,]/g, ''));
-    const unit = genMatch[3].toLowerCase();
+    const unit = (genMatch[3] || '').toLowerCase();
     const accCandidate = (genMatch[4] || '').trim();
 
     let amount = rawNum;
-    if (unit === 'k' || unit === 'rb' || unit === 'ribu') amount *= 1000;
-    else if (unit === 'jt' || unit === 'juta') amount *= 1000000;
+    if (unit === 'k' || unit === 'rb' || unit === 'ribu') {
+      amount *= 1000;
+    } else if (unit === 'jt' || unit === 'juta') {
+      amount *= 1000000;
+    } else if (!unit) {
+      // Jika tanpa satuan: angka <= 500 pada chat pengeluaran otomatis diartikan ribuan (misal "cuci motor 20" -> 20.000)
+      if (rawNum > 0 && rawNum <= 500) {
+        amount *= 1000;
+      }
+    }
+
+    if (amount <= 0) return null;
 
     // Deteksi Income
     const isIncome = /\b(gaji|gajian|income|masuk|bonus|cashback|transferan)\b/i.test(desc);
 
-    // Tebak Kategori
+    // Tebak Kategori berbasis 29 Kategori Riwayat Pengguna
     let categoryName = 'Lain-lain';
+    let isConfident = false;
+
     if (isIncome) {
       categoryName = 'Gaji / Pemasukan';
-    } else if (/\b(makan|kopi|teh|nasi|mie|roti|bakso|ayam|sate|mcd|kfc|starbucks|chatime|resto|cafe|jajan)\b/i.test(desc)) {
+      isConfident = true;
+    } else if (/\b(motor|cuci motor|servis motor|service motor|bengkel|oli|tambal ban|spul)\b/i.test(desc)) {
+      categoryName = 'Motor services';
+      isConfident = true;
+    } else if (/\b(baju|knitwear|kaos|celana|jaket|hoodie|kemeja|sepatu|sandal|pakaian|outfit)\b/i.test(desc)) {
+      categoryName = 'Apparel & Pakaian';
+      isConfident = true;
+    } else if (/\b(naspad|padang|warteg|makan|nasi|soto|mie|bakso|ayam|sate|geprek|pecel|resto|solaria|mcd|kfc)\b/i.test(desc)) {
       categoryName = 'Makanan & Minuman';
-    } else if (/\b(bensin|pertamax|pertalite|shell|solar|gojek|grab|ojol|tol|parkir|mrt|busway|kereta|angkot)\b/i.test(desc)) {
+      isConfident = true;
+    } else if (/\b(snack|ciki|kopi|coffee|teh|boba|minum|jajan|es|chatime|starbucks|roti|ice cream)\b/i.test(desc)) {
+      categoryName = 'Snack and drink';
+      isConfident = true;
+    } else if (/\b(bensin|pertalite|pertamax|shell|spbu|solar)\b/i.test(desc)) {
+      categoryName = 'Bensin';
+      isConfident = true;
+    } else if (/\b(kereta|krl|mrt|lrt|kai|commuter)\b/i.test(desc)) {
+      categoryName = 'Kereta';
+      isConfident = true;
+    } else if (/\b(gojek|grab|ojol|goride|gocar|tol|busway|angkot|ojek)\b/i.test(desc)) {
       categoryName = 'Transportasi';
-    } else if (/\b(indomaret|alfamart|superindo|sayur|pasar|sabun|odol|shampoo|minyak|beras|telur)\b/i.test(desc)) {
+      isConfident = true;
+    } else if (/\b(parkir)\b/i.test(desc)) {
+      categoryName = 'Parkir';
+      isConfident = true;
+    } else if (/\b(air minum|aqua|le minerale|galon|isi ulang)\b/i.test(desc)) {
+      categoryName = 'Air minum';
+      isConfident = true;
+    } else if (/\b(laundry|loundry|cuci baju|setrika)\b/i.test(desc)) {
+      categoryName = 'Laundry';
+      isConfident = true;
+    } else if (/\b(barber|cukur|potong rambut)\b/i.test(desc)) {
+      categoryName = 'Barber';
+      isConfident = true;
+    } else if (/\b(wifi|kuota|paket data|pulsa|indihome|telkomsel|tri|xl|indosat)\b/i.test(desc)) {
+      categoryName = 'Internet';
+      isConfident = true;
+    } else if (/\b(listrik|pln|token listrik|token|pdam)\b/i.test(desc)) {
+      categoryName = 'Listrik & Tagihan';
+      isConfident = true;
+    } else if (/\b(indomaret|alfamart|superindo|sabun|odol|shampoo)\b/i.test(desc)) {
       categoryName = 'Belanja Harian';
-    } else if (/\b(listrik|pln|pdam|wifi|indihome|pulsa|paket data|netflix|spotify|youtube|iuran)\b/i.test(desc)) {
-      categoryName = 'Tagihan & Langganan';
-    } else if (/\b(nongkrong|nonton|bioskop|xxi|game|steam|topup|billiard)\b/i.test(desc)) {
-      categoryName = 'Hiburan & Nongkrong';
-    } else if (/\b(obat|dokter|klinik|apotek|panadol|vitamin|hospital)\b/i.test(desc)) {
-      categoryName = 'Kesehatan & Obat';
+      isConfident = true;
+    } else if (/\b(pasar|sayur|ikan|daging|bumbu)\b/i.test(desc)) {
+      categoryName = 'Pasar';
+      isConfident = true;
+    } else if (/\b(buah|apel|jeruk|pisang|mangga|semangka)\b/i.test(desc)) {
+      categoryName = 'Buah';
+      isConfident = true;
+    } else if (/\b(shopee|tokopedia|lazada|tiktok shop|shopping|beli barang)\b/i.test(desc)) {
+      categoryName = 'Shopping';
+      isConfident = true;
+    } else if (/\b(nonton|bioskop|xxi|game|steam|topup|billiard|nongkrong|karoke)\b/i.test(desc)) {
+      categoryName = 'Hiburan';
+      isConfident = true;
+    } else if (/\b(obat|apotek|vitamin|panadol|klinik|dokter|paracetamol|tolak angin)\b/i.test(desc)) {
+      categoryName = 'Obat dan herbal';
+      isConfident = true;
     }
 
     return {
@@ -139,7 +197,7 @@ export function parseQuickRegex(text) {
       categoryName,
       merchant: desc,
       description: desc,
-      confidence: 0.9
+      confidence: isConfident ? 0.95 : 0.5
     };
   }
 
@@ -362,12 +420,15 @@ export function recordFinanceTransaction(parsed, source = 'wa_dm', rawInput = ''
 }
 
 export async function processFinanceText(text, source = 'wa_dm') {
-  // Coba regex terlebih dahulu (super cepat)
+  // Coba regex terlebih dahulu (super cepat 0 ms)
   let parsed = parseQuickRegex(text);
 
-  // Jika regex tidak cocok atau kurang jelas, gunakan AI NLP
-  if (!parsed || parsed.amount <= 0) {
-    parsed = await parseWithGeminiNLP(text);
+  // Jika regex tidak cocok atau kategorinya masih belum yakin (Lain-lain), panggil AI NLP
+  if (!parsed || parsed.amount <= 0 || parsed.categoryName === 'Lain-lain' || (parsed.confidence && parsed.confidence < 0.8)) {
+    const aiParsed = await parseWithGeminiNLP(text);
+    if (aiParsed && aiParsed.amount > 0) {
+      parsed = aiParsed;
+    }
   }
 
   if (!parsed || !parsed.amount || parsed.amount <= 0) {
