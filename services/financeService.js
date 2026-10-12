@@ -50,6 +50,10 @@ export function getAllCategories(type = 'expense') {
 export function findAccountByName(name) {
   if (!name) return null;
   const clean = name.trim().toLowerCase();
+  if (clean === 'bank account' || clean === 'bank accounts' || clean === 'bank' || clean === 'rek' || clean === 'rekening') {
+    return db.prepare("SELECT * FROM accounts WHERE LOWER(name) = 'bank accounts' OR LOWER(name) LIKE '%bank accounts%'").get() ||
+           db.prepare("SELECT * FROM accounts WHERE LOWER(name) LIKE '%bank%'").get();
+  }
   return db.prepare("SELECT * FROM accounts WHERE LOWER(name) = ? OR LOWER(name) LIKE ?").get(clean, `%${clean}%`);
 }
 
@@ -192,7 +196,7 @@ export function parseQuickRegex(text) {
       success: true,
       type: isIncome ? 'income' : 'expense',
       amount,
-      accountName: accCandidate || 'Cash',
+      accountName: accCandidate || 'Bank Accounts',
       toAccountName: null,
       categoryName,
       merchant: desc,
@@ -232,7 +236,7 @@ Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "T
 Aturan:
 1. Tentukan "type": 'expense' (pengeluaran), 'income' (pemasukan), atau 'transfer' (pindah uang antar rekening).
 2. "amount": integer nominal uang dalam Rupiah. Ubah satuan seperti 'k'/'rb' -> x1000, 'jt' -> x1000000.
-3. "account": Nama akun sumber pembayaran (cocokkan ke daftar akun di atas, jika tidak disebut default ke "Cash" atau "BCA").
+3. "account": Nama akun sumber pembayaran (cocokkan ke daftar akun di atas, jika tidak disebut default ke "Bank Accounts").
 4. "toAccount": Khusus jika type adalah 'transfer', sebutkan akun tujuan. Selain itu null.
 5. "category": Kategori yang paling relevan dari daftar di atas.
 6. "merchant": Nama toko / tempat / pihak ketiga jika ada (contoh: "Warteg Bahari", "Kopi Kenangan", "SPBU Pertamina").
@@ -243,7 +247,7 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
   "success": true,
   "type": "expense",
   "amount": 35000,
-  "account": "BCA",
+  "account": "Bank Accounts",
   "toAccount": null,
   "category": "Makanan & Minuman",
   "merchant": "Warteg Bahari",
@@ -267,7 +271,7 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
           success: true,
           type: parsed.type || 'expense',
           amount: Number(parsed.amount) || 0,
-          accountName: parsed.account || 'Cash',
+          accountName: parsed.account || 'Bank Accounts',
           toAccountName: parsed.toAccount || null,
           categoryName: parsed.category || 'Lain-lain',
           merchant: parsed.merchant || parsed.description || 'Transaksi',
@@ -298,7 +302,7 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
           success: true,
           type: parsed.type || 'expense',
           amount: Number(parsed.amount) || 0,
-          accountName: parsed.account || 'Cash',
+          accountName: parsed.account || 'Bank Accounts',
           toAccountName: parsed.toAccount || null,
           categoryName: parsed.category || 'Lain-lain',
           merchant: parsed.merchant || parsed.description || 'Transaksi',
@@ -325,7 +329,7 @@ export function recordFinanceTransaction(parsed, source = 'wa_dm', rawInput = ''
   }
 
   // Resolusi Akun Sumber
-  const accountName = parsed.accountName || parsed.account || 'Cash';
+  const accountName = parsed.accountName || parsed.account || 'Bank Accounts';
   let account = findAccountByName(accountName);
   if (!account) {
     const newAccId = 'acc_' + accountName.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -399,7 +403,7 @@ export function recordFinanceTransaction(parsed, source = 'wa_dm', rawInput = ''
     id: txId,
     type: parsed.type || 'expense',
     amount: parsed.amount,
-    account: account ? account.name : 'Cash',
+    account: account ? account.name : 'Bank Accounts',
     accountBalance: updatedAcc ? updatedAcc.balance : 0,
     toAccount: toAccount ? toAccount.name : null,
     toAccountBalance: updatedToAcc ? updatedToAcc.balance : null,
@@ -470,7 +474,7 @@ Jika gambar ini ADALAH bukti pembayaran / struk / mutasi bank / QRIS:
 2. "type": 'expense' (pengeluaran), 'income' (pemasukan), atau 'transfer' (pindah saldo antar rekening).
 3. "amount": total nominal pembayaran akhir yang sah (angka integer Rupiah, abaikan desimal/sen).
 4. "merchant": Nama toko / merchant / penerima transfer (contoh: "Kopi Kenangan", "Indomaret", "SPBU Pertamina", "PLN", nama orang jika transfer).
-5. "account": Nama bank atau e-wallet sumber pembayaran jika terlihat di struk/screenshot (misal: "BCA", "Mandiri", "GoPay", "OVO", "ShopeePay", "Cash"). Default ke "BCA" jika m-banking BCA atau tidak yakin.
+5. "account": Nama bank atau e-wallet sumber pembayaran jika terlihat di struk/screenshot (misal: "Bank Accounts", "BCA", "Mandiri", "GoPay", "OVO", "ShopeePay", "Cash"). Default ke "Bank Accounts" jika m-banking atau tidak yakin.
 6. "toAccount": Jika type 'transfer', bank tujuan. Jika bukan, null.
 7. "category": Kategori paling sesuai dari daftar kategori di atas.
 8. "description": Ringkasan singkat transaksi (misal: "Kopi Kenangan", "Beli Bensin", "Makan Siang", "Belanja Mingguan").
@@ -605,7 +609,7 @@ Jika rekaman suara ini ADALAH instruksi mencatat keuangan:
 3. "type": 'expense' | 'income' | 'transfer'
 4. "amount": total nominal integer Rupiah (misal "seratus ribu" -> 100000, "25k" -> 25000)
 5. "merchant": Nama merchant / barang / toko jika ada
-6. "account": Akun sumber pembayaran (misal "BCA", "GoPay", "Cash", dll). Default "Cash" jika tidak disebut.
+6. "account": Akun sumber pembayaran (misal "Bank Accounts", "BCA", "GoPay", "Cash", dll). Default "Bank Accounts" jika tidak disebut.
 7. "toAccount": Akun tujuan jika type 'transfer'
 8. "category": Kategori yang paling relevan dari daftar di atas
 9. "description": Keterangan singkat pengeluaran
@@ -954,7 +958,7 @@ export function createManualTransaction(data) {
 
   let account = accountId ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(accountId) : null;
   if (!account) {
-    account = db.prepare("SELECT * FROM accounts ORDER BY id ASC LIMIT 1").get();
+    account = db.prepare("SELECT * FROM accounts WHERE LOWER(name) = 'bank accounts'").get() || db.prepare("SELECT * FROM accounts ORDER BY id ASC LIMIT 1").get();
   }
 
   let toAccount = null;
@@ -1252,7 +1256,7 @@ export function exportTransactionsCsv(monthStr = null) {
       escapeCsv(r.transaction_date),
       escapeCsv(typeName),
       escapeCsv(r.amount),
-      escapeCsv(r.account_name || 'Cash'),
+      escapeCsv(r.account_name || 'Bank Accounts'),
       escapeCsv(r.to_account_name || '-'),
       escapeCsv(r.category_name || 'Lain-lain'),
       escapeCsv(r.merchant || '-'),
@@ -1473,7 +1477,7 @@ export function commitImportedTransactions(transactions, targetAccountId) {
 
   let account = targetAccountId ? db.prepare("SELECT * FROM accounts WHERE id = ?").get(targetAccountId) : null;
   if (!account) {
-    account = db.prepare("SELECT * FROM accounts WHERE name = 'BCA'").get() || db.prepare("SELECT * FROM accounts LIMIT 1").get();
+    account = db.prepare("SELECT * FROM accounts WHERE LOWER(name) = 'bank accounts'").get() || db.prepare("SELECT * FROM accounts LIMIT 1").get();
   }
 
   const nowIso = new Date().toISOString();
