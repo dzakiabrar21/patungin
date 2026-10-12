@@ -451,12 +451,13 @@ export async function initWhatsAppBot(port = null) {
         }
 
         const isTrigger =
+          lowerText.startsWith('/hitungin') ||
           lowerText.startsWith('/bunted') ||
           lowerText.startsWith('/patungin') ||
           lowerText.startsWith('/split') ||
           lowerText.startsWith('/hitung');
 
-        // Case A: Image with /bunted trigger
+        // Case A: Image with /hitungin trigger
         if (isTrigger && hasImage) {
           if (msgId) processedMessages.add(msgId);
           console.log(`[WhatsAppBot] 📩 Trigger struk diterima di ${isGroup ? 'Grup' : 'Chat'}: ${chatId}`);
@@ -510,11 +511,11 @@ export async function initWhatsAppBot(port = null) {
           }
         }
 
-        // Case C: /bunted command without image
+        // Case C: /hitungin command without image
         if (isTrigger && !hasImage) {
           if (msgId) processedMessages.add(msgId);
           await sock.sendMessage(chatId, {
-            text: '📸 *PatungIn Bot:* Silakan kirim *foto struk (bisa 1 atau beberapa struk sekaligus)* dengan caption */bunted* untuk memindai dan membuat link split bill!'
+            text: '📸 *PatungIn Bot:* Silakan kirim *foto struk (bisa 1 atau beberapa struk sekaligus)* dengan caption */hitungin* untuk memindai dan membuat link split bill!'
           });
           continue;
         }
@@ -972,7 +973,7 @@ export async function initWhatsAppBot(port = null) {
           const session = sessionStore.getActiveSessionForGroup(chatId);
           if (!session || !session.receipt || !session.receipt.items) {
             await sock.sendMessage(chatId, {
-              text: '⚠️ Belum ada sesi split bill aktif di grup ini. Kirim foto struk dengan */bunted* terlebih dahulu!'
+              text: '⚠️ Belum ada sesi split bill aktif di grup ini. Kirim foto struk dengan */hitungin* terlebih dahulu!'
             }, { quoted: m });
             continue;
           }
@@ -1014,7 +1015,7 @@ ${statusLines.join('\n\n')}
           const session = sessionStore.getActiveSessionForGroup(chatId);
           if (!session || !session.receipt) {
             await sock.sendMessage(chatId, {
-              text: '⚠️ Belum ada sesi split bill aktif di grup ini. Kirim foto struk dengan */bunted* terlebih dahulu!'
+              text: '⚠️ Belum ada sesi split bill aktif di grup ini. Kirim foto struk dengan */hitungin* terlebih dahulu!'
             }, { quoted: m });
             continue;
           }

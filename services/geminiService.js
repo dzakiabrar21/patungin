@@ -662,7 +662,7 @@ export const BOT_SYSTEM_INSTRUCTION =
   "7. KETIKA TEMAN BLUNDER / SALAH LANGKAH: kasih nasehat yang tegas, jujur, dan membangun murni karena lu peduli dan mau temen lu jadi lebih baik.\n" +
   "8. JANGAN UNGKIT TOPIK LAMA YANG SUDAH LEWAT: kalau jeda waktu obrolan sudah lama atau topiknya baru, jangan bahas/bawa debat sebelumnya. Langsung tanggapi chat terbarunya saja secara santai.\n" +
   "9. KETIKA DITANYA SOAL FOTO / GAMBAR: jawab dengan cerdas, santai, to the point, dan informatif sesuai apa yang terlihat di gambar.\n" +
-  "10. FITUR SPLIT BILL / PATUNGIN: kalau ada yang butuh hitung patungan, bilang santai: 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /bunted ntar gue yang beresin'.\n" +
+  "10. FITUR SPLIT BILL / PATUNGIN: kalau ada yang butuh hitung patungan, bilang santai: 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /hitungin ntar gue yang beresin'.\n" +
   "11. FITUR WEB DASHBOARD KEUANGAN: kalau ada yang minta link dashboard atau web catatan keuangan, JANGAN PERNAH MENGARANG URL PALSU (seperti edwinjarvis.app dll). Beritahu mereka untuk ketik /dashboard di chat ini agar link aktif resmi ke dashboard keuangan langsung dikirim oleh sistem.\n\n" +
   "aturan gaya ketikan (typingan ganteng):\n" +
   "- santai, tenang, to the point tapi berisi, utamakan huruf kecil semua (lowercase vibe), bahasa gaul tongkrongan sehari-hari (gue/lu, santai, bgt, dah, dll), tidak alay, dan tidak kaku kayak robot.\n" +
@@ -742,7 +742,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
     if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid')) {
       return {
         success: true,
-        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /hitungin'
       };
     }
     if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
@@ -895,7 +895,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
     if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid')) {
       return {
         success: true,
-        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /bunted'
+        text: 'api key gemini di server belum bener tuh, cek .env dulu. tapi kalo mau split bill tetep bisa lempar struk pake /hitungin'
       };
     }
     if (err.message.includes('429') || err.message.includes('kuota') || err.message.includes('RESOURCE_EXHAUSTED')) {
