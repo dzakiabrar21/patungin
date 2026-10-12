@@ -114,12 +114,16 @@ export function initDatabase() {
 function seedInitialData() {
   // Default Accounts
   const defaultAccounts = [
-    { id: 'acc_bca', name: 'BCA', type: 'bank', balance: 0 },
+    { id: 'acc_bank_accounts', name: 'Bank Accounts', type: 'bank', balance: 0 },
+    { id: 'acc_bsi', name: 'BSI', type: 'bank', balance: 0 },
     { id: 'acc_mandiri', name: 'Mandiri', type: 'bank', balance: 0 },
+    { id: 'acc_jago', name: 'Jago', type: 'bank', balance: 0 },
     { id: 'acc_gopay', name: 'GoPay', type: 'ewallet', balance: 0 },
+    { id: 'acc_rdn_stockbit', name: 'RDN Stockbit', type: 'investment', balance: 0 },
+    { id: 'acc_cash', name: 'Cash', type: 'cash', balance: 0 },
+    { id: 'acc_bca', name: 'BCA', type: 'bank', balance: 0 },
     { id: 'acc_ovo', name: 'OVO', type: 'ewallet', balance: 0 },
-    { id: 'acc_shopeepay', name: 'ShopeePay', type: 'ewallet', balance: 0 },
-    { id: 'acc_cash', name: 'Cash', type: 'cash', balance: 0 }
+    { id: 'acc_shopeepay', name: 'ShopeePay', type: 'ewallet', balance: 0 }
   ];
 
   const insertAccount = db.prepare(`

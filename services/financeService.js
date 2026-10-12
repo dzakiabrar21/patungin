@@ -54,6 +54,15 @@ export function findAccountByName(name) {
     return db.prepare("SELECT * FROM accounts WHERE LOWER(name) = 'bank accounts' OR LOWER(name) LIKE '%bank accounts%'").get() ||
            db.prepare("SELECT * FROM accounts WHERE LOWER(name) LIKE '%bank%'").get();
   }
+  if (clean === 'rdn' || clean === 'stockbit' || clean === 'rdn stockbit' || clean === 'investasi') {
+    return db.prepare("SELECT * FROM accounts WHERE LOWER(name) LIKE '%stockbit%' OR LOWER(name) LIKE '%rdn%'").get();
+  }
+  if (clean === 'jago' || clean === 'bank jago') {
+    return db.prepare("SELECT * FROM accounts WHERE LOWER(name) LIKE '%jago%'").get();
+  }
+  if (clean === 'bsi' || clean === 'bank bsi') {
+    return db.prepare("SELECT * FROM accounts WHERE LOWER(name) = 'bsi' OR LOWER(name) LIKE '%bsi%'").get();
+  }
   return db.prepare("SELECT * FROM accounts WHERE LOWER(name) = ? OR LOWER(name) LIKE ?").get(clean, `%${clean}%`);
 }
 
@@ -71,25 +80,26 @@ export function parseQuickRegex(text) {
   if (!text || typeof text !== 'string') return null;
   const cleanText = text.trim();
 
-  // Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke bca 100rb"
-  const transferPattern = /^(?:tf|transfer|tarik tunai)\s+([a-zA-Z]+)(?:\s+ke\s+([a-zA-Z]+))?\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?/i;
+  // Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
+  const transferPattern = /^(?:tf|transfer|tarik tunai|pindah)\s+([a-zA-Z0-9]+)(?:\s+ke\s+([a-zA-Z0-9\s]+?))?\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?$/i;
   const tfMatch = cleanText.match(transferPattern);
   if (tfMatch) {
-    const fromName = tfMatch[1];
-    const toName = tfMatch[2] || (cleanText.toLowerCase().includes('tarik tunai') ? 'Cash' : null);
+    const fromName = tfMatch[1].trim();
+    const toName = (tfMatch[2] || (cleanText.toLowerCase().includes('tarik tunai') ? 'Cash' : null))?.trim();
     const rawVal = parseFloat(tfMatch[3].replace(/[.,]/g, ''));
     const multiplier = (tfMatch[4] || '').toLowerCase();
 
     let amount = rawVal;
     if (multiplier === 'k' || multiplier === 'rb' || multiplier === 'ribu') amount *= 1000;
     else if (multiplier === 'jt' || multiplier === 'juta') amount *= 1000000;
+    else if (!multiplier && rawVal > 0 && rawVal <= 500) amount *= 1000;
 
     return {
       success: true,
       type: 'transfer',
       amount,
       accountName: fromName,
-      toAccountName: toName || 'Cash',
+      toAccountName: toName || 'Bank Accounts',
       categoryName: 'Transfer Antar Dompet',
       merchant: null,
       description: cleanText,
@@ -189,6 +199,9 @@ export function parseQuickRegex(text) {
       isConfident = true;
     } else if (/\b(obat|apotek|vitamin|panadol|klinik|dokter|paracetamol|tolak angin)\b/i.test(desc)) {
       categoryName = 'Obat dan herbal';
+      isConfident = true;
+    } else if (/\b(nabung|tabungan|simpan|investasi|reksadana|saham)\b/i.test(desc)) {
+      categoryName = 'Tabungan';
       isConfident = true;
     }
 

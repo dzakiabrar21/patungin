@@ -32,10 +32,13 @@ destDb.pragma('foreign_keys = ON');
 console.log('1. Menyiapkan Akun (Accounts)...');
 const defaultAccounts = [
   { id: 'acc_bank_accounts', name: 'Bank Accounts', type: 'bank', bal: 0 },
+  { id: 'acc_bsi', name: 'BSI', type: 'bank', bal: 0 },
+  { id: 'acc_mandiri', name: 'Mandiri', type: 'bank', bal: 0 },
+  { id: 'acc_jago', name: 'Jago', type: 'bank', bal: 0 },
+  { id: 'acc_gopay', name: 'GoPay', type: 'ewallet', bal: 0 },
+  { id: 'acc_rdn_stockbit', name: 'RDN Stockbit', type: 'investment', bal: 0 },
   { id: 'acc_cash', name: 'Cash', type: 'cash', bal: 0 },
   { id: 'acc_bca', name: 'BCA', type: 'bank', bal: 0 },
-  { id: 'acc_mandiri', name: 'Mandiri', type: 'bank', bal: 0 },
-  { id: 'acc_gopay', name: 'GoPay', type: 'ewallet', bal: 0 },
   { id: 'acc_ovo', name: 'OVO', type: 'ewallet', bal: 0 },
   { id: 'acc_shopeepay', name: 'ShopeePay', type: 'ewallet', bal: 0 }
 ];

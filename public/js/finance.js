@@ -252,6 +252,11 @@ function renderWallets(accounts) {
 
   // Predefined brand styling from Figma
   const brandStyles = {
+    'bsi': { grad: 'linear-gradient(135deg, #00A39E 0%, #007A76 100%)', tag: 'Bank Syariah', abbr: 'BSI' },
+    'jago': { grad: 'linear-gradient(135deg, #FFB703 0%, #FB8500 100%)', tag: 'Bank Digital', abbr: 'JAGO' },
+    'stockbit': { grad: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', tag: 'Investasi / Tabungan', abbr: 'RDN' },
+    'rdnstockbit': { grad: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', tag: 'Investasi / Tabungan', abbr: 'RDN' },
+    'bankaccounts': { grad: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)', tag: 'Rekening bank', abbr: 'BANK' },
     'bca': { grad: 'linear-gradient(135deg, #086DB4 0%, #20A8DE 100%)', tag: 'Rekening bank', abbr: 'BCA' },
     'mandiri': { grad: 'linear-gradient(135deg, #0B54A0 0%, #F7B824 100%)', tag: 'Rekening bank', abbr: 'M' },
     'gopay': { grad: 'linear-gradient(135deg, #12A5DC 0%, #0877BD 100%)', tag: 'E-Wallet', abbr: 'GP' },
@@ -267,7 +272,11 @@ function renderWallets(accounts) {
     const key = acc.name.toLowerCase().replace(/[^a-z]/g, '');
     let matched = brandStyles[key];
     if (!matched) {
-      if (key.includes('bca')) matched = brandStyles.bca;
+      if (key.includes('bsi')) matched = brandStyles.bsi;
+      else if (key.includes('jago')) matched = brandStyles.jago;
+      else if (key.includes('stockbit') || key.includes('rdn')) matched = brandStyles.stockbit;
+      else if (key.includes('bankaccount')) matched = brandStyles.bankaccounts;
+      else if (key.includes('bca')) matched = brandStyles.bca;
       else if (key.includes('mandiri')) matched = brandStyles.mandiri;
       else if (key.includes('gopay')) matched = brandStyles.gopay;
       else if (key.includes('cash') || key.includes('tunai')) matched = brandStyles.cash;
