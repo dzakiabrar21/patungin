@@ -76,11 +76,118 @@ export function findCategoryByName(name, type = 'expense') {
 // 3. Fast Regex Parser (Ekstraksi Cepat 0 ms)
 // ==========================================
 
+export function detectCategoryByKeywords(desc) {
+  if (!desc) return { categoryName: 'Lain-lain', isConfident: false };
+  if (/\b(gaji|gajian|income|masuk|bonus|cashback|transferan)\b/i.test(desc)) {
+    return { categoryName: 'Gaji / Pemasukan', isConfident: true };
+  } else if (/\b(motor|cuci motor|servis motor|service motor|bengkel|oli|tambal ban|spul)\b/i.test(desc)) {
+    return { categoryName: 'Motor services', isConfident: true };
+  } else if (/\b(baju|knitwear|kaos|celana|jaket|hoodie|kemeja|sepatu|sandal|pakaian|outfit)\b/i.test(desc)) {
+    return { categoryName: 'Apparel & Pakaian', isConfident: true };
+  } else if (/\b(naspad|padang|warteg|makan|nasi|soto|mie|bakso|ayam|sate|geprek|pecel|resto|solaria|mcd|kfc)\b/i.test(desc)) {
+    return { categoryName: 'Makanan & Minuman', isConfident: true };
+  } else if (/\b(snack|ciki|kopi|coffee|teh|boba|minum|jajan|es|chatime|starbucks|roti|ice cream)\b/i.test(desc)) {
+    return { categoryName: 'Snack and drink', isConfident: true };
+  } else if (/\b(bensin|pertalite|pertamax|shell|spbu|solar)\b/i.test(desc)) {
+    return { categoryName: 'Bensin', isConfident: true };
+  } else if (/\b(kereta|krl|mrt|lrt|kai|commuter)\b/i.test(desc)) {
+    return { categoryName: 'Kereta', isConfident: true };
+  } else if (/\b(gojek|grab|ojol|goride|gocar|tol|busway|angkot|ojek)\b/i.test(desc)) {
+    return { categoryName: 'Transportasi', isConfident: true };
+  } else if (/\b(parkir)\b/i.test(desc)) {
+    return { categoryName: 'Parkir', isConfident: true };
+  } else if (/\b(air minum|aqua|le minerale|galon|isi ulang)\b/i.test(desc)) {
+    return { categoryName: 'Air minum', isConfident: true };
+  } else if (/\b(laundry|loundry|cuci baju|setrika)\b/i.test(desc)) {
+    return { categoryName: 'Laundry', isConfident: true };
+  } else if (/\b(barber|cukur|potong rambut)\b/i.test(desc)) {
+    return { categoryName: 'Barber', isConfident: true };
+  } else if (/\b(wifi|kuota|paket data|pulsa|indihome|telkomsel|tri|xl|indosat)\b/i.test(desc)) {
+    return { categoryName: 'Internet', isConfident: true };
+  } else if (/\b(listrik|pln|token listrik|token|pdam)\b/i.test(desc)) {
+    return { categoryName: 'Listrik & Tagihan', isConfident: true };
+  } else if (/\b(indomaret|alfamart|superindo|sabun|odol|shampoo)\b/i.test(desc)) {
+    return { categoryName: 'Belanja Harian', isConfident: true };
+  } else if (/\b(pasar|sayur|ikan|daging|bumbu)\b/i.test(desc)) {
+    return { categoryName: 'Pasar', isConfident: true };
+  } else if (/\b(buah|apel|jeruk|pisang|mangga|semangka)\b/i.test(desc)) {
+    return { categoryName: 'Buah', isConfident: true };
+  } else if (/\b(shopee|tokopedia|lazada|tiktok shop|shopping|beli barang)\b/i.test(desc)) {
+    return { categoryName: 'Shopping', isConfident: true };
+  } else if (/\b(nonton|bioskop|xxi|game|steam|topup|billiard|nongkrong|karoke)\b/i.test(desc)) {
+    return { categoryName: 'Hiburan', isConfident: true };
+  } else if (/\b(obat|apotek|vitamin|panadol|klinik|dokter|paracetamol|tolak angin)\b/i.test(desc)) {
+    return { categoryName: 'Obat dan herbal', isConfident: true };
+  } else if (/\b(nabung|tabungan|simpan|investasi|reksadana|saham)\b/i.test(desc)) {
+    return { categoryName: 'Tabungan', isConfident: true };
+  }
+  return { categoryName: 'Lain-lain', isConfident: false };
+}
+
 export function parseQuickRegex(text) {
   if (!text || typeof text !== 'string') return null;
   const cleanText = text.trim();
 
-  // 1. Filter out chat, pertanyaan, soal matematika, dan sapaan agar tidak pernah salah dicatat sebagai transaksi
+  // 1. Pola Prefix Simbol Cepat (+ / -): "- 25k kopi bca", "- kopi 25k bca", "+ 5jt gaji mandiri"
+  const prefixMatch = cleanText.match(/^([+-]|—)\s*(.*)$/);
+  if (prefixMatch) {
+    const sign = prefixMatch[1];
+    const rest = prefixMatch[2].trim();
+    const isIncome = sign === '+';
+
+    let parsed = null;
+    // Format A: "- 25k kopi bca" atau "- 25000 kopi" (nominal di awal)
+    const patternA = /^([\d,.]+)\s*(k|rb|ribu|jt|juta)?\s+(.+?)(?:\s+([a-zA-Z0-9]+))?$/i;
+    const matchA = rest.match(patternA);
+    if (matchA) {
+      const rawNum = parseFloat(matchA[1].replace(/[.,]/g, ''));
+      const unit = (matchA[2] || '').toLowerCase();
+      let candidateDesc = matchA[3].trim();
+      let candidateAcc = (matchA[4] || '').trim();
+      const resAcc = candidateAcc ? findAccountByName(candidateAcc) : null;
+      if (!resAcc && candidateAcc) {
+        candidateDesc += ' ' + candidateAcc;
+        candidateAcc = '';
+      }
+      parsed = { rawNum, unit, desc: candidateDesc, acc: resAcc ? resAcc.name : 'Bank Accounts' };
+    } else {
+      // Format B: "- kopi 25k bca" atau "- kopi 25000" (nominal di tengah/akhir)
+      const patternB = /^(.*?)\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?(?:\s+([a-zA-Z0-9]+))?$/i;
+      const matchB = rest.match(patternB);
+      if (matchB) {
+        const candidateDesc = matchB[1].trim();
+        const rawNum = parseFloat(matchB[2].replace(/[.,]/g, ''));
+        const unit = (matchB[3] || '').toLowerCase();
+        const candidateAcc = (matchB[4] || '').trim();
+        const resAcc = candidateAcc ? findAccountByName(candidateAcc) : null;
+        parsed = { rawNum, unit, desc: candidateDesc, acc: resAcc ? resAcc.name : 'Bank Accounts' };
+      }
+    }
+
+    if (parsed && parsed.rawNum > 0) {
+      let amount = parsed.rawNum;
+      if (parsed.unit === 'k' || parsed.unit === 'rb' || parsed.unit === 'ribu') amount *= 1000;
+      else if (parsed.unit === 'jt' || parsed.unit === 'juta') amount *= 1000000;
+      else if (!parsed.unit && parsed.rawNum > 0 && parsed.rawNum <= 500) amount *= 1000;
+
+      if (amount > 0) {
+        const { categoryName } = isIncome ? { categoryName: 'Gaji / Pemasukan' } : detectCategoryByKeywords(parsed.desc);
+        return {
+          success: true,
+          type: isIncome ? 'income' : 'expense',
+          amount,
+          accountName: parsed.acc,
+          toAccountName: null,
+          categoryName,
+          merchant: parsed.desc,
+          description: parsed.desc,
+          confidence: 1.0
+        };
+      }
+    }
+  }
+
+  // 2. Filter out chat, pertanyaan, soal matematika, dan sapaan agar tidak pernah salah dicatat sebagai transaksi
   const lowerText = cleanText.toLowerCase();
   const isNonTransaction = 
     cleanText.includes('?') ||
@@ -99,7 +206,7 @@ export function parseQuickRegex(text) {
     return null;
   }
 
-  // 2. Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
+  // 3. Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
   const transferPattern = /^(?:tf|transfer|tarik tunai|pindah)\s+([a-zA-Z0-9]+)(?:\s+ke\s+([a-zA-Z0-9\s]+?))?\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?$/i;
   const tfMatch = cleanText.match(transferPattern);
   if (tfMatch) {
@@ -126,7 +233,7 @@ export function parseQuickRegex(text) {
     };
   }
 
-  // 3. Pola Pengeluaran/Pemasukan umum:
+  // 4. Pola Pengeluaran/Pemasukan umum:
   // Contoh: "makan siang padang 35k bca", "kopi 25000 gopay", "bensin 50rb cash", "cuci motor 20", "naspad 15k"
   const generalPattern = /^(.*?)\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?(?:\s+([a-zA-Z]+))?$/i;
   const genMatch = cleanText.match(generalPattern);
@@ -160,74 +267,10 @@ export function parseQuickRegex(text) {
     // Deteksi Income
     const isIncome = /\b(gaji|gajian|income|masuk|bonus|cashback|transferan)\b/i.test(desc);
 
-    // Tebak Kategori berbasis Riwayat Pengguna
-    let categoryName = 'Lain-lain';
-    let isConfident = false;
-
-    if (isIncome) {
-      categoryName = 'Gaji / Pemasukan';
-      isConfident = true;
-    } else if (/\b(motor|cuci motor|servis motor|service motor|bengkel|oli|tambal ban|spul)\b/i.test(desc)) {
-      categoryName = 'Motor services';
-      isConfident = true;
-    } else if (/\b(baju|knitwear|kaos|celana|jaket|hoodie|kemeja|sepatu|sandal|pakaian|outfit)\b/i.test(desc)) {
-      categoryName = 'Apparel & Pakaian';
-      isConfident = true;
-    } else if (/\b(naspad|padang|warteg|makan|nasi|soto|mie|bakso|ayam|sate|geprek|pecel|resto|solaria|mcd|kfc)\b/i.test(desc)) {
-      categoryName = 'Makanan & Minuman';
-      isConfident = true;
-    } else if (/\b(snack|ciki|kopi|coffee|teh|boba|minum|jajan|es|chatime|starbucks|roti|ice cream)\b/i.test(desc)) {
-      categoryName = 'Snack and drink';
-      isConfident = true;
-    } else if (/\b(bensin|pertalite|pertamax|shell|spbu|solar)\b/i.test(desc)) {
-      categoryName = 'Bensin';
-      isConfident = true;
-    } else if (/\b(kereta|krl|mrt|lrt|kai|commuter)\b/i.test(desc)) {
-      categoryName = 'Kereta';
-      isConfident = true;
-    } else if (/\b(gojek|grab|ojol|goride|gocar|tol|busway|angkot|ojek)\b/i.test(desc)) {
-      categoryName = 'Transportasi';
-      isConfident = true;
-    } else if (/\b(parkir)\b/i.test(desc)) {
-      categoryName = 'Parkir';
-      isConfident = true;
-    } else if (/\b(air minum|aqua|le minerale|galon|isi ulang)\b/i.test(desc)) {
-      categoryName = 'Air minum';
-      isConfident = true;
-    } else if (/\b(laundry|loundry|cuci baju|setrika)\b/i.test(desc)) {
-      categoryName = 'Laundry';
-      isConfident = true;
-    } else if (/\b(barber|cukur|potong rambut)\b/i.test(desc)) {
-      categoryName = 'Barber';
-      isConfident = true;
-    } else if (/\b(wifi|kuota|paket data|pulsa|indihome|telkomsel|tri|xl|indosat)\b/i.test(desc)) {
-      categoryName = 'Internet';
-      isConfident = true;
-    } else if (/\b(listrik|pln|token listrik|token|pdam)\b/i.test(desc)) {
-      categoryName = 'Listrik & Tagihan';
-      isConfident = true;
-    } else if (/\b(indomaret|alfamart|superindo|sabun|odol|shampoo)\b/i.test(desc)) {
-      categoryName = 'Belanja Harian';
-      isConfident = true;
-    } else if (/\b(pasar|sayur|ikan|daging|bumbu)\b/i.test(desc)) {
-      categoryName = 'Pasar';
-      isConfident = true;
-    } else if (/\b(buah|apel|jeruk|pisang|mangga|semangka)\b/i.test(desc)) {
-      categoryName = 'Buah';
-      isConfident = true;
-    } else if (/\b(shopee|tokopedia|lazada|tiktok shop|shopping|beli barang)\b/i.test(desc)) {
-      categoryName = 'Shopping';
-      isConfident = true;
-    } else if (/\b(nonton|bioskop|xxi|game|steam|topup|billiard|nongkrong|karoke)\b/i.test(desc)) {
-      categoryName = 'Hiburan';
-      isConfident = true;
-    } else if (/\b(obat|apotek|vitamin|panadol|klinik|dokter|paracetamol|tolak angin)\b/i.test(desc)) {
-      categoryName = 'Obat dan herbal';
-      isConfident = true;
-    } else if (/\b(nabung|tabungan|simpan|investasi|reksadana|saham)\b/i.test(desc)) {
-      categoryName = 'Tabungan';
-      isConfident = true;
-    }
+    // Tebak Kategori berbasis keyword
+    const { categoryName, isConfident } = isIncome 
+      ? { categoryName: 'Gaji / Pemasukan', isConfident: true }
+      : detectCategoryByKeywords(desc);
 
     // Validasi dompet: accCandidate HANYA diakui jika memang dompet yang valid di database
     const resolvedAccount = accCandidate ? findAccountByName(accCandidate) : null;

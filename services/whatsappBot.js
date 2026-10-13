@@ -694,8 +694,10 @@ export async function initWhatsAppBot(port = null) {
               }
             }
 
-            // 3. Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
-            const isNonFinanceChat = 
+            // 3. Pencatatan Teks Transaksi Otomatis (Prefix Cepat +/-, Regex Fast Match, atau Heuristik Keuangan)
+            const isExplicitPrefixTx = /^([+-]|—)\s*\S+/.test(cleanText);
+
+            const isNonFinanceChat = !isExplicitPrefixTx && (
               text.includes('?') ||
               /\b(berapa|brp|apa|apakah|kapan|kenapa|mengapa|mana|gimana|bagaimana|siapa|kok|rekap|cek|lihat|tanya)\b/i.test(lowerText) ||
               /\b(masuk mana|masuk apa|kategori apa|tercatat apa|sudah abis|udah abis|total|kemarin|bulan lalu|tadi)\b/i.test(lowerText) ||
@@ -703,12 +705,16 @@ export async function initWhatsAppBot(port = null) {
               /\b(hitung|akar|kuadrat|tambah|kurang|kali|bagi|rumus|persamaan|soal|matematika)\b/i.test(lowerText) ||
               /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText) ||
               /\b(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\b/i.test(lowerText) ||
-              /\b(sejak|dari awal|awal|akhir|mulai|selama|sepanjang|tahun|2024|2025|2026|2027)\b/i.test(lowerText);
+              /\b(sejak|dari awal|awal|akhir|mulai|selama|sepanjang|tahun|2024|2025|2026|2027)\b/i.test(lowerText)
+            );
 
             const quickMatch = (!isNonFinanceChat && financeService && typeof financeService.parseQuickRegex === 'function')
               ? financeService.parseQuickRegex(text)
               : null;
-            const hasFinanceMarkers = !isNonFinanceChat && /\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText);
+            const hasFinanceMarkers = !isNonFinanceChat && (
+              isExplicitPrefixTx ||
+              (/\b(\d+\s*(?:k|rb|ribu|jt|juta)|beli|bayar|keluar|tf|transfer|tarik tunai|rp\.?\s*\d+)\b/i.test(lowerText) && /\d/.test(lowerText))
+            );
 
             if (quickMatch || hasFinanceMarkers) {
               if (msgId) processedMessages.add(msgId);
