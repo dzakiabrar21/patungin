@@ -80,7 +80,18 @@ export function parseQuickRegex(text) {
   if (!text || typeof text !== 'string') return null;
   const cleanText = text.trim();
 
-  // Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
+  // 1. Filter out chat, pertanyaan, soal matematika, dan sapaan agar tidak pernah salah dicatat sebagai transaksi
+  const lowerText = cleanText.toLowerCase();
+  const isNonTransaction = 
+    cleanText.includes('?') ||
+    /\b(berapa|apa|apakah|kenapa|mengapa|kapan|gimana|bagaimana|siapa|kok|mana|ada apa|kenapa emang)\b/i.test(lowerText) ||
+    /\b(jelasin|jelaskan|coba|tanya|bisa|bisa ga|bisakah|gimana cara|cara kerja|developer|kamu|aku|lu|gue|gw)\b/i.test(lowerText) ||
+    /\b(hitung|akar|kuadrat|tambah|kurang|kali|bagi|rumus|persamaan|soal|matematika)\b/i.test(lowerText) ||
+    /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText);
+
+  if (isNonTransaction) return null;
+
+  // 2. Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
   const transferPattern = /^(?:tf|transfer|tarik tunai|pindah)\s+([a-zA-Z0-9]+)(?:\s+ke\s+([a-zA-Z0-9\s]+?))?\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?$/i;
   const tfMatch = cleanText.match(transferPattern);
   if (tfMatch) {
@@ -107,9 +118,8 @@ export function parseQuickRegex(text) {
     };
   }
 
-  // Pola Pengeluaran/Pemasukan umum:
+  // 3. Pola Pengeluaran/Pemasukan umum:
   // Contoh: "makan siang padang 35k bca", "kopi 25000 gopay", "bensin 50rb cash", "cuci motor 20", "naspad 15k"
-  // Regex mencari: [keterangan...] [angka] [opsional satuan k/rb/ribu/jt/juta] [opsional: akun]
   const generalPattern = /^(.*?)\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?(?:\s+([a-zA-Z]+))?$/i;
   const genMatch = cleanText.match(generalPattern);
 
@@ -119,24 +129,31 @@ export function parseQuickRegex(text) {
     const unit = (genMatch[3] || '').toLowerCase();
     const accCandidate = (genMatch[4] || '').trim();
 
+    // Validasi Deskripsi:
+    // Transaksi belanja yang wajar deskripsinya pendek (maksimal 45 karakter dan <= 6 kata)
+    if (!desc || desc.length > 45 || desc.split(/\s+/).length > 6) {
+      return null;
+    }
+
     let amount = rawNum;
     if (unit === 'k' || unit === 'rb' || unit === 'ribu') {
       amount *= 1000;
     } else if (unit === 'jt' || unit === 'juta') {
       amount *= 1000000;
     } else if (!unit) {
-      // Jika tanpa satuan: angka <= 500 pada chat pengeluaran otomatis diartikan ribuan (misal "cuci motor 20" -> 20.000)
+      // Jika tanpa satuan (angka mentah):
+      // Hanya izinkan jika angka realistis untuk transaksi belanja (misal >= 1000 atau jika <= 500 harus punya keyword pengeluaran yang jelas)
       if (rawNum > 0 && rawNum <= 500) {
         amount *= 1000;
       }
     }
 
-    if (amount <= 0) return null;
+    if (amount <= 0 || isNaN(amount)) return null;
 
     // Deteksi Income
     const isIncome = /\b(gaji|gajian|income|masuk|bonus|cashback|transferan)\b/i.test(desc);
 
-    // Tebak Kategori berbasis 29 Kategori Riwayat Pengguna
+    // Tebak Kategori berbasis Riwayat Pengguna
     let categoryName = 'Lain-lain';
     let isConfident = false;
 
@@ -205,6 +222,11 @@ export function parseQuickRegex(text) {
       isConfident = true;
     }
 
+    // Jika tanpa satuan (angka mentah seperti 20 atau 64), HANYA izinkan jika isConfident true (ada kata pengeluaran jelas)
+    if (!unit && !isConfident && !accCandidate) {
+      return null;
+    }
+
     return {
       success: true,
       type: isIncome ? 'income' : 'expense',
@@ -214,7 +236,7 @@ export function parseQuickRegex(text) {
       categoryName,
       merchant: desc,
       description: desc,
-      confidence: isConfident ? 0.95 : 0.5
+      confidence: isConfident ? 0.95 : 0.6
     };
   }
 
@@ -247,13 +269,14 @@ Daftar Akun/Dompet yang tersedia: [${accounts.join(', ')}]
 Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "Transfer Antar Dompet"]
 
 Aturan:
-1. Tentukan "type": 'expense' (pengeluaran), 'income' (pemasukan), atau 'transfer' (pindah uang antar rekening).
-2. "amount": integer nominal uang dalam Rupiah. Ubah satuan seperti 'k'/'rb' -> x1000, 'jt' -> x1000000.
-3. "account": Nama akun sumber pembayaran (cocokkan ke daftar akun di atas, jika tidak disebut default ke "Bank Accounts").
-4. "toAccount": Khusus jika type adalah 'transfer', sebutkan akun tujuan. Selain itu null.
-5. "category": Kategori yang paling relevan dari daftar di atas.
-6. "merchant": Nama toko / tempat / pihak ketiga jika ada (contoh: "Warteg Bahari", "Kopi Kenangan", "SPBU Pertamina").
-7. "description": Ringkasan singkat transaksi (1-4 kata).
+1. PENTING: Jika pesan BUKAN instruksi pencatatan pengeluaran, pemasukan, atau transfer (misalnya: pertanyaan umum, soal matematika, obrolan santai, curhat, sapaan), KEMBALIKAN HANYA: {"success": false}. JANGAN PERNAH mengarang transaksi!
+2. Tentukan "type": 'expense' (pengeluaran), 'income' (pemasukan), atau 'transfer' (pindah uang antar rekening).
+3. "amount": integer nominal uang dalam Rupiah. Ubah satuan seperti 'k'/'rb' -> x1000, 'jt' -> x1000000.
+4. "account": Nama akun sumber pembayaran (cocokkan ke daftar akun di atas, jika tidak disebut default ke "Bank Accounts").
+5. "toAccount": Khusus jika type adalah 'transfer', sebutkan akun tujuan. Selain itu null.
+6. "category": Kategori yang paling relevan dari daftar di atas.
+7. "merchant": Nama toko / tempat / pihak ketiga jika ada (contoh: "Warteg Bahari", "Kopi Kenangan", "SPBU Pertamina").
+8. "description": Ringkasan singkat transaksi (1-4 kata).
 
 KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
 {
@@ -280,6 +303,9 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
     if (res?.success && res.content) {
       try {
         const parsed = JSON.parse(cleanJsonString(res.content));
+        if (!parsed || parsed.success === false || !parsed.amount || Number(parsed.amount) <= 0) {
+          return null;
+        }
         return {
           success: true,
           type: parsed.type || 'expense',
@@ -311,6 +337,9 @@ KEMBALIKAN HANYA JSON DENGAN SCHEMA INI (tanpa markdown backtick):
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (rawText) {
         const parsed = JSON.parse(cleanJsonString(rawText));
+        if (!parsed || parsed.success === false || !parsed.amount || Number(parsed.amount) <= 0) {
+          return null;
+        }
         return {
           success: true,
           type: parsed.type || 'expense',

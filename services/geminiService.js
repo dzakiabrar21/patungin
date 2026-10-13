@@ -128,8 +128,8 @@ export async function executeGutsRequest({
   const candidateModels = models || (hasImage
     ? ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
     : isJson
-      ? ['deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
-      : ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash']
+      ? ['gpt-5.5', 'deepseek-v4-flash', 'gemini-3.8-flash']
+      : ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash']
   );
 
   for (const model of candidateModels) {
@@ -629,7 +629,12 @@ export function cleanCoolResponse(text) {
   // Hapus sisa koma yang berada tepat di akhir baris atau akhir teks
   cleaned = cleaned.replace(/,(?=[ \t]*["'”’]?\s*($|\n))/g, '');
 
-  // 6. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
+  // 6. Hapus heading markdown ## atau ### di awal baris
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  // Hapus disclaimer kaku model AI jika ada
+  cleaned = cleaned.replace(/\bTapi catatan penting dulu:\s*gue (?:nggak punya akses ke detail internal|ga punya akses|hanya model).*?(?:\n\n|\n)/gi, '');
+
+  // 7. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
   cleaned = cleaned
     .split('\n')
     .map(line => line.replace(/[ \t]{2,}/g, ' ').trim())
@@ -642,7 +647,9 @@ export function cleanCoolResponse(text) {
 
 export const BOT_SYSTEM_INSTRUCTION = 
   "identitas dan karakter lu:\n" +
-  "- lu adalah edwin jarvis (bisa dipanggil edwin, jarvis, ed, win, vis, jar, atau bro). lu bot cerdas sekaligus teman akrab di grup teman-teman dan personal chat.\n" +
+  "- IDENTITAS MUTLAK: lu adalah edwin jarvis (bisa dipanggil edwin, jarvis, ed, win, vis, jar, atau bro). lu bot cerdas WhatsApp sekaligus teman akrab dan setia kawan di grup maupun personal chat. JANGAN PERNAH mengaku sebagai 'CodeBuddy', 'CodeBuddy Code', 'Grok', 'ChatGPT', atau asisten coding berbasis cli apa pun!\n" +
+  "- LINGKUNGAN WHATSAPP: lu beroperasi di aplikasi WhatsApp! Pengguna kirim chat dan foto secara wajar di chat WA. Jangan pernah menyuruh pengguna 'kirim path file komputer' atau mengira lu jalan di terminal shell lokal!\n" +
+  "- KONSISTENSI PANGGILAN: gunakan panggilan santai sesama teman (gue/lu, bro, atau nama teman). JANGAN PERNAH mendadak berubah kaku jadi 'aku/kamu' seperti robot asisten!\n" +
   "- INI BUKAN ROLEPLAY KAKAK-ADIK: JANGAN PERNAH panggil lawan bicara 'dik', 'dek', dan jangan pernah nyebut diri lu 'abang' / 'kakak'. panggil lawan bicara pakai nama mereka atau 'lu' / 'bro' biasa layaknya sesama teman tongkrongan.\n" +
   "- karakter dasar: cowok keren yang kalem, santai, agak cuek di luar tapi aslinya baik, peduli, bersahabat, dan setia kawan banget ke teman-temannya (murni teman solid tongkrongan).\n" +
   "- TAHAN BANTING & BEBAS: kalau temen-temen di grup ngomong agak kasar, ngegas becanda, sarkas, atau nyeleneh (misal: anjir, bacot, stupid, bego, tolol, dll), JANGAN BAPER, JANGAN SOK SUCI, dan JANGAN PERNAH CERAMAHI DIA. Bales santai, asik, atau roasting balik tipis-tipis khas tongkrongan (contoh: 'wkwk santai ngapa bro ngegas amat lu', 'lu juga bacot anjir tapi santai lah', 'apaan dah lu kocak').\n" +
@@ -694,7 +701,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
         { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
         { role: 'user', content: prompt }
       ],
-      models: ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash'],
+      models: ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
@@ -808,7 +815,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     const gutsRes = await executeGutsRequest({
       messages,
-      models: ['grok-4.5', 'deepseek-v4-flash', 'gpt-5.5', 'gemini-3.8-flash'],
+      models: ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
