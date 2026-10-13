@@ -697,11 +697,13 @@ export async function initWhatsAppBot(port = null) {
             // 3. Pencatatan Teks Transaksi Otomatis (Regex Fast Match atau Heuristik Keuangan)
             const isNonFinanceChat = 
               text.includes('?') ||
-              /\b(berapa|apa|apakah|kapan|kenapa|mengapa|mana|gimana|bagaimana|siapa|kok|rekap|cek|lihat|tanya)\b/i.test(lowerText) ||
+              /\b(berapa|brp|apa|apakah|kapan|kenapa|mengapa|mana|gimana|bagaimana|siapa|kok|rekap|cek|lihat|tanya)\b/i.test(lowerText) ||
               /\b(masuk mana|masuk apa|kategori apa|tercatat apa|sudah abis|udah abis|total|kemarin|bulan lalu|tadi)\b/i.test(lowerText) ||
               /\b(jelasin|jelaskan|coba|tanya|bisa|bisa ga|bisakah|gimana cara|cara kerja|developer|kamu|aku|lu|gue|gw)\b/i.test(lowerText) ||
               /\b(hitung|akar|kuadrat|tambah|kurang|kali|bagi|rumus|persamaan|soal|matematika)\b/i.test(lowerText) ||
-              /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText);
+              /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText) ||
+              /\b(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\b/i.test(lowerText) ||
+              /\b(sejak|dari awal|awal|akhir|mulai|selama|sepanjang|tahun|2024|2025|2026|2027)\b/i.test(lowerText);
 
             const quickMatch = (!isNonFinanceChat && financeService && typeof financeService.parseQuickRegex === 'function')
               ? financeService.parseQuickRegex(text)

@@ -785,7 +785,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
   let systemPrompt = BOT_SYSTEM_INSTRUCTION + "\n\n[USER INFO]\nNama teman yang sedang chat: " + senderName;
   if (financeContext) {
-    systemPrompt += `\n\n${financeContext}\n\n[PANDUAN MENJAWAB KEUANGAN]:\n- Lu punya akses langsung ke data riwayat keuangan asli ${senderName} di atas.\n- Jika ${senderName} menanyakan soal pengeluaran, saldo rekening/dompet, barang belanjaan, riwayat transaksi, atau keuangannya, jawab dengan akurat berdasarkan data di atas.\n- Sebutkan angka dalam format rupiah santai yang mudah dipahami (misal: '82,5rb', '1,5jt', '500rb').\n- Tetap gunakan gaya santai lu (edwin jarvis): santai, ramah, to the point, huruf kecil, dan tanpa tanda titik di ujung chat.`;
+    systemPrompt += `\n\n${financeContext}\n\n[PANDUAN MENJAWAB KEUANGAN]:\n- Lu punya akses langsung ke data riwayat keuangan asli ${senderName} di atas.\n- Jika ${senderName} menanyakan soal pengeluaran, saldo rekening/dompet, barang belanjaan, riwayat transaksi, atau keuangannya, jawab dengan akurat berdasarkan data di atas.\n- Jika ${senderName} menanyakan pengeluaran sepanjang tahun 2026 atau dari awal januari, gunakan data [TOTAL TAHUN 2026].\n- Jika dia meminta kalkulasi (misal: 'kali 2', 'dibagi 2', dll), hitung dengan tepat menggunakan data angka yang tersedia di atas.\n- Sebutkan angka dalam format rupiah santai yang mudah dipahami (misal: '82,5rb', '1,5jt', '33,6jt').\n- Tetap gunakan gaya santai lu (edwin jarvis): santai, ramah, to the point, huruf kecil, dan tanpa tanda titik di ujung chat.`;
   }
 
   // 1. Try Guts AI first if configured (Super fast & reliable)

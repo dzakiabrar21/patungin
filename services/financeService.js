@@ -84,12 +84,20 @@ export function parseQuickRegex(text) {
   const lowerText = cleanText.toLowerCase();
   const isNonTransaction = 
     cleanText.includes('?') ||
-    /\b(berapa|apa|apakah|kenapa|mengapa|kapan|gimana|bagaimana|siapa|kok|mana|ada apa|kenapa emang)\b/i.test(lowerText) ||
+    /\b(berapa|brp|apa|apakah|kenapa|mengapa|kapan|gimana|bagaimana|siapa|kok|mana|ada apa|kenapa emang)\b/i.test(lowerText) ||
     /\b(jelasin|jelaskan|coba|tanya|bisa|bisa ga|bisakah|gimana cara|cara kerja|developer|kamu|aku|lu|gue|gw)\b/i.test(lowerText) ||
     /\b(hitung|akar|kuadrat|tambah|kurang|kali|bagi|rumus|persamaan|soal|matematika)\b/i.test(lowerText) ||
-    /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText);
+    /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText) ||
+    // Kata-kata rentang tanggal / filter waktu / nama bulan
+    /\b(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\b/i.test(lowerText) ||
+    /\b(sejak|dari awal|awal|akhir|mulai|selama|sepanjang|tahun|bulan lalu|bulan ini|kemarin|tadi)\b/i.test(lowerText);
 
   if (isNonTransaction) return null;
+
+  // Angka 4 digit tahun (2020-2099) tanpa satuan pengeluaran bukan nominal belanja
+  if (/\b20[2-9]\d\b/.test(cleanText) && !/\b(k|rb|ribu|jt|juta)\b/i.test(cleanText)) {
+    return null;
+  }
 
   // 2. Pola Transfer: "tf bca ke gopay 50k", "transfer mandiri ke rdn 500rb", "tf bsi ke jago 100k"
   const transferPattern = /^(?:tf|transfer|tarik tunai|pindah)\s+([a-zA-Z0-9]+)(?:\s+ke\s+([a-zA-Z0-9\s]+?))?\s+([\d,.]+)\s*(k|rb|ribu|jt|juta)?$/i;
@@ -141,8 +149,7 @@ export function parseQuickRegex(text) {
     } else if (unit === 'jt' || unit === 'juta') {
       amount *= 1000000;
     } else if (!unit) {
-      // Jika tanpa satuan (angka mentah):
-      // Hanya izinkan jika angka realistis untuk transaksi belanja (misal >= 1000 atau jika <= 500 harus punya keyword pengeluaran yang jelas)
+      // Jika tanpa satuan (angka mentah seperti 20 atau 50):
       if (rawNum > 0 && rawNum <= 500) {
         amount *= 1000;
       }
@@ -222,8 +229,12 @@ export function parseQuickRegex(text) {
       isConfident = true;
     }
 
-    // Jika tanpa satuan (angka mentah seperti 20 atau 64), HANYA izinkan jika isConfident true (ada kata pengeluaran jelas)
-    if (!unit && !isConfident && !accCandidate) {
+    // Validasi dompet: accCandidate HANYA diakui jika memang dompet yang valid di database
+    const resolvedAccount = accCandidate ? findAccountByName(accCandidate) : null;
+    const finalAccountName = resolvedAccount ? resolvedAccount.name : 'Bank Accounts';
+
+    // Jika tanpa satuan (angka mentah seperti 20), HANYA izinkan jika ada kata pengeluaran jelas (isConfident true)
+    if (!unit && !isConfident) {
       return null;
     }
 
@@ -231,7 +242,7 @@ export function parseQuickRegex(text) {
       success: true,
       type: isIncome ? 'income' : 'expense',
       amount,
-      accountName: accCandidate || 'Bank Accounts',
+      accountName: finalAccountName,
       toAccountName: null,
       categoryName,
       merchant: desc,
@@ -1310,6 +1321,28 @@ export function getFinanceContextForAI(query = '') {
       }
     }
 
+    // 1.B Overview Tahunan (Tahun 2026 Year-to-Date)
+    const currentYearStr = String(now.getFullYear());
+    const ytdStats = db.prepare(`
+      SELECT 
+        COUNT(*) as tx_count,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense,
+        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income
+      FROM transactions
+      WHERE transaction_date LIKE ?
+    `).get(`${currentYearStr}%`) || { tx_count: 0, total_expense: 0, total_income: 0 };
+
+    const monthlyStats2026 = db.prepare(`
+      SELECT 
+        substr(transaction_date, 1, 7) as month,
+        COUNT(*) as count,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
+      FROM transactions
+      WHERE transaction_date LIKE ?
+      GROUP BY substr(transaction_date, 1, 7)
+      ORDER BY month ASC
+    `).all(`${currentYearStr}%`);
+
     let summaryText = `=== DATA KEUANGAN PRIBADI PENGGUNA (DZAKI) ===\n`;
     summaryText += `Tanggal Hari Ini: ${now.toLocaleDateString('id-ID', { dateStyle: 'full' })}\n\n`;
 
@@ -1332,6 +1365,29 @@ export function getFinanceContextForAI(query = '') {
 
     summaryText += `\n[BULAN LALU (${prevMonthStr})]:\n`;
     summaryText += `- Total Pengeluaran: Rp ${formatRupiah(prevOverview.totalExpense)} (${prevOverview.transactionCount} transaksi)\n`;
+
+    summaryText += `\n[TOTAL TAHUN ${currentYearStr} (DARI AWAL JANUARI S/D SEKARANG)]:\n`;
+    summaryText += `- Total Pengeluaran Selama ${currentYearStr}: Rp ${formatRupiah(ytdStats.total_expense)} (${ytdStats.tx_count} transaksi)\n`;
+    if (monthlyStats2026.length > 0) {
+      summaryText += `- Rincian Pengeluaran per Bulan di ${currentYearStr}:\n`;
+      monthlyStats2026.forEach(m => {
+        summaryText += `  • ${m.month}: Rp ${formatRupiah(m.expense)} (${m.count} transaksi)\n`;
+      });
+    }
+
+    if (query && typeof query === 'string' && query.includes('2025')) {
+      const stats2025 = db.prepare(`
+        SELECT 
+          COUNT(*) as tx_count,
+          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense
+        FROM transactions
+        WHERE transaction_date LIKE '2025%'
+      `).get();
+      if (stats2025 && stats2025.total_expense > 0) {
+        summaryText += `\n[TOTAL PENGELUARAN TAHUN 2025]:\n`;
+        summaryText += `- Total Pengeluaran Tahun 2025: Rp ${formatRupiah(stats2025.total_expense)} (${stats2025.tx_count} transaksi)\n`;
+      }
+    }
 
     summaryText += `\n[POSISI SALDO DOMPET SAAT INI]:\n`;
     accounts.forEach(a => {
