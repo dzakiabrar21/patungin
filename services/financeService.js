@@ -668,6 +668,10 @@ export async function processReceiptImage(filePath, mimeType = 'image/jpeg', cap
  * 5.C Ekstrak Catatan Keuangan dari Voice Note Audio (VN)
  */
 export async function parseVoiceNoteForFinance(filePath, mimeType = 'audio/ogg') {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { isFinancial: false };
+  }
+
   const accounts = getAllAccounts().map(a => a.name);
   const categories = getAllCategories('expense').map(c => c.name);
 
@@ -693,22 +697,26 @@ Contoh instruksi pencatatan keuangan yang valid:
 Daftar Akun/Dompet yang tersedia: [${accounts.join(', ')}]
 Daftar Kategori yang tersedia: [${categories.join(', ')}, "Gaji / Pemasukan", "Transfer Antar Dompet"]
 
-Jika rekaman suara ini BUKAN instruksi mencatat keuangan (misal: obrolan santai, tanya kabar, tanya cuaca, curhat, bercanda):
-Kembalikan JSON:
+Jika rekaman suara ini BUKAN instruksi mencatat keuangan baru — seperti:
+- Obrolan santai, curhat, sapaan, atau candaan
+- PERTANYAAN seputar keuangan (misal: "sisa saldo gue berapa?", "pengeluaran bulan ini berapa?", "kemarin gue jajan apa?")
+- Perhitungan matematika atau hal non-transaksi lainnya
+KEMBALIKAN HANYA JSON:
 {
   "isFinancial": false
 }
+JANGAN PERNAH mengarang transaksi jika pengguna hanya bertanya atau mengobrol!
 
-Jika rekaman suara ini ADALAH instruksi mencatat keuangan:
+Jika rekaman suara ini ADALAH instruksi mencatat keuangan baru:
 1. "isFinancial": true
 2. "transcript": Kalimat asli yang diucapkan pengguna
 3. "type": 'expense' | 'income' | 'transfer'
-4. "amount": total nominal integer Rupiah (misal "seratus ribu" -> 100000, "25k" -> 25000)
+4. "amount": total nominal integer Rupiah (misal "seratus ribu" -> 100000, "25k" -> 25000, "1,5 juta" -> 1500000)
 5. "merchant": Nama merchant / barang / toko jika ada
-6. "account": Akun sumber pembayaran (misal "Bank Accounts", "BCA", "GoPay", "Cash", dll). Default "Bank Accounts" jika tidak disebut.
+6. "account": Akun sumber pembayaran (misal "BCA", "Mandiri", "BSI", "GoPay", "Jago", "Cash", "RDN"). Default "Bank Accounts" jika tidak disebut secara spesifik.
 7. "toAccount": Akun tujuan jika type 'transfer'
 8. "category": Kategori yang paling relevan dari daftar di atas
-9. "description": Keterangan singkat pengeluaran
+9. "description": Keterangan singkat pengeluaran (1-4 kata)
 
 KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
 {
@@ -719,7 +727,7 @@ KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
   "merchant": "Bensin",
   "account": "BCA",
   "toAccount": null,
-  "category": "Transportasi",
+  "category": "Bensin",
   "description": "Beli Bensin"
 }
 `;
@@ -765,8 +773,19 @@ KEMBALIKAN HANYA JSON VALID (tanpa markdown backtick):
 
 export async function processVoiceNote(filePath, mimeType = 'audio/ogg', source = 'wa_vn') {
   const parsed = await parseVoiceNoteForFinance(filePath, mimeType);
-  if (!parsed || !parsed.isFinancial || !parsed.amount || parsed.amount <= 0) {
+  if (!parsed || !parsed.isFinancial || !parsed.amount || Number(parsed.amount) <= 0) {
     return { isFinancial: false };
+  }
+
+  // Normalisasi nominal
+  parsed.amount = Number(parsed.amount);
+
+  // Validasi dompet: hanya izinkan dompet yang benar-benar ada di database
+  if (parsed.account) {
+    const matched = findAccountByName(parsed.account);
+    parsed.account = matched ? matched.name : 'Bank Accounts';
+  } else {
+    parsed.account = 'Bank Accounts';
   }
 
   const result = recordFinanceTransaction(parsed, source, parsed.transcript || parsed.description || 'Voice Note');
