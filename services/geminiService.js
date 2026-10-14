@@ -128,8 +128,8 @@ export async function executeGutsRequest({
   const candidateModels = models || (hasImage
     ? ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
     : isJson
-      ? ['gpt-5.5', 'deepseek-v4-flash', 'gemini-3.8-flash']
-      : ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash']
+      ? ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus']
+      : ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus']
   );
 
   for (const model of candidateModels) {
@@ -701,7 +701,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
         { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
         { role: 'user', content: prompt }
       ],
-      models: ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash'],
+      models: ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
@@ -815,7 +815,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     const gutsRes = await executeGutsRequest({
       messages,
-      models: ['gpt-5.5', 'gpt-5.6-luna', 'gemini-3.8-flash'],
+      models: ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
@@ -1114,4 +1114,75 @@ export async function askGeminiAudio({ filePath, mimeType = 'audio/ogg', prompt 
     };
   }
 }
+
+/**
+ * Generate AI image from user prompt using Pollinations FLUX engine with prompt enhancement
+ */
+export async function generateImageFromPrompt(userPrompt) {
+  if (!userPrompt || typeof userPrompt !== 'string' || !userPrompt.trim()) {
+    return { success: false, error: 'Prompt gambar tidak boleh kosong bro.' };
+  }
+
+  const cleanPrompt = userPrompt.trim();
+  let enhancedPrompt = cleanPrompt;
+
+  // 1. Coba perjelas prompt ke Bahasa Inggris visual via LLM jika input bahasa Indonesia
+  try {
+    const sysPrompt = 
+      "You are an expert visual prompt engineer for FLUX AI image generation. " +
+      "Convert the user's description (which may be in Indonesian, slang, or brief) into a stunning, vivid English visual prompt. " +
+      "Include lighting, camera view, art style, texture, and mood. " +
+      "Return ONLY the enhanced English prompt without quotes, prefixes, or explanations.";
+
+    const gutsRes = await executeGutsRequest({
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: cleanPrompt }
+      ],
+      maxTokens: 150,
+      timeoutMs: 8000
+    });
+
+    if (gutsRes?.success && gutsRes.content) {
+      enhancedPrompt = gutsRes.content.trim().replace(/^["']|["']$/g, '');
+    }
+  } catch (_) {
+    enhancedPrompt = cleanPrompt;
+  }
+
+  // 2. Fetch image dari Pollinations FLUX engine
+  try {
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    
+    const response = await fetch(imageUrl, {
+      signal: AbortSignal.timeout(45000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server gambar merespon status ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (!buffer || buffer.length < 1000) {
+      throw new Error('Gambar yang dihasilkan kosong atau tidak valid.');
+    }
+
+    return {
+      success: true,
+      buffer,
+      enhancedPrompt,
+      originalPrompt: cleanPrompt
+    };
+  } catch (err) {
+    console.error('[GeminiService] Error generating image:', err.message);
+    return {
+      success: false,
+      error: err.message || 'Gagal menghasilkan gambar AI.'
+    };
+  }
+}
+
 

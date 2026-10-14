@@ -23,7 +23,7 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision, askGeminiAudio } from './geminiService.js';
+import { parseReceiptWithGemini, parseMultipleReceipts, askGeminiText, chatWithGemini, askGeminiVision, askGeminiAudio, generateImageFromPrompt } from './geminiService.js';
 import sessionStore from './sessionStore.js';
 import financeService from './financeService.js';
 
@@ -703,6 +703,7 @@ export async function initWhatsAppBot(port = null) {
               /\b(masuk mana|masuk apa|kategori apa|tercatat apa|sudah abis|udah abis|total|kemarin|bulan lalu|tadi)\b/i.test(lowerText) ||
               /\b(jelasin|jelaskan|coba|tanya|bisa|bisa ga|bisakah|gimana cara|cara kerja|developer|kamu|aku|lu|gue|gw)\b/i.test(lowerText) ||
               /\b(hitung|akar|kuadrat|tambah|kurang|kali|bagi|rumus|persamaan|soal|matematika)\b/i.test(lowerText) ||
+              /\b(gambar|foto|lukis|image|draw|generate|bikin gambar|buatin gambar)\b/i.test(lowerText) ||
               /\b(edwin|jarvis|bot|bro|halo|hai|p|oi|test|tes)\b/i.test(lowerText) ||
               /\b(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\b/i.test(lowerText) ||
               /\b(sejak|dari awal|awal|akhir|mulai|selama|sepanjang|tahun|2024|2025|2026|2027)\b/i.test(lowerText)
@@ -766,6 +767,81 @@ export async function initWhatsAppBot(port = null) {
         // Hindari kata pendek seperti "win", "ed", "jar", "vis" karena sering salah deteksi kata sehari-hari
         const hasBotNameKeyword = /\b(edwin|jarvis)\b/i.test(lowerText);
         const startsWithBotCommand = /^(\/tanya|@bot\b)/i.test(lowerText);
+
+        // Case AI Image Generation: /gambar, /image, /draw, /lukis, atau kalimat natural "win buatin gambar..."
+        const isImageCmd = /^(\/gambar|\/image|\/draw|\/lukis|\/generate|\/foto)\b/i.test(text.trim());
+        const naturalImageMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:tolong|coba)?\s*(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan)\s+(?:gambar|foto|lukisan)?\s*(.+)$/i);
+
+        let requestedImagePrompt = null;
+        if (isImageCmd) {
+          requestedImagePrompt = text.replace(/^(\/gambar|\/image|\/draw|\/lukis|\/generate|\/foto)\b\s*/i, '').trim();
+        } else if (naturalImageMatch && naturalImageMatch[1] && naturalImageMatch[1].trim().length > 3) {
+          requestedImagePrompt = naturalImageMatch[1].trim();
+        }
+
+        const isTriggeredForImage = requestedImagePrompt !== null && (
+          !isGroup ||
+          isImageCmd ||
+          isBotMentioned ||
+          isReplyToBot ||
+          hasBotNameKeyword
+        );
+
+        if (isTriggeredForImage) {
+          if (msgId) processedMessages.add(msgId);
+
+          if (!requestedImagePrompt) {
+            await sock.sendMessage(chatId, {
+              text: '🎨 *Mau dibikinin gambar apa bro?*\nSertakan deskripsi gambarnya ya, contoh:\n• */gambar kucing astronot lagi ngopi di bulan*\n• */image cyberpunk car in rainy tokyo*\n• _"win buatin gambar mobil balap masa depan"_'
+            }, { quoted: m });
+            continue;
+          }
+
+          try {
+            await sock.sendPresenceUpdate('composing', chatId);
+          } catch (_) {}
+
+          console.log(`[WhatsAppBot] 🎨 Memproses generate gambar: "${requestedImagePrompt}" dari ${m.pushName || 'User'} di ${chatId}`);
+
+          try {
+            await sock.sendMessage(chatId, {
+              text: '⏳ *Sedang melukis gambar AI...* Mohon tunggu sekitar 5-15 detik ya bro.'
+            }, { quoted: m });
+
+            const imgResult = await generateImageFromPrompt(requestedImagePrompt);
+
+            if (imgResult.success && imgResult.buffer) {
+              const captionText = 
+                `🎨 *Hasil Gambar AI*\n` +
+                `💭 *Prompt:* _"${requestedImagePrompt}"_\n` +
+                (imgResult.enhancedPrompt && imgResult.enhancedPrompt !== requestedImagePrompt
+                  ? `✨ *Visual Detail:* _${imgResult.enhancedPrompt}_\n`
+                  : '') +
+                `⚡ *Engine:* FLUX AI`;
+
+              const sentImg = await sock.sendMessage(chatId, {
+                image: imgResult.buffer,
+                caption: captionText
+              }, { quoted: m });
+
+              if (sentImg?.key?.id) {
+                processedMessages.add(sentImg.key.id);
+                botSentMessageIds.add(sentImg.key.id);
+              }
+              console.log(`[WhatsAppBot] ✅ Berhasil mengirim gambar AI ke ${chatId}`);
+            } else {
+              await sock.sendMessage(chatId, {
+                text: `wkwk sorry bro, gagal bikin gambarnya: ${imgResult.error || 'coba lagi bentar ya'}`
+              }, { quoted: m });
+            }
+          } catch (genErr) {
+            console.error('[WhatsAppBot] Error generating/sending image:', genErr);
+            await sock.sendMessage(chatId, {
+              text: 'wkwk server pembuat gambar lagi sibuk nih bro, coba beberapa saat lagi ya'
+            }, { quoted: m });
+          }
+          continue;
+        }
 
         // Deteksi apakah pesan menyertakan gambar atau me-reply gambar
         const quotedImageMsg =
