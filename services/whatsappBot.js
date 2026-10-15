@@ -441,7 +441,8 @@ export async function initWhatsAppBot(port = null) {
         }
 
         const { text, hasImage, imageMessage, hasAudio, audioMessage, isPtt, rawMsg } = unwrapMessage(m);
-        const lowerText = text.toLowerCase();
+        const cleanText = (text || '').trim();
+        const lowerText = cleanText.toLowerCase();
         const chatId = m.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
 
