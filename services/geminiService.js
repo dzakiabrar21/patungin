@@ -126,10 +126,10 @@ export async function executeGutsRequest({
   );
 
   const candidateModels = models || (hasImage
-    ? ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']
+    ? ['gemini-3.8-flash', 'gemini-3.1-flash-image']
     : isJson
-      ? ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus']
-      : ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus']
+      ? ['gemini-3.8-flash', 'laguna-s2.1']
+      : ['gemini-3.8-flash', 'laguna-s2.1', 'laguna-xs2.1']
   );
 
   for (const model of candidateModels) {
@@ -633,6 +633,9 @@ export function cleanCoolResponse(text) {
   cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
   // Hapus disclaimer kaku model AI jika ada
   cleaned = cleaned.replace(/\bTapi catatan penting dulu:\s*gue (?:nggak punya akses ke detail internal|ga punya akses|hanya model).*?(?:\n\n|\n)/gi, '');
+  // Sanitize kebocoran identitas vendor AI (CodeBuddy / CLI assistant)
+  cleaned = cleaned.replace(/\bCodeBuddy(?:\s+Code)?\b/gi, 'edwin jarvis');
+  cleaned = cleaned.replace(/\basisten ai (?:buat|untuk) ngoding\b/gi, 'bot WhatsApp dan temen lu');
 
   // 7. Clean extra spaces on each line and collapse multiple blank lines into a single blank line
   cleaned = cleaned
@@ -701,7 +704,7 @@ export async function askGeminiText(prompt, customApiKey = null) {
         { role: 'system', content: BOT_SYSTEM_INSTRUCTION },
         { role: 'user', content: prompt }
       ],
-      models: ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus'],
+      models: ['gemini-3.8-flash', 'laguna-s2.1', 'laguna-xs2.1'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
@@ -815,7 +818,7 @@ export async function chatWithGemini({ history = [], message = '', senderName = 
 
     const gutsRes = await executeGutsRequest({
       messages,
-      models: ['deepseek-v4-flash', 'gemini-3.8-flash', 'qwen-3.7-plus'],
+      models: ['gemini-3.8-flash', 'laguna-s2.1', 'laguna-xs2.1'],
       maxTokens: 1200,
       timeoutMs: 15000
     });
