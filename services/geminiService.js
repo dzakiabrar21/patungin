@@ -1129,30 +1129,40 @@ export async function generateImageFromPrompt(userPrompt) {
 
   const cleanPrompt = userPrompt.trim();
   let enhancedPrompt = cleanPrompt;
+  let humanCaption = 'nih udah jadi yaa, gimana menurut lu?';
 
-  // 1. Coba perjelas prompt ke Bahasa Inggris visual via LLM jika input bahasa Indonesia
+  // 1. Generate visual prompt English untuk FLUX dan caption penjelasan santai manusiawi
   try {
     const sysPrompt = 
-      "You are an expert visual prompt engineer for FLUX AI image generation. " +
-      "Convert the user's description (which may be in Indonesian, slang, or brief) into a stunning, vivid English visual prompt. " +
-      "Include lighting, camera view, art style, texture, and mood. " +
-      "Return ONLY the enhanced English prompt without quotes, prefixes, or explanations.";
+      'You are assisting Edwin Jarvis, a friendly cool WhatsApp bot. Given user image request:\n' +
+      '1. "enhanced_prompt": Detailed visual English prompt for FLUX AI image generation.\n' +
+      '2. "human_caption": 1 short, natural, casual Indonesian sentence from Edwin Jarvis to his friend sending this image on WhatsApp (e.g. "nih udah jadi yaa, lukisan nelayannya dapet banget kan vibes klasiknya"). Make it sound like a real human friend chatting on WA (lowercase vibe, friendly, no robot headers, no quotes, no period at end).\n' +
+      'Return STRICT JSON: {"enhanced_prompt": "...", "human_caption": "..."}';
 
     const gutsRes = await executeGutsRequest({
       messages: [
         { role: 'system', content: sysPrompt },
         { role: 'user', content: cleanPrompt }
       ],
-      models: ['laguna-s2.1', 'gemini-3.8-flash'],
-      maxTokens: 150,
+      models: ['gemini-3.8-flash', 'laguna-s2.1'],
+      isJson: true,
+      maxTokens: 300,
       timeoutMs: 12000
     });
 
     if (gutsRes?.success && gutsRes.content) {
-      enhancedPrompt = gutsRes.content.trim().replace(/^["']|["']$/g, '');
+      const cleanJson = gutsRes.content.replace(/```json\n?|\n?```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      if (parsed.enhanced_prompt && typeof parsed.enhanced_prompt === 'string') {
+        enhancedPrompt = parsed.enhanced_prompt.trim().replace(/^["']|["']$/g, '');
+      }
+      if (parsed.human_caption && typeof parsed.human_caption === 'string') {
+        humanCaption = cleanCoolResponse(parsed.human_caption);
+      }
     }
   } catch (_) {
     enhancedPrompt = cleanPrompt;
+    humanCaption = 'nih udah jadi yaa, gimana menurut lu?';
   }
 
   // 2. Fetch image dari Pollinations FLUX engine
@@ -1179,6 +1189,7 @@ export async function generateImageFromPrompt(userPrompt) {
       success: true,
       buffer,
       enhancedPrompt,
+      humanCaption,
       originalPrompt: cleanPrompt
     };
   } catch (err) {

@@ -830,20 +830,22 @@ export async function initWhatsAppBot(port = null) {
           console.log(`[WhatsAppBot] 🎨 Memproses generate gambar: "${requestedImagePrompt}" dari ${m.pushName || 'User'} di ${chatId}`);
 
           try {
+            const waitReplies = [
+              'okayy wait yaa, lagi dibuatin bentar...',
+              'okayy wait yaa, lagi gue gambarin nih...',
+              'siap, okayy wait yaa lagi dibuatin...',
+              'okayy wait bentar yaa, lagi diproses nih...'
+            ];
+            const waitText = waitReplies[Math.floor(Math.random() * waitReplies.length)];
+
             await sock.sendMessage(chatId, {
-              text: '⏳ *Sedang melukis gambar AI...* Mohon tunggu sekitar 5-15 detik ya bro.'
+              text: waitText
             }, { quoted: m });
 
             const imgResult = await generateImageFromPrompt(requestedImagePrompt);
 
             if (imgResult.success && imgResult.buffer) {
-              const captionText = 
-                `🎨 *Hasil Gambar AI*\n` +
-                `💭 *Prompt:* _"${requestedImagePrompt}"_\n` +
-                (imgResult.enhancedPrompt && imgResult.enhancedPrompt !== requestedImagePrompt
-                  ? `✨ *Visual Detail:* _${imgResult.enhancedPrompt}_\n`
-                  : '') +
-                `⚡ *Engine:* FLUX AI`;
+              const captionText = imgResult.humanCaption || 'nih udah jadi yaa, gimana menurut lu?';
 
               const sentImg = await sock.sendMessage(chatId, {
                 image: imgResult.buffer,
