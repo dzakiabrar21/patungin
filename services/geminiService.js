@@ -1168,7 +1168,8 @@ export async function generateImageFromPrompt(userPrompt) {
   // 2. Fetch image dari Pollinations FLUX engine
   try {
     const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    const cleanFinalPrompt = enhancedPrompt + ', clean artwork, highly detailed, no watermark, no text, no logo, no signature';
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanFinalPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=false&seed=${seed}`;
     
     const response = await fetch(imageUrl, {
       signal: AbortSignal.timeout(45000)

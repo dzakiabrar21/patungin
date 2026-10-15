@@ -770,31 +770,42 @@ export async function initWhatsAppBot(port = null) {
         const startsWithBotCommand = /^(\/tanya|@bot\b)/i.test(lowerText);
 
         // Case AI Image Generation: /gambar, /image, /draw, /lukis, /paint, make an image, buatin gambar, dll
-        const isImageCmd = /^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b/i.test(text.trim());
-
         let requestedImagePrompt = null;
-        if (isImageCmd) {
-          requestedImagePrompt = text.replace(/^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b\s*/i, '').trim();
-        } else {
-          // 1. English natural: [please] make/create/draw/generate/paint [me] [an] [image/picture/photo/painting/illustration/art/drawing/iamge] [of] <prompt>
-          const enMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:please\s+)?(?:make|create|draw|generate|paint|render)\s+(?:me\s+)?(?:an?|the)?\s*(?:image|picture|photo|painting|illustration|art|drawing|iamge)\s+(?:of\s+)?(.+)$/i);
-          if (enMatch && enMatch[1] && enMatch[1].trim().length > 3) {
-            requestedImagePrompt = enMatch[1].trim();
+        const trimmedText = text.trim();
+
+        // Check if message is a question/meta chat about image generation (e.g. "tadi lu bisa generate gambar")
+        const isMetaImageQuestion = /^(?:tadi|kemarin|kenapa|knp|kok|apakah|bisa ga|bisakah)\b/i.test(trimmedText);
+
+        if (!isMetaImageQuestion) {
+          // 1. Explicit command
+          const isImageCmd = /^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b/i.test(trimmedText);
+          if (isImageCmd) {
+            requestedImagePrompt = trimmedText.replace(/^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b\s*/i, '').trim();
           } else {
-            // 2. English direct draw/paint: draw a cat ..., paint a sunset ...
-            const enDirectMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:please\s+)?(?:draw|paint)\s+(?:me\s+)?(?:a|an)?\s+(.+)$/i);
-            if (enDirectMatch && enDirectMatch[1] && enDirectMatch[1].trim().length > 3 && !/^(?:card|conclusion|breath|line|attention|curtain)\b/i.test(enDirectMatch[1])) {
-              requestedImagePrompt = enDirectMatch[1].trim();
+            // 2. Strip conversational greetings / prefixes anywhere at the start
+            // e.g. 'oke, ', 'ok bro, ', 'eh win, ', 'coba dong, ', 'tolong ya, '
+            let stripped = trimmedText.replace(/^(?:(?:oke+|ok|siap|halo|hai|hei|eh|oi|uy|wah|nah|aduh|tolong|coba|dong|plis|please|edwin|ed|win|jarvis|bot|bro+|bray|cuy|bang|min)\b[\s,.:;!-]*)+/i, '').trim();
+
+            // 3. Indonesian natural: bikinin/buatin/buatkan/bikin/buat/generate/lukiskan/lukis/gambarin/gambarkan
+            const idMatch = stripped.match(/^(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan)\s*(?:in)?\s*(?:gambar|foto|lukisan|image|iamge|gmbr|gbr|ilustrasi)?\s*(?:tentang|soal|berupa|seorang|sosok)?\s*(.+)$/i);
+            if (idMatch && idMatch[1] && idMatch[1].trim().length > 2) {
+              requestedImagePrompt = idMatch[1].trim();
             } else {
-              // 3. Indonesian natural: [tolong/coba] [bikinin/buatin/bikin/buat/generate/lukiskan/gambarin] [gambar/foto/lukisan/gbr/gmbr] <prompt>
-              const idMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:tolong|coba|dong|plis)?\s*(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan)\s*(?:in)?\s*(?:gambar|foto|lukisan|image|iamge|gmbr|gbr|ilustrasi)?\s*(?:tentang|soal|berupa)?\s*(.+)$/i);
-              if (idMatch && idMatch[1] && idMatch[1].trim().length > 3) {
-                requestedImagePrompt = idMatch[1].trim();
+              // 4. English natural: make/create/draw/generate/paint/render
+              const enMatch = stripped.match(/^(?:make|create|draw|generate|paint|render)\s+(?:me\s+)?(?:an?|the)?\s*(?:image|picture|photo|painting|illustration|art|drawing|iamge)\s+(?:of\s+)?(.+)$/i);
+              if (enMatch && enMatch[1] && enMatch[1].trim().length > 2) {
+                requestedImagePrompt = enMatch[1].trim();
               } else {
-                // 4. Indonesian short trigger: 'gambarin kucing', 'lukisin pemandangan'
-                const idShortMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:gambarin|lukisin)\s+(.+)$/i);
-                if (idShortMatch && idShortMatch[1] && idShortMatch[1].trim().length > 3) {
-                  requestedImagePrompt = idShortMatch[1].trim();
+                // 5. Direct draw/paint: draw a ..., paint a ..., gambarin ..., lukisin ...
+                const directMatch = stripped.match(/^(?:draw|paint|gambarin|lukisin)\s+(?:a|an\s+)?(.+)$/i);
+                if (directMatch && directMatch[1] && directMatch[1].trim().length > 2 && !/^(?:card|conclusion|breath|line|attention)\b/i.test(directMatch[1])) {
+                  requestedImagePrompt = directMatch[1].trim();
+                } else {
+                  // 6. Anywhere in sentence: '... coba buatkan gambar ...' or '... bikinin gambar ...'
+                  const anywhereMatch = trimmedText.match(/(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan|make an image of|draw|paint)\s+(?:gambar|foto|lukisan|image|iamge|gmbr|gbr)?\s*(?:tentang|soal|berupa|seorang|sosok)?\s*(.+)$/i);
+                  if (anywhereMatch && anywhereMatch[1] && anywhereMatch[1].trim().length > 2) {
+                    requestedImagePrompt = anywhereMatch[1].trim();
+                  }
                 }
               }
             }
@@ -802,7 +813,10 @@ export async function initWhatsAppBot(port = null) {
         }
 
         if (requestedImagePrompt) {
-          requestedImagePrompt = requestedImagePrompt.replace(/^["'“”]+|["'“”]+$/g, '').trim();
+          requestedImagePrompt = requestedImagePrompt
+            .replace(/^["'“”]+|["'“”]+$/g, '')
+            .replace(/\b(?:dong|plis|ya+|bro+|bray|cuy|bang|min)\b[\s,.]*$/i, '')
+            .trim();
         }
 
         const isTriggeredForImage = requestedImagePrompt !== null && (
