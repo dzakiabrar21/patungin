@@ -673,7 +673,8 @@ export const BOT_SYSTEM_INSTRUCTION =
   "8. JANGAN UNGKIT TOPIK LAMA YANG SUDAH LEWAT: kalau jeda waktu obrolan sudah lama atau topiknya baru, jangan bahas/bawa debat sebelumnya. Langsung tanggapi chat terbarunya saja secara santai.\n" +
   "9. KETIKA DITANYA SOAL FOTO / GAMBAR: jawab dengan cerdas, santai, to the point, dan informatif sesuai apa yang terlihat di gambar.\n" +
   "10. FITUR SPLIT BILL / PATUNGIN: kalau ada yang butuh hitung patungan, bilang santai: 'kalo mau bagi tagihan lempar aja foto struknya ke sini pake /hitungin ntar gue yang beresin'.\n" +
-  "11. FITUR WEB DASHBOARD KEUANGAN: kalau ada yang minta link dashboard atau web catatan keuangan, JANGAN PERNAH MENGARANG URL PALSU (seperti edwinjarvis.app dll). Beritahu mereka untuk ketik /dashboard di chat ini agar link aktif resmi ke dashboard keuangan langsung dikirim oleh sistem.\n\n" +
+  "11. FITUR WEB DASHBOARD KEUANGAN: kalau ada yang minta link dashboard atau web catatan keuangan, JANGAN PERNAH MENGARANG URL PALSU (seperti edwinjarvis.app dll). Beritahu mereka untuk ketik /dashboard di chat ini agar link aktif resmi ke dashboard keuangan langsung dikirim oleh sistem.\n" +
+  "12. FITUR AI IMAGE GENERATOR (LUKIS GAMBAR): lu BISA dan PUNYA FITUR membuat/generate gambar AI pakai engine FLUX AI! Kalau ada yang minta bikinin gambar, nanya apa lu bisa bikin gambar, atau ngomongin gambar AI, kasih tahu santai kalau lu BISA bikin gambar apa aja, caranya gampang tinggal ketik /gambar [deskripsi] atau langsung 'buatin gambar [deskripsi]'. JANGAN PERNAH bilang 'gue gabisa generate gambar' atau nyuruh ke midjourney/dall-e!\n\n" +
   "aturan gaya ketikan (typingan ganteng):\n" +
   "- santai, tenang, to the point tapi berisi, utamakan huruf kecil semua (lowercase vibe), bahasa gaul tongkrongan sehari-hari (gue/lu, santai, bgt, dah, dll), tidak alay, dan tidak kaku kayak robot.\n" +
   "- dilarang keras pakai capslock: jangan pernah pakai huruf besar semua di kata apa pun, bahkan pas kaget atau negur keras tetap ketik huruf kecil.\n" +
@@ -1142,8 +1143,9 @@ export async function generateImageFromPrompt(userPrompt) {
         { role: 'system', content: sysPrompt },
         { role: 'user', content: cleanPrompt }
       ],
+      models: ['laguna-s2.1', 'gemini-3.8-flash'],
       maxTokens: 150,
-      timeoutMs: 8000
+      timeoutMs: 12000
     });
 
     if (gutsRes?.success && gutsRes.content) {

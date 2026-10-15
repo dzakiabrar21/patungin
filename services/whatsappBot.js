@@ -769,15 +769,40 @@ export async function initWhatsAppBot(port = null) {
         const hasBotNameKeyword = /\b(edwin|jarvis)\b/i.test(lowerText);
         const startsWithBotCommand = /^(\/tanya|@bot\b)/i.test(lowerText);
 
-        // Case AI Image Generation: /gambar, /image, /draw, /lukis, atau kalimat natural "win buatin gambar..."
-        const isImageCmd = /^(\/gambar|\/image|\/draw|\/lukis|\/generate|\/foto)\b/i.test(text.trim());
-        const naturalImageMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:tolong|coba)?\s*(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan)\s+(?:gambar|foto|lukisan)?\s*(.+)$/i);
+        // Case AI Image Generation: /gambar, /image, /draw, /lukis, /paint, make an image, buatin gambar, dll
+        const isImageCmd = /^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b/i.test(text.trim());
 
         let requestedImagePrompt = null;
         if (isImageCmd) {
-          requestedImagePrompt = text.replace(/^(\/gambar|\/image|\/draw|\/lukis|\/generate|\/foto)\b\s*/i, '').trim();
-        } else if (naturalImageMatch && naturalImageMatch[1] && naturalImageMatch[1].trim().length > 3) {
-          requestedImagePrompt = naturalImageMatch[1].trim();
+          requestedImagePrompt = text.replace(/^(\/(?:gambar|image|draw|lukis|generate|foto|paint|iamge|gmbr|gbr))\b\s*/i, '').trim();
+        } else {
+          // 1. English natural: [please] make/create/draw/generate/paint [me] [an] [image/picture/photo/painting/illustration/art/drawing/iamge] [of] <prompt>
+          const enMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:please\s+)?(?:make|create|draw|generate|paint|render)\s+(?:me\s+)?(?:an?|the)?\s*(?:image|picture|photo|painting|illustration|art|drawing|iamge)\s+(?:of\s+)?(.+)$/i);
+          if (enMatch && enMatch[1] && enMatch[1].trim().length > 3) {
+            requestedImagePrompt = enMatch[1].trim();
+          } else {
+            // 2. English direct draw/paint: draw a cat ..., paint a sunset ...
+            const enDirectMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:please\s+)?(?:draw|paint)\s+(?:me\s+)?(?:a|an)?\s+(.+)$/i);
+            if (enDirectMatch && enDirectMatch[1] && enDirectMatch[1].trim().length > 3 && !/^(?:card|conclusion|breath|line|attention|curtain)\b/i.test(enDirectMatch[1])) {
+              requestedImagePrompt = enDirectMatch[1].trim();
+            } else {
+              // 3. Indonesian natural: [tolong/coba] [bikinin/buatin/bikin/buat/generate/lukiskan/gambarin] [gambar/foto/lukisan/gbr/gmbr] <prompt>
+              const idMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:tolong|coba|dong|plis)?\s*(?:bikinin|buatin|buatkan|bikin|buat|generate|lukiskan|lukis|gambarin|gambarkan)\s*(?:in)?\s*(?:gambar|foto|lukisan|image|iamge|gmbr|gbr|ilustrasi)?\s*(?:tentang|soal|berupa)?\s*(.+)$/i);
+              if (idMatch && idMatch[1] && idMatch[1].trim().length > 3) {
+                requestedImagePrompt = idMatch[1].trim();
+              } else {
+                // 4. Indonesian short trigger: 'gambarin kucing', 'lukisin pemandangan'
+                const idShortMatch = text.match(/^(?:(?:edwin|ed|win|jarvis|bot|bro)\s*,?\s*)?(?:gambarin|lukisin)\s+(.+)$/i);
+                if (idShortMatch && idShortMatch[1] && idShortMatch[1].trim().length > 3) {
+                  requestedImagePrompt = idShortMatch[1].trim();
+                }
+              }
+            }
+          }
+        }
+
+        if (requestedImagePrompt) {
+          requestedImagePrompt = requestedImagePrompt.replace(/^["'“”]+|["'“”]+$/g, '').trim();
         }
 
         const isTriggeredForImage = requestedImagePrompt !== null && (
