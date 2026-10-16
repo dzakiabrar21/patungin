@@ -1764,30 +1764,43 @@ function formatWhatsAppText(shares, balances, transfers) {
   const dateStr = r.date || 'Hari ini';
   const totalFormatted = formatRupiah(r.total);
 
-  let payerName = '';
-  if (state.payerMode === 'single') {
-    const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
-    payerName = payer ? payer.name : '-';
-  } else {
-    payerName = 'Bersama';
-  }
-
   let text = `🧾 *RINCIAN SPLIT BILL — ${merchant}*\n`;
   text += `Tanggal: ${dateStr}\n`;
   text += `Total Tagihan: Rp ${totalFormatted}\n`;
-  text += `Ditalangi oleh: *${payerName}*\n`;
+
+  // Multi-Payer vs Single Payer handling
+  const multiPayers = active
+    .filter(m => (state.payerAmounts[m.id] || 0) > 0)
+    .map(m => ({
+      name: m.name,
+      amount: state.payerAmounts[m.id] || 0
+    }));
+
+  if (state.payerMode === 'multi' && multiPayers.length > 1) {
+    text += `Ditalangi oleh:\n`;
+    multiPayers.forEach(p => {
+      text += `  • ${p.name}: Rp ${formatRupiah(p.amount)}\n`;
+    });
+  } else {
+    let singlePayerName = '';
+    if (state.payerMode === 'multi' && multiPayers.length === 1) {
+      singlePayerName = multiPayers[0].name;
+    } else {
+      const payer = state.allMembers.find(m => m.id === state.payerId) || active[0];
+      singlePayerName = payer ? payer.name : '-';
+    }
+    text += `Ditalangi oleh: *${singlePayerName}*\n`;
+  }
   text += `-----------------------------------\n`;
 
-  const uniqueStores = [...new Set(r.items.map(it => it.sourceStore).filter(Boolean))];
-
-  // Itemized breakdown per member
+  // Itemized breakdown per member (nama toko di detail pesanan dihapus)
   active.forEach(m => {
     const s = shares[m.id];
     text += `👤 *${m.name}*\n`;
     s.items.forEach(it => {
       const sharedLabel = it.isShared ? ' (Patungan)' : '';
-      const storeLabel = (uniqueStores.length > 1 && it.sourceStore) ? ` [${it.sourceStore}]` : '';
-      text += `  • ${toTitleCase(it.name)}${storeLabel}${sharedLabel} : Rp ${formatRupiah(it.price)}\n`;
+      const cleanItemName = (it.name || '').replace(/\[.*?\]\s*/g, '').trim();
+      text += `  • ${toTitleCase(cleanItemName)}${sharedLabel} : Rp ${formatRupiah(it.price)}\n`;
     });
     if (s.taxPortion > 0) text += `  • Pajak: Rp ${formatRupiah(s.taxPortion)}\n`;
     if (s.servicePortion > 0) text += `  • Service: Rp ${formatRupiah(s.servicePortion)}\n`;

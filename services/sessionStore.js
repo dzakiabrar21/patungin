@@ -428,7 +428,24 @@ export const sessionStore = {
     let text = `🧾 *RINCIAN SPLIT BILL — ${merchantName}*\n`;
     text += `Tanggal: ${dateStr}\n`;
     text += `Total Tagihan: Rp ${totalFormatted}\n`;
-    text += `Ditalangi oleh: *${payerName}*\n`;
+
+    const payerAmounts = session.payerAmounts || {};
+    const multiPayers = activeMembers
+      .filter(m => (payerAmounts[m.id] || 0) > 0)
+      .map(m => ({
+        name: m.name,
+        amount: payerAmounts[m.id] || 0
+      }));
+
+    if (session.payerMode === 'multi' && multiPayers.length > 1) {
+      text += `Ditalangi oleh:\n`;
+      multiPayers.forEach(p => {
+        text += `  • ${p.name}: Rp ${p.amount.toLocaleString('id-ID')}\n`;
+      });
+    } else {
+      let singlePayer = (session.payerMode === 'multi' && multiPayers.length === 1) ? multiPayers[0].name : payerName;
+      text += `Ditalangi oleh: *${singlePayer}*\n`;
+    }
     text += '-----------------------------------\n';
 
     activeMembers.forEach(m => {
@@ -436,7 +453,8 @@ export const sessionStore = {
       text += `👤 *${m.name}*\n`;
       s.items.forEach(it => {
         const sharedLabel = it.isShared ? ' (Patungan)' : '';
-        text += `  • ${toTitleCase(it.name)}${sharedLabel} : Rp ${Math.round(it.price).toLocaleString('id-ID')}\n`;
+        const cleanItemName = (it.name || '').replace(/\[.*?\]\s*/g, '').trim();
+        text += `  • ${toTitleCase(cleanItemName)}${sharedLabel} : Rp ${Math.round(it.price).toLocaleString('id-ID')}\n`;
       });
       if (s.taxPortion > 0) text += `  • Pajak: Rp ${s.taxPortion.toLocaleString('id-ID')}\n`;
       if (s.servicePortion > 0) text += `  • Service: Rp ${s.servicePortion.toLocaleString('id-ID')}\n`;
