@@ -12,10 +12,11 @@
       --primary: #0081a7;
       --primary-dark: #006987;
       --bg: #f8fafc;
-      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-bg: rgba(255, 255, 255, 0.94);
       --text: #0f172a;
       --text-muted: #64748b;
       --success: #10b981;
+      --danger: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
     body {
@@ -35,22 +36,88 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
       width: 100%;
       max-width: 440px;
-      padding: 2rem;
+      padding: 2.2rem 2rem;
       text-align: center;
+      transition: all 0.3s ease;
     }
     .badge-icon {
       width: 56px;
       height: 56px;
-      background: rgba(16, 185, 129, 0.12);
-      color: var(--success);
       border-radius: 16px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 1rem;
+      margin-bottom: 1.2rem;
+      transition: transform 0.2s ease;
+    }
+    .badge-icon.lock {
+      background: rgba(0, 129, 167, 0.12);
+      color: var(--primary);
+    }
+    .badge-icon.wa {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--success);
     }
     h1 { font-size: 1.35rem; font-weight: 800; color: var(--text); margin-bottom: 0.35rem; }
     p.desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    
+    /* PIN Auth Form */
+    .pin-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+    .pin-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      border: 1.5px solid #cbd5e1;
+      font-size: 1.05rem;
+      text-align: center;
+      letter-spacing: 0.25rem;
+      font-weight: 700;
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s ease;
+      background: white;
+    }
+    .pin-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 129, 167, 0.15);
+    }
+    .pin-input.error {
+      border-color: var(--danger);
+      animation: shake 0.35s ease;
+    }
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.85rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    .btn-submit:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+    .pin-error-msg {
+      font-size: 0.8rem;
+      color: var(--danger);
+      font-weight: 600;
+      margin-top: -0.25rem;
+      display: none;
+    }
+
+    /* QR & Bot Status */
     .qr-container {
       background: white;
       border: 2px dashed #cbd5e1;
@@ -90,13 +157,33 @@
       line-height: 1.6;
     }
     .instructions ol { padding-left: 1.2rem; }
+    .footer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1.35rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
+    }
     .btn-back {
-      display: inline-block;
-      margin-top: 1.25rem;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 700;
       color: var(--primary);
       text-decoration: none;
+    }
+    .btn-lock {
+      background: none;
+      border: none;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn-lock:hover {
+      color: var(--danger);
     }
     .spinner {
       width: 40px;
@@ -107,56 +194,195 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="badge-icon">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.044c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
-    </div>
-    <h1>Hubungkan WhatsApp Bot</h1>
-    <p class="desc">Scan QR Code di bawah menggunakan WhatsApp untuk mengaktifkan bot grup PatungIn</p>
+    
+    <!-- VIEW 1: PIN AUTH GATE (Default untuk orang luar) -->
+    <div id="view-auth">
+      <div class="badge-icon lock">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1>Akses WhatsApp Bot</h1>
+      <p class="desc">Halaman pengelolaan bot dilindungi. Masukkan PIN Admin untuk melanjutkan.</p>
 
-    <div id="status-badge" class="status-pill connecting">
-      <span>●</span> <span id="status-text">Menghubungkan...</span>
+      <form id="form-pin" class="pin-form" onsubmit="event.preventDefault(); submitPin();">
+        <input 
+          type="password" 
+          id="input-pin" 
+          class="pin-input" 
+          placeholder="••••••" 
+          autocomplete="current-password" 
+          autofocus 
+          required 
+        />
+        <div id="pin-error" class="pin-error-msg">PIN Admin salah, silakan coba lagi!</div>
+        <button type="submit" id="btn-submit-pin" class="btn-submit">Buka Akses</button>
+      </form>
+
+      <a href="/" class="btn-back">← Kembali ke Halaman Utama</a>
     </div>
 
-    <div class="qr-container" id="qr-box">
-      <!-- Loading state -->
-      <div id="qr-loading-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
-        <div class="spinner" id="qr-spinner"></div>
-        <p id="qr-loading-text" style="font-size: 0.85rem; color: #64748b;">Menyiapkan QR Code...</p>
+    <!-- VIEW 2: BOT MANAGEMENT (Hanya jika lolos PIN / Admin Key) -->
+    <div id="view-bot" style="display: none;">
+      <div class="badge-icon wa">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.044c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/>
+        </svg>
+      </div>
+      <h1>Hubungkan WhatsApp Bot</h1>
+      <p class="desc">Scan QR Code di bawah menggunakan WhatsApp untuk mengaktifkan bot grup PatungIn</p>
+
+      <div id="status-badge" class="status-pill connecting">
+        <span>●</span> <span id="status-text">Menghubungkan...</span>
       </div>
 
-      <!-- QR image -->
-      <img id="qr-img" class="qr-img" style="display: none;" alt="QR Code WhatsApp">
+      <div class="qr-container" id="qr-box">
+        <!-- Loading state -->
+        <div id="qr-loading-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;">
+          <div class="spinner" id="qr-spinner"></div>
+          <p id="qr-loading-text" style="font-size: 0.85rem; color: #64748b;">Menyiapkan QR Code...</p>
+        </div>
 
-      <!-- Connected state -->
-      <div id="qr-connected-box" style="display: none; text-align: center;">
-        <div style="color: #10b981; font-size: 3.2rem;">✓</div>
-        <p style="font-weight: 700; color: #10b981; margin-top: 0.4rem; font-size: 1rem;" id="connected-user-name">WhatsApp Terhubung!</p>
-        <button id="btn-logout-wa" type="button" style="margin-top: 1.25rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 0.6rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
-          🔄 Ganti Nomor / Tautkan Akun Lain
+        <!-- QR image -->
+        <img id="qr-img" class="qr-img" style="display: none;" alt="QR Code WhatsApp">
+
+        <!-- Connected state -->
+        <div id="qr-connected-box" style="display: none; text-align: center;">
+          <div style="color: #10b981; font-size: 3.2rem;">✓</div>
+          <p style="font-weight: 700; color: #10b981; margin-top: 0.4rem; font-size: 1rem;" id="connected-user-name">WhatsApp Terhubung!</p>
+          <button id="btn-logout-wa" type="button" style="margin-top: 1.25rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 0.6rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
+            🔄 Ganti Nomor / Tautkan Akun Lain
+          </button>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <strong>Cara Menghubungkan:</strong>
+        <ol>
+          <li>Buka aplikasi <strong>WhatsApp</strong> di HP Anda</li>
+          <li>Buka <strong>Setelan / Titik Tiga</strong> &gt; <strong>Perangkat Tertaut</strong></li>
+          <li>Ketuk <strong>Tautkan Perangkat</strong> dan arahkan kamera ke QR Code di atas</li>
+        </ol>
+      </div>
+
+      <div class="footer-actions">
+        <a href="/" class="btn-back">← Kembali ke Beranda</a>
+        <button type="button" id="btn-lock" class="btn-lock" onclick="lockSession()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Kunci
         </button>
       </div>
     </div>
 
-    <div class="instructions">
-      <strong>Cara Menghubungkan:</strong>
-      <ol>
-        <li>Buka aplikasi <strong>WhatsApp</strong> di HP Anda</li>
-        <li>Buka <strong>Setelan / Titik Tiga</strong> &gt; <strong>Perangkat Tertaut</strong></li>
-        <li>Ketuk <strong>Tautkan Perangkat</strong> dan arahkan kamera ke QR Code di atas</li>
-      </ol>
-    </div>
-
-    <a href="/" class="btn-back">← Kembali ke Halaman Utama</a>
   </div>
 
   <script>
-    async function checkStatus() {
+    let pollInterval = null;
+
+    function getAdminKey() {
+      const urlKey = new URLSearchParams(window.location.search).get('key');
+      if (urlKey) {
+        sessionStorage.setItem('wa_admin_key', urlKey);
+        return urlKey;
+      }
+      return sessionStorage.getItem('wa_admin_key') || '';
+    }
+
+    function showBotView() {
+      document.getElementById('view-auth').style.display = 'none';
+      document.getElementById('view-bot').style.display = 'block';
+      checkStatus();
+      if (!pollInterval) {
+        pollInterval = setInterval(checkStatus, 2500);
+      }
+    }
+
+    function showAuthView() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      document.getElementById('view-bot').style.display = 'none';
+      document.getElementById('view-auth').style.display = 'block';
+      const input = document.getElementById('input-pin');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    function lockSession() {
+      sessionStorage.removeItem('wa_admin_key');
+      const url = new URL(window.location);
+      url.searchParams.delete('key');
+      window.history.replaceState({}, '', url);
+      showAuthView();
+    }
+
+    async function submitPin() {
+      const input = document.getElementById('input-pin');
+      const err = document.getElementById('pin-error');
+      const btn = document.getElementById('btn-submit-pin');
+      const pin = input.value.trim();
+
+      if (!pin) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+      err.style.display = 'none';
+      input.classList.remove('error');
+
       try {
-        const res = await fetch('/api/wa/status');
+        const res = await fetch('/api/wa/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success && data.key) {
+          sessionStorage.setItem('wa_admin_key', data.key);
+          showBotView();
+        } else {
+          input.classList.add('error');
+          err.style.display = 'block';
+          err.textContent = data.error || 'PIN Admin salah!';
+        }
+      } catch (e) {
+        err.style.display = 'block';
+        err.textContent = 'Gagal menghubungi server.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Buka Akses';
+      }
+    }
+
+    async function checkStatus() {
+      const key = getAdminKey();
+      if (!key) {
+        showAuthView();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/wa/status?key=' + encodeURIComponent(key));
+        if (res.status === 401) {
+          // Key expired or invalid
+          sessionStorage.removeItem('wa_admin_key');
+          showAuthView();
+          return;
+        }
+
         const data = await res.json();
         const badge = document.getElementById('status-badge');
         const text = document.getElementById('status-text');
@@ -165,7 +391,7 @@
         const connectedBox = document.getElementById('qr-connected-box');
         const connectedName = document.getElementById('connected-user-name');
 
-        if (badge) badge.className = 'status-pill ' + data.status;
+        if (badge) badge.className = 'status-pill ' + (data.status || '');
 
         if (data.status === 'connected') {
           if (text) text.textContent = 'WhatsApp Terhubung! (' + (data.user?.name || data.user?.id || 'Bot') + ')';
@@ -194,10 +420,17 @@
       }
     }
 
-    // Logout button handler using event delegation
+    // Logout button handler
     document.addEventListener('click', async (e) => {
       const btn = e.target.closest('#btn-logout-wa');
       if (btn) {
+        const key = getAdminKey();
+        if (!key) {
+          alert('Sesi admin berakhir, silakan masukkan PIN kembali.');
+          showAuthView();
+          return;
+        }
+
         if (confirm('Apakah Anda yakin ingin logout dan mengganti nomor WhatsApp bot?')) {
           const loadingBox = document.getElementById('qr-loading-box');
           const loadingText = document.getElementById('qr-loading-text');
@@ -210,15 +443,34 @@
           if (loadingText) loadingText.textContent = 'Memutuskan sesi lama & menyiapkan QR baru...';
 
           try {
-            await fetch('/api/wa/logout', { method: 'POST' });
+            await fetch('/api/wa/logout', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'x-admin-key': key 
+              },
+              body: JSON.stringify({ key })
+            });
           } catch (_) {}
           setTimeout(checkStatus, 1500);
         }
       }
     });
 
-    checkStatus();
-    setInterval(checkStatus, 2500);
+    // Initial check on page load
+    (async function init() {
+      const key = getAdminKey();
+      if (key) {
+        try {
+          const res = await fetch('/api/wa/status?key=' + encodeURIComponent(key));
+          if (res.ok) {
+            showBotView();
+            return;
+          }
+        } catch (_) {}
+      }
+      showAuthView();
+    })();
   </script>
 </body>
 </html>

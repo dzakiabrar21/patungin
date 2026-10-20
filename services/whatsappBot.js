@@ -375,7 +375,7 @@ export async function initWhatsAppBot(port = null) {
         try {
           currentQrDataUrl = await qrcode.toDataURL(qr, { margin: 2, scale: 7 });
           botStatus = 'qr_ready';
-          console.log(`\n📱 [WhatsAppBot] QR Code siap di-scan! Buka di browser: ${getAppBaseUrl()}/wa-login\n`);
+          console.log(`\n📱 [WhatsAppBot] QR Code siap di-scan! Buka di browser: ${getAppBaseUrl()}/wa-login?key=${process.env.WA_ADMIN_KEY || 'patungin21'}\n`);
         } catch (err) {
           console.error('[WhatsAppBot] Error generating QR data URL:', err);
         }

@@ -70,17 +70,38 @@ app.get('/api/presets', (req, res) => {
   res.json({ success: true, presets: SAMPLE_PRESETS });
 });
 
-// WhatsApp Bot Endpoints
+// WhatsApp Bot Endpoints & Security
+const WA_ADMIN_KEY = (process.env.WA_ADMIN_KEY || 'patungin21').trim();
+
+function checkWaAuth(req) {
+  const provided = req.query.key || req.headers['x-admin-key'] || req.body?.key;
+  return provided && provided.toString().trim() === WA_ADMIN_KEY;
+}
+
 app.get('/wa-login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'wa-login.html'));
 });
 
+app.post('/api/wa/verify-pin', (req, res) => {
+  const { pin } = req.body || {};
+  if (pin && pin.toString().trim() === WA_ADMIN_KEY) {
+    return res.json({ success: true, key: WA_ADMIN_KEY });
+  }
+  return res.status(401).json({ success: false, error: 'PIN Admin salah!' });
+});
+
 app.post('/api/wa/logout', async (req, res) => {
+  if (!checkWaAuth(req)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Akses ditolak!' });
+  }
   const result = await logoutWhatsAppBot();
   res.json(result);
 });
 
 app.get('/api/wa/status', (req, res) => {
+  if (!checkWaAuth(req)) {
+    return res.status(401).json({ status: 'unauthorized', message: 'Akses ditolak: PIN diperlukan' });
+  }
   const statusInfo = getBotStatus();
   res.json(statusInfo);
 });
