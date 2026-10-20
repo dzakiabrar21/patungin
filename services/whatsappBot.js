@@ -344,8 +344,8 @@ function getRecentContextText(chatId, excludeCurrentText = '') {
 
 export async function initWhatsAppBot(port = null) {
   if (port) setAppPort(port);
-  detectPublicIp();
-  tunnelSetupPromise = setupPublicTunnel(activeAppPort);
+  if (!publicServerIp) detectPublicIp();
+  if (!tunnelSetupPromise) tunnelSetupPromise = setupPublicTunnel(activeAppPort);
   try {
     botStatus = 'connecting';
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -356,7 +356,13 @@ export async function initWhatsAppBot(port = null) {
       logger: pino({ level: 'silent' }),
       printQRInTerminal: false,
       auth: state,
-      browser: ['PatungIn Bot', 'Chrome', '1.0.0']
+      browser: ['PatungIn Bot', 'Chrome', '1.0.0'],
+      syncFullHistory: false, // Tidak meminta riwayat chat lama agar WA di HP tidak terus memunculkan notif sync
+      shouldSyncHistoryMessage: () => false, // Nonaktifkan sync history agar notifikasi 'Finished syncing' di iPhone hilang
+      keepAliveIntervalMs: 25000, // Ping berkala tiap 25 detik agar koneksi stabil dan tidak putus nyambung (status 428)
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      generateHighQualityLinkPreview: false
     });
 
     sock.ev.on('creds.update', saveCreds);
