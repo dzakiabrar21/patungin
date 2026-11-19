@@ -122,6 +122,7 @@ const CATEGORY_VISUALS = {
   cat_air_minum: ['water_drop', '#039BE5'],
   cat_buah: ['nutrition', '#7CB342'],
   cat_belanja: ['local_grocery_store', '#43A047'],
+  cat_groceries: ['local_grocery_store', '#43A047'],
   cat_pasar: ['storefront', '#558B2F'],
   cat_shopping: ['shopping_bag', '#D81B60'],
   cat_apparel: ['checkroom', '#AD1457'],
@@ -748,7 +749,7 @@ async function loadCategories() {
 }
 
 // Everyday categories first, in the Stash order; the rest stay alphabetical.
-const CATEGORY_ORDER = ['cat_food', 'cat_snack_drink', 'cat_belanja', 'cat_transport', 'cat_shopping', 'cat_bills', 'cat_hiburan', 'cat_health', 'cat_education'];
+const CATEGORY_ORDER = ['cat_food', 'cat_snack_drink', 'cat_belanja', 'cat_groceries', 'cat_transport', 'cat_shopping', 'cat_bills', 'cat_hiburan', 'cat_health', 'cat_education'];
 
 function categoriesFor(type) {
   if (type === 'transfer') return [];
