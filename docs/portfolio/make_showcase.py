@@ -263,8 +263,18 @@ def eyebrow(d, x, y, s):
 
 
 def save(img, name):
+    import time
     path = os.path.join(OUT, name)
-    img.convert("RGB").save(path, optimize=True)
+    tmp = path + ".tmp.png"
+    img.convert("RGB").save(tmp, optimize=True)
+    for attempt in range(20):  # the target can be briefly locked by a previewer on Windows
+        try:
+            os.replace(tmp, path)
+            break
+        except OSError:
+            time.sleep(0.5)
+    else:
+        raise OSError(f"could not write {path} (file in use?)")
     print("saved", name, os.path.getsize(path) // 1024, "KB")
 
 
@@ -317,64 +327,102 @@ def numbered(d, x, y, n, label, sub=None):
 
 # ============================ slides ==========================================
 def slide_cover(S):
-    base = soft_background()
-    ph = {k: make_phone(S[k], w) for k, w in
-          [("split_step4", 320), ("fin_catat_calc", 320), ("fin_analytics", 320), ("split_step2", 300), ("fin_home", 400)]}
-    place(base, ph["fin_analytics"], 1500, 90, angle=-3)
-    place(base, ph["split_step4"], 905, 240, angle=4)
-    place(base, ph["fin_catat_calc"], 1240, 60, angle=-2)
-    place(base, ph["split_step2"], 1530, 620, angle=3)
-    place(base, ph["fin_home"], 1100, 320)
+    """Dark, centred cover: title on top, two phones rising from the bottom edge."""
+    extra = 600  # draw on a taller canvas so phones can run off the bottom, then crop
+    base = gradient(W, H + extra, [(5, 46, 54), (7, 78, 86), (0, 128, 132)], angle=165).convert("RGBA")
+    glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse([W // 2 - 620, 560, W // 2 + 620, 1500], fill=(36, 185, 180, 70))
+    glow = glow.filter(ImageFilter.GaussianBlur(120))
+    base.alpha_composite(glow)
 
     d = ImageDraw.Draw(base)
-    base.alpha_composite(logo(104), (110, 146))
-    d.text((240, 198), "PatungIn", font=font(800, 54), fill=TEXT, anchor="lm")
-    d.text((110, 330), "Split Bill &", font=font(800, 80), fill=TEXT, anchor="la")
-    d.text((110, 420), "Finance Tracker", font=font(800, 80), fill=PRIMARY, anchor="la")
-    d.text((110, 540), "Web App (PWA) · WhatsApp Bot · Gemini AI", font=font(600, 30), fill=MUTED, anchor="la")
+    # brand row
+    lg = 64
+    name_f = font(800, 34)
+    row_w = lg + 18 + int(name_f.getlength("PatungIn"))
+    x0 = (W - row_w) // 2
+    base.alpha_composite(logo(lg), (x0, 86))
+    d.text((x0 + lg + 18, 86 + lg // 2), "PatungIn", font=name_f, fill=WHITE, anchor="lm")
 
-    items = ["Scan struk & bagi tagihan secara adil",
-             "Catat keuangan lewat web atau chat WhatsApp",
-             "Multi-dompet, analitik & ekspor CSV",
-             "Sinkron Google Sheets & pintasan iPhone"]
-    y = 640
-    for it in items:
-        d.ellipse([110, y, 110 + 50, y + 50], fill=PRIMARY)
-        draw_icon(d, "check", 110 + 25, y + 25, 32, WHITE)
-        d.text((184, y + 25), it, font=font(600, 31), fill=TEXT, anchor="lm")
-        y += 80
+    d.text((W // 2, 270), "Split bill & catat keuangan", font=font(800, 76), fill=WHITE, anchor="mm")
+    d.text((W // 2, 352), "Foto struk, bagi adil, semua tercatat.", font=font(500, 34), fill=(176, 226, 222), anchor="mm")
 
-    x = 110
-    for lab in ["Node.js", "Express", "SQLite", "Gemini API", "Baileys"]:
-        w_, _ = chip(base, x, 992, lab, font(700, 24), PRIMARY_DARK, TINT, pad_x=24, pad_y=11)
-        x += w_ + 14
-    save(base, "01-cover.png")
+    # stack chips, centred
+    labels = ["Node.js", "Express", "SQLite", "Gemini API", "WhatsApp Bot", "PWA"]
+    f = font(700, 22)
+    widths = [int(f.getlength(t)) + 44 for t in labels]
+    gap = 12
+    cx = (W - (sum(widths) + gap * (len(labels) - 1))) // 2
+    for t, w_ in zip(labels, widths):
+        chip(base, cx, 412, t, f, (214, 244, 240), (18, 96, 104), pad_x=22, pad_y=10)
+        cx += w_ + gap
+
+    # phones
+    left = make_phone(S["split_step4"], 400)
+    right = make_phone(S["fin_home"], 400)
+    shadow = (40, 30, 150)
+    place(base, left, W // 2 - 440, 560, angle=6, shadow=shadow)
+    place(base, right, W // 2 + 20, 540, angle=-6, shadow=shadow)
+
+    save(base.crop((0, 0, W, H)), "01-cover.png")
 
 
 def slide_features(S):
-    base = soft_background()
+    """Two panels: the split bill side (light) and the finance side (dark)."""
+    base = Image.new("RGBA", (W, H), PAGE + (255,))
     chrome(base)
     d = ImageDraw.Draw(base)
     eyebrow(d, 110, 175, "Fitur utama")
-    d.text((110, 215), "Dari patungan sampai catatan keuangan", font=font(800, 62), fill=TEXT, anchor="la")
-    feats = [
-        ("document_scanner", "Scan struk dengan AI", "Gemini Vision membaca menu, harga, pajak, dan service dari foto struk."),
-        ("balance", "Bagi tagihan yang adil", "Pajak & service dibagi proporsional sesuai pesanan tiap orang."),
-        ("chat", "Bot WhatsApp", "Kirim teks, voice note, atau foto struk ke bot, transaksi langsung tercatat."),
-        ("account_balance_wallet", "Multi-dompet", "Bank, e-wallet, dan tunai dengan transfer antar dompet."),
-        ("pie_chart", "Analitik keuangan", "Donut chart per kategori dan tren pengeluaran enam bulan."),
-        ("sync", "Integrasi", "Google Sheets, import mutasi bank, ekspor CSV, dan pintasan iPhone."),
+    d.text((110, 215), "Dua kebutuhan, satu aplikasi", font=font(800, 62), fill=TEXT, anchor="la")
+
+    panels = [
+        ("receipt_long", "Split Bill", "Untuk patungan bareng teman", False, [
+            ("document_scanner", "Scan struk dengan AI", "Gemini membaca menu, harga, pajak, dan diskon."),
+            ("balance", "Bagi yang adil", "Pajak & service dibagi sesuai pesanan tiap orang."),
+            ("groups", "Langsung ke grup", "/hitungin di grup WhatsApp, rincian siap dikirim."),
+        ]),
+        ("account_balance_wallet", "Finance Tracker", "Untuk catatan keuangan pribadi", True, [
+            ("chat", "Catat dari mana saja", "Web, chat WhatsApp, voice note, atau Siri."),
+            ("swap_horiz", "Multi-dompet", "Bank, e-wallet, tunai, dan transfer antar dompet."),
+            ("pie_chart", "Analitik & integrasi", "Donut kategori, tren 6 bulan, Google Sheets, CSV."),
+        ]),
     ]
-    cw, ch_, gap = 500, 325, 36
-    for i, (ic, title, desc) in enumerate(feats):
-        cx = 110 + (i % 3) * (cw + gap)
-        cy = 355 + (i // 3) * (ch_ + gap)
-        rrect(base, (cx, cy, cx + cw, cy + ch_), 30, fill=WHITE, shadow=(26, 14, 38), outline=(232, 240, 241))
+    pw, ph_, gap, y0 = 775, 735, 30, 345
+    for i, (hic, title, sub, dark, rows) in enumerate(panels):
+        x = 110 + i * (pw + gap)
+        if dark:
+            rrect(base, (x, y0, x + pw, y0 + ph_), 36, gradient_img=gradient(pw, ph_, HERO_STOPS, 125), shadow=(30, 18, 70))
+            fg, mut, tint, ic_col, line = WHITE, (184, 222, 222), (255, 255, 255), WHITE, (255, 255, 255, 40)
+        else:
+            rrect(base, (x, y0, x + pw, y0 + ph_), 36, fill=WHITE, shadow=(26, 14, 38), outline=(232, 240, 241))
+            fg, mut, tint, ic_col, line = TEXT, MUTED, TINT, PRIMARY, BORDER + (255,)
         d = ImageDraw.Draw(base)
-        d.rounded_rectangle([cx + 34, cy + 34, cx + 34 + 84, cy + 34 + 84], radius=24, fill=TINT)
-        draw_icon(d, ic, cx + 34 + 42, cy + 34 + 42, 50, PRIMARY)
-        d.text((cx + 34, cy + 142), title, font=font(800, 30), fill=TEXT, anchor="la")
-        draw_text(d, (cx + 34, cy + 190), desc, font(400, 25), MUTED, max_w=cw - 68, line_gap=1.32)
+        # header
+        hx, hy = x + 48, y0 + 48
+        if dark:
+            ov = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+            ImageDraw.Draw(ov).rounded_rectangle([0, 0, 95, 95], radius=28, fill=(255, 255, 255, 38))
+            base.alpha_composite(ov, (hx, hy))
+            d = ImageDraw.Draw(base)
+        else:
+            d.rounded_rectangle([hx, hy, hx + 96, hy + 96], radius=28, fill=tint)
+        draw_icon(d, hic, hx + 48, hy + 48, 54, ic_col)
+        d.text((hx + 124, hy + 30), title, font=font(800, 42), fill=fg, anchor="lm")
+        d.text((hx + 124, hy + 74), sub, font=font(500, 25), fill=mut, anchor="lm")
+
+        # rows
+        ry = y0 + 200
+        for j, (ic, t1, t2) in enumerate(rows):
+            lay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            ImageDraw.Draw(lay).line([(x + 48, ry), (x + pw - 48, ry)], fill=line, width=2)
+            base.alpha_composite(lay)
+            d = ImageDraw.Draw(base)
+            cy = ry + 88
+            draw_icon(d, ic, x + 48 + 26, cy, 44, (107, 227, 208) if dark else PRIMARY)
+            d.text((x + 120, cy - 22), t1, font=font(800, 31), fill=fg, anchor="lm")
+            d.text((x + 120, cy + 22), t2, font=font(500, 24), fill=mut, anchor="lm")
+            ry += 176
     save(base, "02-fitur-utama.png")
 
 
