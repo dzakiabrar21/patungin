@@ -1,1346 +1,1595 @@
 /**
- * PatungIn Finance Dashboard JavaScript
- * Logic for overview, transactions, analytics, and modals
+ * PatungIn Finance — web client styled after the Stash Android app.
+ * Views: Beranda, Dompet (+ detail), Analitik, Pengaturan. Same API as before.
  */
 
-// Automatically skip Ngrok browser warning for all API fetch calls
+// Skip the ngrok browser warning on every API call
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
-  window.fetch = function(url, options = {}) {
+  window.fetch = function (url, options = {}) {
     options = options || {};
     options.headers = options.headers || {};
-    if (options.headers instanceof Headers) {
-      options.headers.set('ngrok-skip-browser-warning', '1');
-    } else {
-      options.headers['ngrok-skip-browser-warning'] = '1';
-    }
+    if (options.headers instanceof Headers) options.headers.set('ngrok-skip-browser-warning', '1');
+    else options.headers['ngrok-skip-browser-warning'] = '1';
     return originalFetch(url, options);
   };
 }
 
-// Application State
+// ---------------------------------------------------------------- state
+const PAGE_SIZE = 30;
+
 const state = {
-  currentMonth: new Date().toISOString().slice(0, 7), // 'YYYY-MM'
+  currentMonth: monthKey(new Date()),
   currentType: 'all',
   currentAccount: 'all',
   currentSearch: '',
   accounts: [],
   categories: [],
-  overviewData: null
+  overview: null,
+  txRows: [],
+  txTotal: 0,
+  view: 'beranda',
+  walletDetailId: null,
+  walletRows: [],
+  walletTotal: 0,
+  touchedSlice: -1
 };
 
-// Indonesian Month Names
-const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------- formatters
+const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+function monthKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function monthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${y}`;
+}
+function shiftMonth(key, delta) {
+  const [y, m] = key.split('-').map(Number);
+  return monthKey(new Date(y, m - 1 + delta, 1));
+}
+function isCurrentMonth(key) {
+  return key >= monthKey(new Date());
+}
+
+const numberFmt = new Intl.NumberFormat('id-ID');
+const compactFmt = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** "Rp 25.000" / "-Rp 25.000" */
+function rp(n) {
+  const v = Math.round(Number(n) || 0);
+  return (v < 0 ? '-' : '') + 'Rp ' + numberFmt.format(Math.abs(v));
+}
+/** "+Rp 25.000" / "-Rp 25.000" (zero unsigned) */
+function rpSigned(n) {
+  const v = Math.round(Number(n) || 0);
+  return v > 0 ? '+' + rp(v) : rp(v);
+}
+function formatNumber(n) {
+  return numberFmt.format(n);
+}
+
+function toDate(str) {
+  if (!str) return null;
+  const d = new Date(String(str).includes('T') || String(str).length <= 10 ? str : String(str).replace(' ', 'T'));
+  return isNaN(d.getTime()) ? null : d;
+}
+function dayKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dayLabel(d) {
+  const today = new Date();
+  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (dayKey(d) === dayKey(today)) return 'Hari ini';
+  if (dayKey(d) === dayKey(yest)) return 'Kemarin';
+  if (d.getFullYear() === today.getFullYear()) {
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+  }
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Like Flutter's FittedBox(scaleDown): shrink the font until the text fits its box. */
+function fitText(el, minPx = 10) {
+  if (!el) return;
+  el.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  while (el.scrollWidth > el.clientWidth + 0.5 && size > minPx) {
+    size -= 0.5;
+    el.style.fontSize = `${size}px`;
+  }
+}
+const FIT_IDS = ['hero-total-balance', 'hero-total-income', 'hero-total-expense', 'an-income', 'an-expense', 'an-net', 'wallets-total', 'wallet-detail-balance'];
+function fitAll() {
+  FIT_IDS.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.offsetParent !== null) fitText(el);
+  });
+}
+window.addEventListener('resize', () => setTimeout(fitAll, 0));
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------------------------------------------------------------- visuals (Stash categories & wallets)
+const CATEGORY_VISUALS = {
+  cat_food: ['restaurant', '#EF6C00'],
+  cat_snack_drink: ['local_cafe', '#FFA000'],
+  cat_hangout: ['coffee', '#8D6E63'],
+  cat_air_minum: ['water_drop', '#039BE5'],
+  cat_buah: ['nutrition', '#7CB342'],
+  cat_belanja: ['local_grocery_store', '#43A047'],
+  cat_pasar: ['storefront', '#558B2F'],
+  cat_shopping: ['shopping_bag', '#D81B60'],
+  cat_apparel: ['checkroom', '#AD1457'],
+  cat_beauty: ['spa', '#EC407A'],
+  cat_transport: ['directions_car', '#1E88E5'],
+  cat_bensin: ['local_gas_station', '#1565C0'],
+  cat_kereta: ['train', '#0288D1'],
+  cat_parkir: ['local_parking', '#5C6BC0'],
+  cat_motor_services: ['two_wheeler', '#283593'],
+  cat_bills: ['receipt_long', '#6D4C41'],
+  cat_listrik: ['bolt', '#F9A825'],
+  cat_internet: ['wifi', '#00ACC1'],
+  cat_hiburan: ['sports_esports', '#8E24AA'],
+  cat_social_life: ['groups', '#AB47BC'],
+  cat_health: ['self_improvement', '#E53935'],
+  cat_obat_herbal: ['medication', '#C62828'],
+  cat_education: ['school', '#3949AB'],
+  cat_it_project: ['computer', '#00897B'],
+  cat_tabungan: ['savings', '#2E7D32'],
+  cat_laundry: ['local_laundry_service', '#546E7A'],
+  cat_barber: ['content_cut', '#795548'],
+  cat_household: ['chair', '#A1887F'],
+  cat_darurat: ['emergency', '#D32F2F'],
+  cat_other_expense: ['more_horiz', '#757575'],
+  cat_salary: ['work', '#2E7D32'],
+  cat_transfer: ['swap_horiz', '#546E7A']
+};
+const CATEGORY_KEYWORDS = [
+  [/makan|food|resto|kuliner/, 'restaurant', '#EF6C00'],
+  [/minum|kopi|coffee|snack|jajan/, 'local_cafe', '#FFA000'],
+  [/transport|ojek|grab|gojek|bensin|bbm|tol/, 'directions_car', '#1E88E5'],
+  [/belanja|shop|market|groceries/, 'shopping_bag', '#D81B60'],
+  [/tagihan|bill|listrik|pln|langganan/, 'receipt_long', '#6D4C41'],
+  [/hiburan|game|film|movie/, 'movie', '#8E24AA'],
+  [/sehat|health|obat|dokter/, 'medical_services', '#E53935'],
+  [/didik|sekolah|kuliah|buku|course/, 'school', '#3949AB'],
+  [/gaji|salary|bonus|pemasukan|income/, 'work', '#2E7D32'],
+  [/invest|saham|tabung/, 'trending_up', '#00897B'],
+  [/hadiah|gift/, 'redeem', '#D81B60']
 ];
+const FALLBACK_COLORS = ['#EF6C00', '#43A047', '#1E88E5', '#D81B60', '#6D4C41', '#8E24AA', '#E53935', '#3949AB', '#00897B', '#F9A825'];
 
-// Helper: Format Rupiah
-function formatRupiah(num) {
-  return (Number(num) || 0).toLocaleString('id-ID');
+function hashIndex(str, mod) {
+  let h = 0;
+  for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % mod;
 }
 
-// Helper: Format Date String to Indo readable
-function formatDateIndo(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  
-  const day = d.getDate();
-  const month = MONTH_NAMES[d.getMonth()].slice(0, 3);
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  
-  return `${day} ${month} ${year}, ${hours}:${minutes}`;
+function catVisual(id, name, type) {
+  if (type === 'transfer' || id === 'cat_transfer') return { icon: 'swap_horiz', color: '#546E7A' };
+  if (id && CATEGORY_VISUALS[id]) {
+    const [icon, color] = CATEGORY_VISUALS[id];
+    return { icon, color };
+  }
+  const key = String(name || '').toLowerCase();
+  for (const [re, icon, color] of CATEGORY_KEYWORDS) {
+    if (re.test(key)) return { icon, color };
+  }
+  if (type === 'income') return { icon: 'payments', color: '#2E7D32' };
+  return { icon: 'sell', color: FALLBACK_COLORS[hashIndex(id || name, FALLBACK_COLORS.length)] };
 }
 
-// Helper: Show Toast Notification
-function showToast(message, icon = '✅') {
-  const toast = document.getElementById('fin-toast');
-  if (!toast) return;
-  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
-  toast.classList.add('show');
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3500);
+const WALLET_BRANDS = [
+  [/bca/, '#0060AF'],
+  [/mandiri/, '#003D79'],
+  [/jago/, '#F2A900'],
+  [/bsi|syariah/, '#00A39E'],
+  [/seabank/, '#FF5A00'],
+  [/gopay/, '#00AED6'],
+  [/ovo/, '#4C2A86'],
+  [/dana/, '#118EEA'],
+  [/shopee/, '#EE4D2D'],
+  [/stockbit|rdn|bibit|ajaib/, '#1E9E5A'],
+  [/tunai|cash/, '#2E7D32'],
+  [/bank ?accounts?/, '#0284C7']
+];
+const WALLET_COLORS = ['#0060AF', '#003D79', '#F2A900', '#00AED6', '#4C2A86', '#2E7D32', '#D81B60', '#EF6C00', '#546E7A'];
+const WALLET_KINDS = {
+  bank: { icon: 'account_balance', label: 'Rekening bank' },
+  ewallet: { icon: 'phone_android', label: 'E-Wallet' },
+  cash: { icon: 'payments', label: 'Tunai' },
+  investment: { icon: 'trending_up', label: 'Investasi' }
+};
+
+function walletVisual(acc) {
+  const name = String(acc?.name || '').toLowerCase();
+  let color = null;
+  for (const [re, c] of WALLET_BRANDS) {
+    if (re.test(name)) { color = c; break; }
+  }
+  if (!color) color = WALLET_COLORS[hashIndex(name, WALLET_COLORS.length)];
+  const kind = WALLET_KINDS[acc?.type] || WALLET_KINDS.bank;
+  return { color, icon: kind.icon, kindLabel: kind.label };
 }
 
-// Initialize on DOM Ready
+function walletAvatar(acc, size = 40) {
+  const v = walletVisual(acc);
+  return `<span class="wallet-avatar" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * 0.34)}px;background:${v.color}24;color:${v.color}"><span class="ms" style="font-size:${Math.round(size * 0.52)}px">${v.icon}</span></span>`;
+}
+
+function accountById(id) {
+  return state.accounts.find((a) => a.id === id) || null;
+}
+
+// ---------------------------------------------------------------- feedback UI
+let toastTimer;
+function showToast(message, isError = false) {
+  const el = $('fin-toast');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('error', !!isError);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+const openStack = [];
+function openSheet(id) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.add('active');
+  if (!openStack.includes(id)) openStack.push(id);
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(id) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.remove('active');
+  const i = openStack.indexOf(id);
+  if (i >= 0) openStack.splice(i, 1);
+  if (openStack.length === 0) document.body.style.overflow = '';
+  el.dispatchEvent(new CustomEvent('sheet-closed'));
+}
+
+function setupSheets() {
+  document.querySelectorAll('.sheet-backdrop').forEach((bd) => {
+    bd.addEventListener('click', (e) => {
+      if (e.target === bd) closeSheet(bd.id);
+    });
+    bd.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeSheet(bd.id)));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && openStack.length) {
+      const top = openStack[openStack.length - 1];
+      if (top === 'modal-confirm') $('confirm-cancel').click();
+      else if (top === 'modal-prompt') $('prompt-cancel').click();
+      else closeSheet(top);
+    }
+  });
+}
+
+function confirmDialog({ title, text, okLabel = 'Hapus' }) {
+  return new Promise((resolve) => {
+    $('confirm-title').textContent = title;
+    $('confirm-text').textContent = text;
+    $('confirm-ok').textContent = okLabel;
+    const done = (v) => {
+      closeSheet('modal-confirm');
+      $('confirm-ok').onclick = null;
+      $('confirm-cancel').onclick = null;
+      resolve(v);
+    };
+    $('confirm-ok').onclick = () => done(true);
+    $('confirm-cancel').onclick = () => done(false);
+    openSheet('modal-confirm');
+  });
+}
+
+function promptDialog({ title, value = '' }) {
+  return new Promise((resolve) => {
+    $('prompt-title').textContent = title;
+    const input = $('prompt-input');
+    input.value = value;
+    const form = $('prompt-form');
+    const done = (v) => {
+      closeSheet('modal-prompt');
+      form.onsubmit = null;
+      $('prompt-cancel').onclick = null;
+      resolve(v);
+    };
+    form.onsubmit = (e) => { e.preventDefault(); done(input.value.trim()); };
+    $('prompt-cancel').onclick = () => done(null);
+    openSheet('modal-prompt');
+    setTimeout(() => input.focus(), 50);
+  });
+}
+
+function emptyState(icon, title, message = '') {
+  return `<div class="empty-state"><div class="empty-icon"><span class="ms">${icon}</span></div><div class="empty-title">${esc(title)}</div>${message ? `<div class="empty-msg">${esc(message)}</div>` : ''}</div>`;
+}
+const LOADING = '<div class="loading-row"><div class="spinner"></div></div>';
+
+async function api(url, options) {
+  const res = await fetch(url, options);
+  let data;
+  try { data = await res.json(); } catch (_) { throw new Error(`Server mengembalikan respons tidak valid (${res.status})`); }
+  if (!data.success) throw new Error(data.error || data.message || 'Permintaan gagal');
+  return data;
+}
+
+// ---------------------------------------------------------------- init
 document.addEventListener('DOMContentLoaded', async () => {
-  setupMonthSelector();
-  setupQuickChatInput();
-  setupFilterTabs();
-  setupSearchInput();
-  setupTransactionModal();
-  setupWalletModal();
-  setupExportButtons();
+  setupSheets();
+  setupRouting();
+  setupActions();
+  setupMonthControls();
+  setupQuickInput();
+  setupTxFilters();
+  setupAddTransaction();
+  setupWalletForm();
+  setupWalletDetail();
+  setupScan();
+  setupSettings();
   setupImportModal();
   setupGoogleSheetModal();
   setupShortcutsModal();
-  
+
+  updateMonthLabels();
   await loadCategories();
   await refreshDashboard();
 
-  // Register PWA Service Worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      console.log('[PWA] Service Worker registered with scope:', reg.scope);
-    }).catch((err) => {
-      console.log('[PWA] Service Worker registration failed:', err);
-    });
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.log('[PWA] SW registration failed:', err));
   }
 
-  // Handle PWA Quick Action (e.g. from Home Screen app icon shortcut)
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('action') === 'add' || window.location.hash === '#catat') {
-    setTimeout(() => {
-      document.getElementById('btn-open-add-tx')?.click();
-    }, 400);
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') === 'add' || window.location.hash === '#catat') {
+    setTimeout(() => openAddSheet(), 300);
   }
 });
 
-// Refresh all data
 async function refreshDashboard() {
-  await Promise.all([
-    loadOverview(),
-    loadTransactions()
-  ]);
+  await Promise.all([loadOverview(), loadTransactions(true)]);
+  if (state.walletDetailId) loadWalletDetail(true);
 }
 
-// 1. Month Selector Logic
-function setupMonthSelector() {
-  const display = document.getElementById('month-display');
-  const btnPrev = document.getElementById('btn-month-prev');
-  const btnNext = document.getElementById('btn-month-next');
-  const btnToday = document.getElementById('btn-month-today');
+// ---------------------------------------------------------------- routing
+const VIEWS = ['beranda', 'dompet', 'analitik', 'pengaturan'];
 
-  function updateMonthLabel() {
-    const [year, month] = state.currentMonth.split('-');
-    const monthIndex = parseInt(month, 10) - 1;
-    display.textContent = `${MONTH_NAMES[monthIndex]} ${year}`;
-  }
+function setupRouting() {
+  window.addEventListener('hashchange', applyRoute);
+  applyRoute();
+}
 
-  btnPrev.addEventListener('click', () => {
-    const [year, month] = state.currentMonth.split('-').map(Number);
-    let newYear = year;
-    let newMonth = month - 1;
-    if (newMonth < 1) {
-      newMonth = 12;
-      newYear -= 1;
+function applyRoute() {
+  let view = (window.location.hash || '#beranda').slice(1);
+  if (view === 'catat') view = 'beranda';
+  if (!VIEWS.includes(view)) view = 'beranda';
+  const changed = view !== state.view;
+  state.view = view;
+  document.querySelectorAll('.view').forEach((v) => { v.hidden = v.dataset.view !== view; });
+  document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === view));
+  document.body.classList.toggle('fab-visible', view === 'beranda' || view === 'dompet');
+  if (view !== 'dompet') showWalletList();
+  if (changed) window.scrollTo({ top: 0 });
+  setTimeout(fitAll, 0);
+}
+
+function go(view) {
+  if (window.location.hash !== `#${view}`) window.location.hash = view;
+  else applyRoute();
+}
+
+function setupActions() {
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if (action === 'add') {
+      openAddSheet({ walletId: state.view === 'dompet' ? state.walletDetailId : null });
+    } else if (action === 'transfer') {
+      if (state.accounts.length < 2) return showToast('Butuh minimal dua dompet untuk transfer.');
+      openAddSheet({ type: 'transfer' });
+    } else if (action === 'scan') {
+      if ($('modal-add-tx').classList.contains('active')) closeSheet('modal-add-tx');
+      $('scan-file-input').click();
+    } else if (action === 'export') {
+      doExport();
+    } else if (action === 'add-wallet') {
+      openWalletForm();
+    } else if (action === 'wallets-manage') {
+      go('dompet');
     }
-    state.currentMonth = `${newYear}-${String(newMonth).padStart(2, '0')}`;
-    updateMonthLabel();
-    refreshDashboard();
   });
-
-  btnNext.addEventListener('click', () => {
-    const [year, month] = state.currentMonth.split('-').map(Number);
-    let newYear = year;
-    let newMonth = month + 1;
-    if (newMonth > 12) {
-      newMonth = 1;
-      newYear += 1;
-    }
-    state.currentMonth = `${newYear}-${String(newMonth).padStart(2, '0')}`;
-    updateMonthLabel();
-    refreshDashboard();
-  });
-
-  if (btnToday) {
-    btnToday.addEventListener('click', () => {
-      state.currentMonth = new Date().toISOString().slice(0, 7);
-      updateMonthLabel();
-      refreshDashboard();
-    });
-  }
-
-  updateMonthLabel();
 }
 
-// Helper: Update Dynamic Greeting
-function updateGreeting() {
-  const heading = document.getElementById('greeting-heading');
-  if (!heading) return;
-  const hour = new Date().getHours();
-  let timeStr = 'pagi';
-  if (hour >= 11 && hour < 15) timeStr = 'siang';
-  else if (hour >= 15 && hour < 18) timeStr = 'sore';
-  else if (hour >= 18 || hour < 4) timeStr = 'malam';
-  
-  const userName = localStorage.getItem('patungin_user_name') || 'Dzaki';
-  heading.textContent = `Selamat ${timeStr}, ${userName}`;
-
-  // Allow clicking on name to personalize it
-  if (!heading.dataset.hasRenameListener) {
-    heading.dataset.hasRenameListener = 'true';
-    heading.style.cursor = 'pointer';
-    heading.addEventListener('click', () => {
-      const current = localStorage.getItem('patungin_user_name') || 'Dzaki';
-      const input = prompt('Ubah nama panggilan kamu di dashboard:', current);
-      if (input !== null && input.trim()) {
-        localStorage.setItem('patungin_user_name', input.trim());
-        updateGreeting();
-        showToast(`Nama diubah menjadi ${input.trim()}`);
-      }
-    });
-  }
+// ---------------------------------------------------------------- month
+function setupMonthControls() {
+  const shift = (d) => {
+    const next = shiftMonth(state.currentMonth, d);
+    if (d > 0 && next > monthKey(new Date())) return;
+    state.currentMonth = next;
+    state.touchedSlice = -1;
+    updateMonthLabels();
+    refreshDashboard();
+  };
+  $('btn-month-prev').addEventListener('click', () => shift(-1));
+  $('btn-month-next').addEventListener('click', () => shift(1));
+  $('btn-an-prev').addEventListener('click', () => shift(-1));
+  $('btn-an-next').addEventListener('click', () => shift(1));
 }
 
-// 2. Fetch and Render Finance Overview
+function updateMonthLabels() {
+  const label = monthLabel(state.currentMonth);
+  $('month-display').textContent = label;
+  $('an-month-display').textContent = label;
+  const atNow = isCurrentMonth(state.currentMonth);
+  $('btn-month-next').disabled = atNow;
+  $('btn-an-next').disabled = atNow;
+}
+
+// ---------------------------------------------------------------- overview
 async function loadOverview() {
   try {
-    updateGreeting();
-    const res = await fetch(`/api/finance/overview?month=${state.currentMonth}`);
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-
-    state.overviewData = data;
+    const data = await api(`/api/finance/overview?month=${state.currentMonth}`);
+    state.overview = data;
     state.accounts = data.accounts || [];
 
-    // Render Net Worth & Stats
-    document.getElementById('hero-total-balance').textContent = `Rp ${formatRupiah(data.totalBalance)}`;
-    document.getElementById('hero-total-income').textContent = `+Rp ${formatRupiah(data.totalIncome)}`;
-    document.getElementById('hero-total-expense').textContent = `−Rp ${formatRupiah(data.totalExpense)}`;
-    
-    const savingEl = document.getElementById('hero-net-savings');
-    const savingSign = data.netSavings >= 0 ? '+' : '−';
-    savingEl.textContent = `${savingSign}Rp ${formatRupiah(Math.abs(data.netSavings))}`;
-    savingEl.className = 'fin-stat-val ' + (data.netSavings >= 0 ? 'income' : 'expense');
+    $('hero-total-balance').textContent = rp(data.totalBalance);
+    $('hero-total-income').textContent = rp(data.totalIncome);
+    $('hero-total-expense').textContent = rp(data.totalExpense);
 
-    // Sub-ratios
-    const walletCountEl = document.getElementById('hero-wallets-count');
-    if (walletCountEl) {
-      walletCountEl.textContent = `Tersebar di ${state.accounts.length} dompet aktif`;
-    }
-
-    const expRatioEl = document.getElementById('hero-expense-ratio');
-    if (expRatioEl) {
-      const expPct = data.totalIncome > 0 ? Math.round((data.totalExpense / data.totalIncome) * 100) : 0;
-      expRatioEl.textContent = `${expPct}% dari pemasukan`;
-    }
-
-    const savRatioEl = document.getElementById('hero-savings-ratio');
-    if (savRatioEl) {
-      const savPct = data.totalIncome > 0 ? Math.max(0, Math.round((data.netSavings / data.totalIncome) * 100)) : 0;
-      savRatioEl.textContent = `${savPct}% berhasil disimpan`;
-    }
-
-    // Render Wallets
-    renderWallets(data.accounts);
-
-    // Render Category Breakdown
-    renderCategoriesBreakdown(data.categoryBreakdown, data.totalExpense);
-
-    // Render Daily Trend
-    renderDailyTrend(data.dailyTrend, state.currentMonth);
-
+    renderWalletStrip();
+    renderWalletList();
+    renderAnalytics();
+    setTimeout(fitAll, 0);
   } catch (err) {
     console.error('Failed to load finance overview:', err);
+    showToast('Gagal memuat ringkasan: ' + err.message, true);
   }
 }
 
-// Render Wallets Horizontal Cards (Figma Specification)
-function renderWallets(accounts) {
-  const container = document.getElementById('wallets-container');
-  if (!container) return;
-
-  if (!accounts || accounts.length === 0) {
-    container.innerHTML = '<div style="color:var(--fin-text-muted);font-size:11px;padding:12px 0;">Belum ada dompet terdaftar.</div>';
+function renderWalletStrip() {
+  const el = $('wallets-container');
+  if (!state.accounts.length) {
+    el.innerHTML = '';
     return;
   }
-
-  // Predefined brand styling from Figma
-  const brandStyles = {
-    'bsi': { grad: 'linear-gradient(135deg, #00A39E 0%, #007A76 100%)', tag: 'Bank Syariah', abbr: 'BSI' },
-    'jago': { grad: 'linear-gradient(135deg, #FFB703 0%, #FB8500 100%)', tag: 'Bank Digital', abbr: 'JAGO' },
-    'stockbit': { grad: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', tag: 'Investasi / Tabungan', abbr: 'RDN' },
-    'rdnstockbit': { grad: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', tag: 'Investasi / Tabungan', abbr: 'RDN' },
-    'bankaccounts': { grad: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)', tag: 'Rekening bank', abbr: 'BANK' },
-    'bca': { grad: 'linear-gradient(135deg, #086DB4 0%, #20A8DE 100%)', tag: 'Rekening bank', abbr: 'BCA' },
-    'mandiri': { grad: 'linear-gradient(135deg, #0B54A0 0%, #F7B824 100%)', tag: 'Rekening bank', abbr: 'M' },
-    'gopay': { grad: 'linear-gradient(135deg, #12A5DC 0%, #0877BD 100%)', tag: 'E-Wallet', abbr: 'GP' },
-    'tunai': { grad: 'linear-gradient(135deg, #11966F 0%, #45C68F 100%)', tag: 'Uang fisik', abbr: 'Rp' },
-    'cash': { grad: 'linear-gradient(135deg, #11966F 0%, #45C68F 100%)', tag: 'Uang fisik', abbr: 'Rp' },
-    'ovo': { grad: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)', tag: 'E-Wallet', abbr: 'OVO' },
-    'dana': { grad: 'linear-gradient(135deg, #118EEA 0%, #0D6EFD 100%)', tag: 'E-Wallet', abbr: 'DANA' },
-    'shopeepay': { grad: 'linear-gradient(135deg, #EA580C 0%, #FB923C 100%)', tag: 'E-Wallet', abbr: 'SP' },
-    'seabank': { grad: 'linear-gradient(135deg, #FF5A00 0%, #FFA100 100%)', tag: 'Bank Digital', abbr: 'SEA' }
-  };
-
-  container.innerHTML = accounts.map(acc => {
-    const key = acc.name.toLowerCase().replace(/[^a-z]/g, '');
-    let matched = brandStyles[key];
-    if (!matched) {
-      if (key.includes('bsi')) matched = brandStyles.bsi;
-      else if (key.includes('jago')) matched = brandStyles.jago;
-      else if (key.includes('stockbit') || key.includes('rdn')) matched = brandStyles.stockbit;
-      else if (key.includes('bankaccount')) matched = brandStyles.bankaccounts;
-      else if (key.includes('bca')) matched = brandStyles.bca;
-      else if (key.includes('mandiri')) matched = brandStyles.mandiri;
-      else if (key.includes('gopay')) matched = brandStyles.gopay;
-      else if (key.includes('cash') || key.includes('tunai')) matched = brandStyles.cash;
-      else if (key.includes('ovo')) matched = brandStyles.ovo;
-      else if (key.includes('dana')) matched = brandStyles.dana;
-      else {
-        matched = {
-          grad: 'linear-gradient(135deg, #007F88 0%, #24B9B4 100%)',
-          tag: acc.type === 'bank' ? 'Rekening bank' : (acc.type === 'ewallet' ? 'E-Wallet' : 'Dompet'),
-          abbr: acc.name.slice(0, 3).toUpperCase()
-        };
-      }
-    }
-
-    const isActive = state.currentAccount === acc.id;
-
-    return `
-      <div class="fin-wallet-card ${isActive ? 'active' : ''}" onclick="filterByWallet('${acc.id}')">
-        <div class="fin-wallet-card-head">
-          <div class="fin-wallet-badge" style="background:${matched.grad}">${matched.abbr}</div>
-          <span class="fin-wallet-type-pill">${matched.tag}</span>
-        </div>
-        <div class="fin-wallet-name" title="${acc.name}">${acc.name}</div>
-        <div class="fin-wallet-balance">Rp ${formatRupiah(acc.balance)}</div>
-        <div class="fin-wallet-footer">
-          <span>Tersedia</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-      </div>
-    `;
-  }).join('');
+  el.innerHTML = state.accounts.map((a) => `
+    <button type="button" class="stash-card wallet-chip ${state.currentAccount === a.id ? 'active' : ''}" data-wallet="${esc(a.id)}" title="Tampilkan transaksi ${esc(a.name)}">
+      ${walletAvatar(a, 38)}
+      <span>
+        <div class="wallet-chip-name">${esc(a.name)}</div>
+        <div class="wallet-chip-bal ${a.balance < 0 ? 'neg' : ''}">${rp(a.balance)}</div>
+      </span>
+    </button>`).join('');
+  el.querySelectorAll('[data-wallet]').forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.wallet;
+    state.currentAccount = state.currentAccount === id ? 'all' : id;
+    renderWalletStrip();
+    renderActiveWalletFilter();
+    loadTransactions(true);
+  }));
 }
 
-// Filter transactions when clicking on a wallet
-window.filterByWallet = function(accId) {
-  if (state.currentAccount === accId) {
+function renderActiveWalletFilter() {
+  const box = $('active-wallet-filter');
+  const acc = state.currentAccount !== 'all' ? accountById(state.currentAccount) : null;
+  if (!acc) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = `<button type="button" class="chip active removable" id="btn-clear-wallet-filter"><span class="ms">account_balance_wallet</span>${esc(acc.name)}<span class="ms">close</span></button>`;
+  $('btn-clear-wallet-filter').addEventListener('click', () => {
     state.currentAccount = 'all';
-  } else {
-    state.currentAccount = accId;
-  }
-  renderWallets(state.accounts);
-  loadTransactions();
-};
+    renderWalletStrip();
+    renderActiveWalletFilter();
+    loadTransactions(true);
+  });
+}
 
-// Render Category Breakdown (Figma Pastel Palette)
-function renderCategoriesBreakdown(categories, totalExpense) {
-  const listEl = document.getElementById('cat-breakdown-list');
-  if (!listEl) return;
-
-  if (!categories || categories.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:10px;padding:12px 0;">Belum ada pengeluaran di bulan ini.</div>';
+function renderWalletList() {
+  $('wallets-total').textContent = rp(state.overview?.totalBalance || 0);
+  const el = $('wallets-full-list');
+  if (!state.accounts.length) {
+    el.innerHTML = emptyState('account_balance_wallet', 'Belum ada dompet', 'Tambahkan rekening, e-wallet, atau uang tunai.');
     return;
   }
-
-  const pastelPalettes = [
-    { bg: '#FEEEEE', text: '#D94E4E', bar: '#ED6865' },
-    { bg: '#EAF2FE', text: '#3478E5', bar: '#4F8DE9' },
-    { bg: '#F1EDFB', text: '#805ACB', bar: '#8C6BD2' },
-    { bg: '#FFF5DF', text: '#C27B19', bar: '#E5A13D' },
-    { bg: '#E5F7EF', text: '#0B9D70', bar: '#10B981' },
-    { bg: '#EEFAFA', text: '#007F88', bar: '#24B9B4' }
-  ];
-
-  listEl.innerHTML = categories.slice(0, 5).map((c, idx) => {
-    const theme = pastelPalettes[idx % pastelPalettes.length];
+  el.innerHTML = state.accounts.map((a) => {
+    const v = walletVisual(a);
     return `
-      <div class="fin-cat-item">
-        <div class="fin-cat-icon-box" style="background:${theme.bg};color:${theme.text}">
-          ${c.icon || '🏷️'}
-        </div>
-        <div class="fin-cat-item-content">
-          <div class="fin-cat-item-top">
-            <span class="fin-cat-item-name" title="${c.name}">${c.name}</span>
-            <span class="fin-cat-item-amt">Rp ${formatRupiah(c.amount)}</span>
-          </div>
-          <div class="fin-cat-bar-bg">
-            <div class="fin-cat-bar-fill" style="width: ${c.percentage}%; background: ${theme.bar};"></div>
-          </div>
-        </div>
-        <div class="fin-cat-pct">${c.percentage}%</div>
-      </div>
-    `;
+      <button type="button" class="stash-card wallet-row" data-wallet="${esc(a.id)}">
+        ${walletAvatar(a, 40)}
+        <span class="wallet-row-text">
+          <div class="wallet-row-name">${esc(a.name)}</div>
+          <div class="wallet-row-kind">${v.kindLabel}</div>
+        </span>
+        <span class="wallet-row-bal ${a.balance < 0 ? 'neg' : ''}">${rp(a.balance)}</span>
+      </button>`;
   }).join('');
+  el.querySelectorAll('[data-wallet]').forEach((b) => b.addEventListener('click', () => openWalletDetail(b.dataset.wallet)));
 }
 
-// Render Daily Bar Chart (Figma Specification)
-function renderDailyTrend(dailyTrend, monthStr) {
-  const chartEl = document.getElementById('daily-chart-container');
-  if (!chartEl) return;
-
-  if (!dailyTrend || dailyTrend.length === 0) {
-    chartEl.innerHTML = '<div style="color:var(--fin-text-muted);font-size:10px;margin:auto;">Belum ada aktivitas transaksi harian.</div>';
-    return;
-  }
-
-  const maxExpense = Math.max(...dailyTrend.map(d => d.expense), 200000);
-  const totalExp = dailyTrend.reduce((sum, d) => sum + (d.expense || 0), 0);
-  const daysWithExp = dailyTrend.filter(d => d.expense > 0).length || 1;
-  const avgExp = Math.round(totalExp / daysWithExp);
-
-  // Set Header Stats
-  const avgEl = document.getElementById('daily-avg-val');
-  if (avgEl) {
-    avgEl.textContent = avgExp >= 1000 ? `Rp ${Math.round(avgExp / 1000)}rb` : `Rp ${formatRupiah(avgExp)}`;
-  }
-
-  // Find Peak Day
-  const peakDay = dailyTrend.reduce((max, d) => (d.expense > max.expense ? d : max), { expense: 0, date: '' });
-  const peakEl = document.getElementById('daily-peak-val');
-  if (peakEl && peakDay.expense > 0) {
-    const pDate = new Date(peakDay.date);
-    const dayN = pDate.getDate();
-    const moN = MONTH_NAMES[pDate.getMonth()].slice(0, 3);
-    peakEl.textContent = `Hari tertinggi: ${dayN} ${moN}`;
-  } else if (peakEl) {
-    peakEl.textContent = 'Hari tertinggi: -';
-  }
-
-  // Set Y-Axis Markers
-  const yMaxEl = document.getElementById('chart-y-max');
-  const yMidEl = document.getElementById('chart-y-mid');
-  if (yMaxEl) yMaxEl.textContent = maxExpense >= 1000000 ? `${(maxExpense / 1000000).toFixed(1)}jt` : `${Math.round(maxExpense / 1000)}rb`;
-  if (yMidEl) yMidEl.textContent = (maxExpense / 2) >= 1000000 ? `${((maxExpense / 2) / 1000000).toFixed(1)}jt` : `${Math.round(maxExpense / 2000)}rb`;
-
-  // Render Day Bars
-  chartEl.innerHTML = dailyTrend.map(d => {
-    const dayNum = parseInt(d.date.split('-')[2], 10);
-    const heightPct = Math.max(Math.round((d.expense / maxExpense) * 100), 4);
-    const isPeak = peakDay.expense > 0 && d.date === peakDay.date;
-    const isLabeled = [1, 6, 12, 18, 24, 30].includes(dayNum) || dayNum === dailyTrend.length;
-    const tooltip = `Tgl ${dayNum}: Rp ${formatRupiah(d.expense)}`;
-
-    return `
-      <div class="fin-daily-col" title="${tooltip}">
-        <div class="fin-daily-bar ${isPeak ? 'peak' : ''}" style="height: ${heightPct}%;"></div>
-        ${isLabeled ? `<span class="fin-daily-lbl">${dayNum}</span>` : ''}
-      </div>
-    `;
-  }).join('');
-}
-
-// 3. Fetch and Render Transactions List (Livin' by Mandiri Date-Grouped Layout)
-function formatTxDateGroup(dateStr) {
-  if (!dateStr) return { groupKey: 'Lainnya', headerLabel: 'Lainnya', timeLabel: '' };
-  const clean = String(dateStr).replace(' ', 'T');
-  const d = new Date(clean);
-  if (isNaN(d.getTime())) {
-    return { groupKey: String(dateStr).slice(0, 10), headerLabel: String(dateStr).slice(0, 10), timeLabel: '' };
-  }
-
-  const day = String(d.getDate()).padStart(2, '0');
-  const moIdx = d.getMonth();
-  const mo = MONTH_NAMES[moIdx] ? MONTH_NAMES[moIdx].slice(0, 3) : '';
-  const yr = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-
-  const groupKey = `${yr}-${String(moIdx + 1).padStart(2, '0')}-${day}`;
-  const headerLabel = `${day} ${mo} ${yr}`;
-  const timeLabel = `${hh}.${mm}`;
-
-  return { groupKey, headerLabel, timeLabel };
-}
-
-async function loadTransactions() {
-  const listContainer = document.getElementById('transactions-list');
-  if (!listContainer) return;
-
-  listContainer.innerHTML = '<div style="text-align:center;padding:28px;color:var(--fin-text-muted);font-size:13px;font-weight:500;">Memuat riwayat transaksi...</div>';
-
-  const params = new URLSearchParams({
-    month: state.currentMonth,
-    limit: '60',
-    offset: '0'
+// ---------------------------------------------------------------- transactions
+function setupTxFilters() {
+  document.querySelectorAll('#tx-type-filter .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#tx-type-filter .chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.currentType = chip.dataset.type;
+      loadTransactions(true);
+    });
   });
 
+  let t;
+  $('tx-search-input').addEventListener('input', (e) => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      state.currentSearch = e.target.value.trim();
+      loadTransactions(true);
+    }, 300);
+  });
+
+  $('btn-load-more').addEventListener('click', () => loadTransactions(false));
+}
+
+let txRequestId = 0;
+async function loadTransactions(reset) {
+  const list = $('transactions-list');
+  const more = $('btn-load-more');
+  const reqId = ++txRequestId;
+  if (reset) {
+    state.txRows = [];
+    list.innerHTML = LOADING;
+    more.hidden = true;
+  } else {
+    more.disabled = true;
+  }
+
+  const params = new URLSearchParams({ month: state.currentMonth, limit: String(PAGE_SIZE), offset: String(state.txRows.length) });
   if (state.currentType !== 'all') params.append('type', state.currentType);
   if (state.currentAccount !== 'all') params.append('accountId', state.currentAccount);
   if (state.currentSearch) params.append('search', state.currentSearch);
 
   try {
-    const res = await fetch(`/api/finance/transactions?${params.toString()}`);
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    const data = await api(`/api/finance/transactions?${params}`);
+    if (reqId !== txRequestId) return;
+    state.txRows = state.txRows.concat(data.transactions || []);
+    state.txTotal = Number(data.total) || state.txRows.length;
 
-    const rows = data.transactions || [];
-    if (rows.length === 0) {
-      listContainer.innerHTML = `
-        <div style="text-align:center;padding:40px 16px;color:var(--fin-text-muted);">
-          <div style="font-size:28px;margin-bottom:8px;">💸</div>
-          <div style="font-size:13.5px;font-weight:600;color:var(--fin-text-main);">Belum ada transaksi pada filter ini.</div>
-          <div style="font-size:12px;color:var(--fin-text-muted);margin-top:4px;">Gunakan tombol "Catat" untuk menambah transaksi baru.</div>
-        </div>
-      `;
-      return;
+    if (!state.txRows.length) {
+      const filtered = state.currentType !== 'all' || state.currentAccount !== 'all' || state.currentSearch;
+      list.innerHTML = filtered
+        ? emptyState('filter_alt_off', 'Tidak ada transaksi', 'Coba ubah filter atau kata pencarian.')
+        : emptyState('receipt_long', 'Belum ada transaksi', 'Tekan tombol + untuk mencatat, atau pindai struk belanja.');
+    } else {
+      list.innerHTML = buildTransactionList(state.txRows);
+      bindTxTiles(list, state.txRows);
     }
-
-    let html = '';
-    let lastGroupKey = null;
-
-    rows.forEach(tx => {
-      const isExpense = tx.type === 'expense';
-      const isIncome = tx.type === 'income';
-      const isTransfer = tx.type === 'transfer';
-
-      let sign = '−';
-      let typeClass = 'expense';
-      let typeLabel = 'Pengeluaran';
-      let icon = tx.category_icon || '🏷️';
-
-      if (isIncome) {
-        sign = '+';
-        typeClass = 'income';
-        typeLabel = 'Pemasukan';
-        icon = tx.category_icon || '💰';
-      } else if (isTransfer) {
-        sign = '−';
-        typeClass = 'transfer';
-        typeLabel = 'Transfer';
-        icon = '🔁';
-      }
-
-      const walletLabel = isTransfer
-        ? `${tx.account_name || 'Dompet'} → ${tx.to_account_name || 'Dompet'}`
-        : (tx.account_name || 'Dompet');
-
-      const dateInfo = formatTxDateGroup(tx.transaction_date);
-
-      // Date Header Divider (e.g. "08 Okt 2026")
-      if (dateInfo.groupKey !== lastGroupKey) {
-        lastGroupKey = dateInfo.groupKey;
-        html += `
-          <div class="fin-tx-date-header">
-            <span>${dateInfo.headerLabel}</span>
-          </div>
-        `;
-      }
-
-      // Title & Subtitle Hierarchy inspired by Livin' by Mandiri
-      let primaryTitle = tx.merchant;
-      let secondaryNote = tx.description || '';
-
-      if (isTransfer) {
-        primaryTitle = 'Transfer Rupiah';
-        secondaryNote = `${tx.account_name || 'Dompet'} ke ${tx.to_account_name || 'Dompet'}${tx.description ? ' • ' + tx.description : ''}`;
-      } else if (!primaryTitle) {
-        primaryTitle = tx.category_name || tx.description || 'Transaksi';
-        if (primaryTitle === tx.description) {
-          secondaryNote = tx.category_name || '';
-        }
-      } else {
-        if (!secondaryNote && tx.category_name) {
-          secondaryNote = tx.category_name;
-        }
-      }
-
-      const safeDeleteTitle = (primaryTitle || 'transaksi').replace(/'/g, "\\'");
-
-      html += `
-        <div class="fin-tx-item">
-          <div class="fin-tx-left">
-            <div class="fin-tx-icon ${typeClass}">${icon}</div>
-            <div class="fin-tx-info">
-              <div class="fin-tx-desc" title="${primaryTitle}">
-                ${primaryTitle}
-              </div>
-              ${secondaryNote ? `<div class="fin-tx-subdesc" title="${secondaryNote}">${secondaryNote}</div>` : ''}
-              <div class="fin-tx-meta">
-                <span>${dateInfo.timeLabel}</span>
-                <span>•</span>
-                <span class="fin-tx-badge">${walletLabel}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="fin-tx-center">
-            ${tx.category_name || (isTransfer ? 'Transfer Antar Dompet' : (tx.description || '-'))}
-          </div>
-
-          <div class="fin-tx-right">
-            <div class="fin-tx-amount-group">
-              <div class="fin-tx-amount ${typeClass}">${sign}Rp ${formatRupiah(tx.amount)}</div>
-              <div class="fin-tx-type-lbl">${typeLabel}</div>
-            </div>
-            <button type="button" class="fin-tx-del-btn" title="Hapus Transaksi" onclick="confirmDeleteTransaction('${tx.id}', '${safeDeleteTitle}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      `;
-    });
-
-    listContainer.innerHTML = html;
-
+    more.hidden = state.txRows.length >= state.txTotal;
   } catch (err) {
+    if (reqId !== txRequestId) return;
     console.error('Failed to load transactions:', err);
-    listContainer.innerHTML = '<div style="color:var(--fin-expense);text-align:center;padding:24px;font-size:13px;font-weight:600;">Gagal memuat riwayat transaksi.</div>';
+    list.innerHTML = emptyState('error', 'Gagal memuat transaksi', err.message);
+  } finally {
+    more.disabled = false;
   }
 }
 
-// 4. Quick AI NLP Text Input (Bar Atas)
-function setupQuickChatInput() {
-  const form = document.getElementById('fin-quick-form');
-  const input = document.getElementById('fin-quick-input');
-  if (!form || !input) return;
+/** Signed effect of a transaction; with walletId, transfers are signed from that wallet's side. */
+function txEffect(tx, walletId = null) {
+  const amt = Number(tx.amount) || 0;
+  if (walletId) {
+    if (tx.type === 'transfer') {
+      if (tx.to_account_id === walletId) return amt;
+      if (tx.account_id === walletId) return -amt;
+      return 0;
+    }
+  }
+  if (tx.type === 'income') return amt;
+  if (tx.type === 'expense') return -amt;
+  return 0;
+}
 
+function buildTransactionList(rows, walletId = null) {
+  let html = '';
+  let currentDay = null;
+  rows.forEach((tx, i) => {
+    const d = toDate(tx.transaction_date) || new Date(0);
+    const key = dayKey(d);
+    if (key !== currentDay) {
+      currentDay = key;
+      let net = 0;
+      for (let j = i; j < rows.length; j++) {
+        const dj = toDate(rows[j].transaction_date) || new Date(0);
+        if (dayKey(dj) !== key) break;
+        net += txEffect(rows[j], walletId);
+      }
+      html += `<div class="day-header"><span>${esc(dayLabel(d))}</span>${net !== 0 ? `<span>${rpSigned(net)}</span>` : ''}</div>`;
+    }
+    html += txTile(tx, i, walletId);
+  });
+  return html;
+}
+
+function txPresentation(tx, walletId = null) {
+  const isTransfer = tx.type === 'transfer';
+  const vis = catVisual(tx.category_id, tx.category_name, tx.type);
+  const catLabel = isTransfer ? 'Transfer' : (tx.category_name || 'Lainnya');
+  const title = isTransfer ? 'Transfer' : (tx.merchant && tx.merchant.trim() ? tx.merchant : catLabel);
+  const walletText = isTransfer
+    ? `${tx.account_name || '?'} → ${tx.to_account_name || '?'}`
+    : (tx.account_name || '?');
+  const sub = [];
+  if (!isTransfer && title !== catLabel) sub.push(catLabel);
+  sub.push(walletText);
+  const note = (tx.description || '').trim();
+  if (note && note !== title && note !== tx.merchant && note !== 'Transaksi Manual') sub.push(note);
+
+  const signed = txEffect(tx, walletId);
+  let cls; let text;
+  if (isTransfer && !walletId) { cls = 'transfer'; text = rp(tx.amount); }
+  else if (signed > 0) { cls = 'income'; text = rpSigned(signed); }
+  else if (signed < 0) { cls = 'expense'; text = rp(signed); }
+  else { cls = ''; text = rp(tx.amount); }
+
+  return { vis, title, catLabel, walletText, sub: sub.join(' · '), cls, text };
+}
+
+function txTile(tx, index, walletId) {
+  const p = txPresentation(tx, walletId);
+  return `
+    <button type="button" class="tx-tile" data-index="${index}">
+      <span class="tx-icon" style="background:${p.vis.color}21;color:${p.vis.color}"><span class="ms">${p.vis.icon}</span></span>
+      <span class="tx-text">
+        <div class="tx-title">${esc(p.title)}</div>
+        <div class="tx-sub">${esc(p.sub)}</div>
+      </span>
+      <span class="tx-amount ${p.cls}">${p.text}</span>
+    </button>`;
+}
+
+function bindTxTiles(container, rows, walletId = null) {
+  container.querySelectorAll('.tx-tile').forEach((tile) => {
+    tile.addEventListener('click', () => openTxDetail(rows[Number(tile.dataset.index)], walletId));
+  });
+}
+
+const SOURCE_LABELS = {
+  manual_web: 'Web', web_manual: 'Web', web: 'Web', wa_dm: 'WhatsApp', wa_image: 'WhatsApp (struk)', wa_vn: 'WhatsApp (suara)',
+  shortcut: 'Pintasan', shortcut_image: 'Scan struk', import: 'Import mutasi', web_quick: 'Catat cepat'
+};
+
+function openTxDetail(tx, walletId = null) {
+  if (!tx) return;
+  const p = txPresentation(tx, walletId);
+  const d = toDate(tx.transaction_date);
+  const typeLabel = { expense: 'Pengeluaran', income: 'Pemasukan', transfer: 'Transfer' }[tx.type] || tx.type;
+  const rows = [
+    ['Jenis', typeLabel],
+    tx.type === 'transfer' ? ['Dompet', p.walletText] : ['Dompet', tx.account_name || '-'],
+    tx.type !== 'transfer' ? ['Kategori', p.catLabel] : null,
+    tx.merchant && tx.type !== 'transfer' ? ['Merchant', tx.merchant] : null,
+    tx.description && tx.description !== tx.merchant && tx.description !== 'Transaksi Manual' ? ['Catatan', tx.description] : null,
+    d ? ['Tanggal', d.toLocaleString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })] : null,
+    tx.source ? ['Sumber', SOURCE_LABELS[tx.source] || tx.source] : null
+  ].filter(Boolean);
+
+  $('tx-detail-body').innerHTML = `
+    <div class="detail-head">
+      <span class="tx-icon" style="background:${p.vis.color}21;color:${p.vis.color}"><span class="ms">${p.vis.icon}</span></span>
+      <div class="detail-title">${esc(p.title)}</div>
+      <div class="detail-amount tx-amount ${p.cls}">${p.text}</div>
+    </div>
+    <div class="stash-card detail-list">
+      ${rows.map(([k, v]) => `<div class="detail-row"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}
+    </div>
+    <button type="button" class="btn-outlined btn-block" id="btn-delete-tx" style="color:var(--expense)"><span class="ms">delete</span>Hapus transaksi</button>`;
+
+  $('btn-delete-tx').addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Hapus transaksi?', text: 'Transaksi ini akan dihapus permanen dan saldo dompet dikembalikan.' });
+    if (!ok) return;
+    try {
+      await api(`/api/finance/transactions/${encodeURIComponent(tx.id)}`, { method: 'DELETE' });
+      closeSheet('modal-tx-detail');
+      showToast('Transaksi dihapus');
+      await refreshDashboard();
+    } catch (err) {
+      showToast('Gagal menghapus: ' + err.message, true);
+    }
+  });
+  openSheet('modal-tx-detail');
+}
+
+// ---------------------------------------------------------------- quick text input
+function setupQuickInput() {
+  const form = $('fin-quick-form');
+  const input = $('fin-quick-input');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
-
+    if (!text) return input.focus();
     input.disabled = true;
-    const btn = form.querySelector('.fin-quick-submit');
-    const oldText = btn.textContent;
-    btn.textContent = 'Mencatat...';
-
+    form.classList.add('busy');
+    $('btn-quick-submit').innerHTML = '<span class="ms">progress_activity</span>';
     try {
-      const res = await fetch('/api/finance/quick-text', {
+      const data = await api('/api/finance/quick-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       });
-      const data = await res.json();
-
-      if (data.success) {
-        input.value = '';
-        showToast(`Tercatat: Rp ${formatRupiah(data.transaction.amount)} (${data.transaction.category})`);
-        await refreshDashboard();
-      } else {
-        alert(data.error || 'Gagal mengenali transaksi.');
-      }
+      input.value = '';
+      showToast(`Tercatat ${rp(data.transaction.amount)} · ${data.transaction.category}`);
+      await refreshDashboard();
     } catch (err) {
-      alert('Terjadi kesalahan saat mengirim: ' + err.message);
+      showToast(err.message || 'Gagal mengenali transaksi.', true);
     } finally {
       input.disabled = false;
-      btn.textContent = oldText;
+      form.classList.remove('busy');
+      $('btn-quick-submit').innerHTML = '<span class="ms">arrow_upward</span>';
       input.focus();
     }
   });
 }
 
-// 5. Filter Tabs (Semua, Pengeluaran, Pemasukan, Transfer)
-function setupFilterTabs() {
-  const pills = document.querySelectorAll('.fin-filter-pill, .fin-type-pill');
-  pills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      pills.forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      state.currentType = pill.getAttribute('data-type');
-      loadTransactions();
-    });
-  });
-}
-
-// 6. Search Realtime Input
-function setupSearchInput() {
-  const searchInput = document.getElementById('tx-search-input');
-  if (!searchInput) return;
-
-  let debounceTimer;
-  searchInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      state.currentSearch = searchInput.value.trim();
-      loadTransactions();
-    }, 300);
-  });
-}
-
-// 7. Delete Transaction Logic
-window.confirmDeleteTransaction = async function(id, name) {
-  if (!confirm(`Hapus transaksi "${name}"? Saldo dompet akan dikembalikan.`)) return;
-
-  try {
-    const res = await fetch(`/api/finance/transactions/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('Transaksi berhasil dihapus');
-      await refreshDashboard();
-    } else {
-      alert(data.error || 'Gagal menghapus transaksi.');
-    }
-  } catch (err) {
-    alert('Terjadi kesalahan: ' + err.message);
-  }
-};
-
-// 8. Categories Loader
+// ---------------------------------------------------------------- categories
 async function loadCategories() {
   try {
-    const res = await fetch('/api/finance/categories');
-    const data = await res.json();
-    if (data.success) {
-      state.categories = data.categories || [];
-    }
+    const data = await api('/api/finance/categories');
+    state.categories = data.categories || [];
   } catch (err) {
     console.warn('Error loading categories:', err);
   }
 }
 
-// 9. Manual Transaction Modal Logic
-function setupTransactionModal() {
-  const modal = document.getElementById('modal-add-tx');
-  const btnOpen = document.getElementById('btn-open-add-tx');
-  const btnClose = document.getElementById('btn-close-add-tx');
-  const btnCancel = document.getElementById('btn-cancel-add-tx');
-  const form = document.getElementById('form-add-tx');
-  const typeSelect = document.getElementById('tx-modal-type');
-  const toAccountGroup = document.getElementById('tx-modal-to-account-group');
-  const categoryGroup = document.getElementById('tx-modal-category-group');
+// Everyday categories first, in the Stash order; the rest stay alphabetical.
+const CATEGORY_ORDER = ['cat_food', 'cat_snack_drink', 'cat_belanja', 'cat_transport', 'cat_shopping', 'cat_bills', 'cat_hiburan', 'cat_health', 'cat_education'];
 
-  if (!modal || !btnOpen) return;
+function categoriesFor(type) {
+  if (type === 'transfer') return [];
+  let list = state.categories.filter((c) => c.type === type);
+  if (!list.length) list = state.categories.filter((c) => c.type !== 'transfer');
+  const rank = (c) => {
+    const i = CATEGORY_ORDER.indexOf(c.id);
+    if (i >= 0) return i;
+    return /lain|other/i.test(c.id + c.name) ? 999 : 100;
+  };
+  return list.slice().sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'id'));
+}
 
-  function openModal() {
-    populateModalDropdowns();
-    document.getElementById('tx-modal-date').value = new Date().toISOString().slice(0, 10);
-    modal.classList.add('active');
-  }
+// ---------------------------------------------------------------- amount expression (Stash numpad)
+const OPS = ['+', '−', '×', '÷'];
+const MAX_DIGITS = 12;
 
-  function closeModal() {
-    modal.classList.remove('active');
-    form.reset();
-    // Reset modal tabs to expense
-    const modalTabs = document.querySelectorAll('.fin-modal-tab');
-    modalTabs.forEach(t => t.className = 'fin-modal-tab');
-    const firstTab = document.querySelector('.fin-modal-tab[data-val="expense"]');
-    if (firstTab) firstTab.className = 'fin-modal-tab active expense';
-    if (typeSelect) {
-      typeSelect.value = 'expense';
-      typeSelect.dispatchEvent(new Event('change'));
+const amount = {
+  raw: '',
+  current() {
+    let i = this.raw.length;
+    while (i > 0 && !OPS.includes(this.raw[i - 1])) i--;
+    return this.raw.slice(i);
+  },
+  appendDigits(digits) {
+    const cur = this.current();
+    const allZeros = /^0+$/.test(digits);
+    if (allZeros && digits.length > 1 && (cur === '' || cur === '0')) return;
+    if (cur === '0') {
+      this.raw = this.raw.slice(0, -1);
+      if (digits === '0') { this.raw += '0'; return; }
     }
+    if (cur.length + digits.length > MAX_DIGITS) return;
+    this.raw += digits;
+  },
+  appendOperator(op) {
+    if (!this.raw) return;
+    if (OPS.includes(this.raw[this.raw.length - 1])) this.raw = this.raw.slice(0, -1) + op;
+    else this.raw += op;
+  },
+  backspace() { this.raw = this.raw.slice(0, -1); },
+  clear() { this.raw = ''; },
+  hasOperator() { return OPS.some((o) => this.raw.includes(o)); },
+  value() { return evaluateExpression(this.raw); },
+  resolve() {
+    const v = this.value();
+    this.raw = v == null || v <= 0 ? '' : String(v);
+  },
+  display() {
+    if (!this.raw) return '0';
+    return this.raw.replace(/\d+/g, (n) => formatNumber(Number(n))).replace(/([+−×÷])/g, ' $1 ');
   }
+};
 
-  btnOpen.addEventListener('click', openModal);
-  
-  // Mobile Top CTA & FAB bindings
-  const btnOpenMobile = document.getElementById('btn-open-add-tx-mobile');
-  if (btnOpenMobile) btnOpenMobile.addEventListener('click', openModal);
-
-  const btnFabAdd = document.getElementById('fin-fab-add');
-  if (btnFabAdd) btnFabAdd.addEventListener('click', openModal);
-
-  // Mobile Sub-navigation bindings to existing modals
-  const btnSubImport = document.getElementById('btn-subnav-import');
-  if (btnSubImport) btnSubImport.addEventListener('click', () => document.getElementById('btn-open-import')?.click());
-
-  const btnSubExport = document.getElementById('btn-subnav-export');
-  if (btnSubExport) btnSubExport.addEventListener('click', () => document.getElementById('btn-export-csv')?.click());
-
-  const btnSubSheet = document.getElementById('btn-subnav-gsheet');
-  if (btnSubSheet) btnSubSheet.addEventListener('click', () => document.getElementById('btn-open-gsheet')?.click());
-
-  const btnSubShortcuts = document.getElementById('btn-subnav-shortcuts');
-  if (btnSubShortcuts) btnSubShortcuts.addEventListener('click', () => document.getElementById('btn-open-shortcuts')?.click());
-
-  const btnSubWallets = document.getElementById('btn-subnav-wallets');
-  if (btnSubWallets) btnSubWallets.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
-
-  if (btnClose) btnClose.addEventListener('click', closeModal);
-  if (btnCancel) btnCancel.addEventListener('click', closeModal);
-
-  // Segmented Type Tabs in Modal (Figma Spec)
-  const modalTabs = document.querySelectorAll('.fin-modal-tab');
-  modalTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const val = tab.getAttribute('data-val');
-      modalTabs.forEach(t => t.className = 'fin-modal-tab');
-      tab.className = `fin-modal-tab active ${val}`;
-      if (typeSelect) {
-        typeSelect.value = val;
-        typeSelect.dispatchEvent(new Event('change'));
-      }
-    });
-  });
-
-  typeSelect.addEventListener('change', () => {
-    const val = typeSelect.value;
-    if (val === 'transfer') {
-      toAccountGroup.style.display = 'block';
-      categoryGroup.style.display = 'none';
+/** Evaluates "25000+3500×2" with normal precedence; rounds to whole Rupiah. */
+function evaluateExpression(raw) {
+  if (!raw) return null;
+  let s = raw;
+  while (s && OPS.includes(s[s.length - 1])) s = s.slice(0, -1);
+  if (!s) return null;
+  const tokens = s.match(/\d+|[+−×÷]/g);
+  if (!tokens) return null;
+  // first pass: × ÷
+  const terms = [Number(tokens[0])];
+  const addOps = [];
+  for (let i = 1; i < tokens.length; i += 2) {
+    const op = tokens[i];
+    const n = Number(tokens[i + 1]);
+    if (op === '×') terms[terms.length - 1] *= n;
+    else if (op === '÷') {
+      if (n === 0) return null;
+      terms[terms.length - 1] /= n;
     } else {
-      toAccountGroup.style.display = 'none';
-      categoryGroup.style.display = 'block';
-      populateCategoriesByType(val);
+      addOps.push(op);
+      terms.push(n);
     }
+  }
+  let total = terms[0];
+  addOps.forEach((op, i) => { total = op === '+' ? total + terms[i + 1] : total - terms[i + 1]; });
+  if (!isFinite(total)) return null;
+  return Math.round(total);
+}
+
+// ---------------------------------------------------------------- add transaction sheet
+const addState = {
+  type: 'expense',
+  walletId: null,
+  toWalletId: null,
+  categoryByType: { expense: null, income: null },
+  saving: false
+};
+
+function defaultWalletId() {
+  const last = localStorage.getItem('patungin_last_wallet');
+  if (last && accountById(last)) return last;
+  return state.accounts[0]?.id || null;
+}
+function firstOtherWallet(id) {
+  return state.accounts.find((a) => a.id !== id)?.id || null;
+}
+
+function openAddSheet({ type = 'expense', walletId = null } = {}) {
+  if (!state.accounts.length) {
+    showToast('Tambahkan dompet dulu sebelum mencatat.');
+    go('dompet');
+    return;
+  }
+  amount.clear();
+  addState.type = type;
+  addState.walletId = walletId && accountById(walletId) ? walletId : defaultWalletId();
+  addState.toWalletId = firstOtherWallet(addState.walletId);
+  addState.saving = false;
+  $('tx-modal-merchant').value = '';
+  $('tx-modal-desc').value = '';
+  $('tx-modal-date').value = dayKey(new Date());
+  renderAddSheet();
+  openSheet('modal-add-tx');
+}
+
+function renderAddSheet() {
+  const t = addState.type;
+  document.querySelectorAll('#tx-type-tabs .type-tab').forEach((b) => b.classList.toggle('active', b.dataset.val === t));
+
+  // amount
+  const color = { expense: 'var(--expense)', income: 'var(--income)', transfer: 'var(--transfer)' }[t];
+  const disp = $('amount-display');
+  disp.style.color = color;
+  const shown = amount.display();
+  $('amount-text').textContent = shown;
+  disp.classList.toggle('long', shown.length > 14);
+  const v = amount.value();
+  $('amount-preview').textContent = amount.hasOperator() && v != null ? `= ${rp(v)}` : '';
+
+  // wallet chips
+  const w = accountById(addState.walletId);
+  const tw = accountById(addState.toWalletId);
+  $('chip-wallet').querySelector('.ms').textContent = walletVisual(w).icon;
+  $('chip-wallet-label').textContent = t === 'transfer' ? `Dari: ${w?.name || 'Pilih'}` : (w?.name || 'Pilih dompet');
+  $('chip-to-wallet').hidden = t !== 'transfer';
+  $('chip-to-wallet-label').textContent = `Ke: ${tw?.name || 'Pilih'}`;
+
+  // date
+  const dv = $('tx-modal-date').value;
+  const dd = dv ? new Date(`${dv}T00:00:00`) : new Date();
+  const today = new Date();
+  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  $('chip-date-label').textContent = dayKey(dd) === dayKey(today) || dayKey(dd) === dayKey(yest)
+    ? dayLabel(dd)
+    : dd.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // categories
+  const chipsEl = $('category-chips');
+  $('btn-add-scan').hidden = t === 'transfer';
+  $('merchant-field').hidden = t !== 'expense';
+  if (t === 'transfer') {
+    chipsEl.innerHTML = '';
+    chipsEl.hidden = true;
+  } else {
+    chipsEl.hidden = false;
+    const cats = categoriesFor(t);
+    let sel = addState.categoryByType[t];
+    if (!cats.some((c) => c.id === sel)) sel = addState.categoryByType[t] = cats[0]?.id || null;
+    chipsEl.innerHTML = cats.map((c) => {
+      const vis = catVisual(c.id, c.name, c.type);
+      return `<button type="button" class="chip ${c.id === sel ? 'active' : ''}" data-cat="${esc(c.id)}"><span class="ms" style="color:${vis.color}">${vis.icon}</span>${esc(c.name)}</button>`;
+    }).join('');
+  }
+}
+
+function setupAddTransaction() {
+  document.querySelectorAll('#tx-type-tabs .type-tab').forEach((b) => b.addEventListener('click', () => {
+    addState.type = b.dataset.val;
+    if (addState.type === 'transfer' && (!addState.toWalletId || addState.toWalletId === addState.walletId)) {
+      addState.toWalletId = firstOtherWallet(addState.walletId);
+    }
+    renderAddSheet();
+  }));
+
+  $('category-chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-cat]');
+    if (!chip) return;
+    addState.categoryByType[addState.type] = chip.dataset.cat;
+    renderAddSheet();
   });
 
-  // Quick Nominal Buttons
-  document.querySelectorAll('.fin-nom-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      const amtInput = document.getElementById('tx-modal-amount');
-      const val = parseInt(pill.getAttribute('data-val'), 10);
-      const current = parseInt(amtInput.value, 10) || 0;
-      amtInput.value = current + val;
-    });
+  $('chip-wallet').addEventListener('click', async () => {
+    const id = await pickWallet({ title: addState.type === 'transfer' ? 'Dari dompet' : 'Dompet', selected: addState.walletId });
+    if (!id) return;
+    addState.walletId = id;
+    if (addState.toWalletId === id) addState.toWalletId = firstOtherWallet(id);
+    renderAddSheet();
+  });
+  $('chip-to-wallet').addEventListener('click', async () => {
+    const id = await pickWallet({ title: 'Ke dompet', selected: addState.toWalletId, exclude: addState.walletId });
+    if (!id) return;
+    addState.toWalletId = id;
+    renderAddSheet();
+  });
+  $('tx-modal-date').addEventListener('change', renderAddSheet);
+  $('tx-modal-date').max = dayKey(new Date(Date.now() + 365 * 864e5));
+
+  $('numpad').addEventListener('click', (e) => {
+    const key = e.target.closest('[data-key]');
+    if (!key) return;
+    pressKey(key.dataset.key);
   });
 
-  // Connect Figma Extra Buttons
-  const btnManageWallets = document.getElementById('btn-manage-wallets-link');
-  const btnHeroOptions = document.getElementById('btn-hero-options');
-  if (btnManageWallets) btnManageWallets.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
-  if (btnHeroOptions) btnHeroOptions.addEventListener('click', () => document.getElementById('btn-open-wallets')?.click());
-  
-  const btnExportTx = document.getElementById('btn-export-tx-table');
-  if (btnExportTx) btnExportTx.addEventListener('click', () => document.getElementById('btn-export-csv')?.click());
-
-  const btnSeeCats = document.getElementById('btn-see-all-cats');
-  if (btnSeeCats) btnSeeCats.addEventListener('click', () => {
-    document.querySelector('.fin-tx-card')?.scrollIntoView({ behavior: 'smooth' });
+  // Physical keyboard for the numpad when the sheet is open and no text field is focused
+  document.addEventListener('keydown', (e) => {
+    if (!$('modal-add-tx').classList.contains('active') || openStack[openStack.length - 1] !== 'modal-add-tx') return;
+    const tag = document.activeElement?.tagName;
+    if ((tag === 'INPUT' && document.activeElement.type !== 'date') || tag === 'TEXTAREA') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const map = { '+': '+', '-': '−', '*': '×', 'x': '×', '/': '÷', 'Backspace': 'back', 'Delete': 'C', '=': '=' };
+    if (/^[0-9]$/.test(e.key)) { pressKey(e.key); e.preventDefault(); }
+    else if (map[e.key]) { pressKey(map[e.key]); e.preventDefault(); }
+    else if (e.key === 'Enter') { e.preventDefault(); saveTransaction(); }
   });
 
-  const btnLoadMore = document.getElementById('btn-load-more');
-  if (btnLoadMore) btnLoadMore.addEventListener('click', () => showToast('Semua transaksi telah dimuat.'));
-
-  form.addEventListener('submit', async (e) => {
+  $('form-add-tx').addEventListener('submit', (e) => {
     e.preventDefault();
-    const payload = {
-      type: typeSelect.value,
-      amount: parseFloat(document.getElementById('tx-modal-amount').value),
-      accountId: document.getElementById('tx-modal-account').value,
-      toAccountId: document.getElementById('tx-modal-to-account').value,
-      categoryId: document.getElementById('tx-modal-category').value,
-      merchant: document.getElementById('tx-modal-merchant').value,
-      description: document.getElementById('tx-modal-desc').value,
-      transactionDate: document.getElementById('tx-modal-date').value
-    };
+    saveTransaction();
+  });
+}
 
+function pressKey(k) {
+  if (k === 'C') amount.clear();
+  else if (k === 'back') amount.backspace();
+  else if (k === '=') amount.resolve();
+  else if (OPS.includes(k)) amount.appendOperator(k);
+  else amount.appendDigits(k);
+  if (navigator.vibrate) navigator.vibrate(4);
+  renderAddSheet();
+}
+
+/** "2026-11-19" + the current local time, as ISO (matches how the bot stores dates). */
+function withCurrentTime(dateStr) {
+  const now = new Date();
+  if (!dateStr) return now.toISOString();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+}
+
+async function saveTransaction() {
+  if (addState.saving) return;
+  const value = amount.value();
+  if (!value || value <= 0) return showToast('Masukkan nominal terlebih dahulu');
+  if (!addState.walletId) return showToast('Pilih dompet');
+  if (addState.type === 'transfer' && (!addState.toWalletId || addState.toWalletId === addState.walletId)) {
+    return showToast('Pilih dompet tujuan yang berbeda');
+  }
+  addState.saving = true;
+  const submit = $('form-add-tx').querySelector('.key.submit');
+  submit.disabled = true;
+  const t = addState.type;
+  const payload = {
+    type: t,
+    amount: value,
+    accountId: addState.walletId,
+    toAccountId: t === 'transfer' ? addState.toWalletId : '',
+    categoryId: t === 'transfer' ? 'cat_transfer' : addState.categoryByType[t],
+    merchant: t === 'expense' ? $('tx-modal-merchant').value.trim() : '',
+    description: $('tx-modal-desc').value.trim(),
+    transactionDate: withCurrentTime($('tx-modal-date').value)
+  };
+  try {
+    await api('/api/finance/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    localStorage.setItem('patungin_last_wallet', addState.walletId);
+    closeSheet('modal-add-tx');
+    showToast(`Tersimpan ${rp(value)}`);
+    await refreshDashboard();
+  } catch (err) {
+    showToast('Gagal menyimpan: ' + err.message, true);
+  } finally {
+    addState.saving = false;
+    submit.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------- wallet picker
+function pickWallet({ title, selected = null, exclude = null }) {
+  return new Promise((resolve) => {
+    $('wallet-picker-title').textContent = title;
+    const list = $('wallet-picker-list');
+    const options = state.accounts.filter((a) => a.id !== exclude);
+    list.innerHTML = options.map((a) => `
+      <button type="button" class="picker-row ${a.id === selected ? 'sel' : ''}" data-id="${esc(a.id)}">
+        ${walletAvatar(a, 40)}
+        <span class="wallet-row-text">
+          <div class="wallet-row-name">${esc(a.name)}</div>
+          <div class="wallet-row-kind">${rp(a.balance)}</div>
+        </span>
+        ${a.id === selected ? '<span class="ms check">check_circle</span>' : ''}
+      </button>`).join('');
+    const sheet = $('modal-wallet-picker');
+    let picked = null;
+    const onClose = () => {
+      sheet.removeEventListener('sheet-closed', onClose);
+      resolve(picked);
+    };
+    sheet.addEventListener('sheet-closed', onClose);
+    list.querySelectorAll('[data-id]').forEach((b) => b.addEventListener('click', () => {
+      picked = b.dataset.id;
+      closeSheet('modal-wallet-picker');
+    }));
+    openSheet('modal-wallet-picker');
+  });
+}
+
+// ---------------------------------------------------------------- wallet form
+const WALLET_PRESETS = [
+  ['BCA', 'bank'], ['Mandiri', 'bank'], ['Bank Jago', 'bank'], ['GoPay', 'ewallet'], ['OVO', 'ewallet'], ['Tunai', 'cash']
+];
+let walletFormKind = 'bank';
+
+function setWalletKind(kind) {
+  walletFormKind = WALLET_KINDS[kind] ? kind : 'bank';
+  document.querySelectorAll('#wallet-kind-tabs .type-tab').forEach((b) => b.classList.toggle('active', b.dataset.val === walletFormKind));
+}
+
+function openWalletForm(existing = null) {
+  $('wallet-form-title').textContent = existing ? `Ubah ${existing.name}` : 'Tambah dompet';
+  $('wallet-form-id').value = existing?.id || '';
+  $('new-wallet-name').value = existing?.name || '';
+  $('new-wallet-balance').value = existing ? String(existing.balance) : '';
+  setWalletKind(existing?.type || 'bank');
+  const presets = $('wallet-presets');
+  presets.hidden = !!existing;
+  if (!existing) {
+    const have = new Set(state.accounts.map((a) => a.name.toLowerCase()));
+    presets.innerHTML = WALLET_PRESETS.filter(([n]) => !have.has(n.toLowerCase())).map(([n, k]) => {
+      const fake = { name: n, type: k };
+      return `<button type="button" class="chip" data-preset="${esc(n)}" data-kind="${k}"><span class="ms" style="color:${walletVisual(fake).color}">${walletVisual(fake).icon}</span>${esc(n)}</button>`;
+    }).join('');
+  }
+  openSheet('modal-wallet-form');
+  if (!existing) setTimeout(() => $('new-wallet-name').focus(), 80);
+}
+
+function setupWalletForm() {
+  document.querySelectorAll('#wallet-kind-tabs .type-tab').forEach((b) => b.addEventListener('click', () => setWalletKind(b.dataset.val)));
+  $('wallet-presets').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-preset]');
+    if (!chip) return;
+    $('new-wallet-name').value = chip.dataset.preset;
+    setWalletKind(chip.dataset.kind);
+    $('new-wallet-balance').focus();
+  });
+  $('form-wallet').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('new-wallet-name').value.trim();
+    if (!name) return showToast('Nama dompet harus diisi.');
+    const id = $('wallet-form-id').value || undefined;
+    const balance = parseFloat($('new-wallet-balance').value) || 0;
+    const btn = $('btn-add-wallet-submit');
+    btn.disabled = true;
     try {
-      const res = await fetch('/api/finance/transactions', {
+      await api('/api/finance/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ id, name, type: walletFormKind, balance })
       });
-      const data = await res.json();
-      if (data.success) {
-        closeModal();
-        showToast('Transaksi berhasil dicatat!');
-        await refreshDashboard();
-      } else {
-        alert(data.error || 'Gagal menyimpan transaksi.');
-      }
+      closeSheet('modal-wallet-form');
+      showToast(id ? `${name} diperbarui` : `Dompet ${name} ditambahkan`);
+      await refreshDashboard();
     } catch (err) {
-      alert('Error: ' + err.message);
+      showToast('Gagal menyimpan dompet: ' + err.message, true);
+    } finally {
+      btn.disabled = false;
     }
   });
 }
 
-function populateModalDropdowns() {
-  const accSelect = document.getElementById('tx-modal-account');
-  const toAccSelect = document.getElementById('tx-modal-to-account');
-
-  if (accSelect && state.accounts.length > 0) {
-    accSelect.innerHTML = state.accounts.map(a => `<option value="${a.id}">${a.name} (Rp ${formatRupiah(a.balance)})</option>`).join('');
-  }
-  if (toAccSelect && state.accounts.length > 0) {
-    toAccSelect.innerHTML = state.accounts.map(a => `<option value="${a.id}">${a.name} (Rp ${formatRupiah(a.balance)})</option>`).join('');
-  }
-  populateCategoriesByType(document.getElementById('tx-modal-type').value);
+// ---------------------------------------------------------------- wallet detail
+function showWalletList() {
+  state.walletDetailId = null;
+  $('wallets-list-view').hidden = false;
+  $('wallet-detail-view').hidden = true;
 }
 
-function populateCategoriesByType(type) {
-  const catSelect = document.getElementById('tx-modal-category');
-  if (!catSelect) return;
-  const filtered = state.categories.filter(c => c.type === type || c.type === 'expense');
-  catSelect.innerHTML = filtered.map(c => `<option value="${c.id}">${c.icon || '🏷️'} ${c.name}</option>`).join('');
+function openWalletDetail(id) {
+  state.walletDetailId = id;
+  $('wallets-list-view').hidden = true;
+  $('wallet-detail-view').hidden = false;
+  window.scrollTo({ top: 0 });
+  renderWalletDetailHeader();
+  loadWalletDetail(true);
 }
 
-// 10. Wallet Management Modal Logic
-function setupWalletModal() {
-  const modal = document.getElementById('modal-wallet-mgmt');
-  const btnOpen = document.getElementById('btn-open-wallets');
-  const btnClose = document.getElementById('btn-close-wallets');
-  const btnAdd = document.getElementById('btn-add-wallet-submit');
-  const listEl = document.getElementById('wallet-mgmt-list');
+function renderWalletDetailHeader() {
+  const acc = accountById(state.walletDetailId);
+  if (!acc) return showWalletList();
+  $('wallet-detail-name').textContent = acc.name;
+  $('wallet-detail-avatar').innerHTML = walletAvatar(acc, 52);
+  const bal = $('wallet-detail-balance');
+  bal.textContent = rp(acc.balance);
+  bal.classList.toggle('neg', acc.balance < 0);
+  $('wallet-detail-kind').textContent = walletVisual(acc).kindLabel;
+  setTimeout(() => fitText(bal, 14), 0);
+}
 
-  if (!modal || !btnOpen) return;
-
-  function openModal() {
-    renderWalletMgmtList();
-    modal.classList.add('active');
+async function loadWalletDetail(reset) {
+  const id = state.walletDetailId;
+  if (!id) return;
+  renderWalletDetailHeader();
+  const list = $('wallet-detail-list');
+  const more = $('btn-wallet-load-more');
+  if (reset) {
+    state.walletRows = [];
+    list.innerHTML = LOADING;
+    more.hidden = true;
   }
-
-  function closeModal() {
-    modal.classList.remove('active');
+  try {
+    const params = new URLSearchParams({ accountId: id, limit: String(PAGE_SIZE), offset: String(state.walletRows.length) });
+    const data = await api(`/api/finance/transactions?${params}`);
+    if (state.walletDetailId !== id) return;
+    state.walletRows = state.walletRows.concat(data.transactions || []);
+    state.walletTotal = Number(data.total) || state.walletRows.length;
+    if (!state.walletRows.length) {
+      list.innerHTML = emptyState('history', 'Belum ada riwayat');
+    } else {
+      list.innerHTML = buildTransactionList(state.walletRows, id);
+      bindTxTiles(list, state.walletRows, id);
+    }
+    more.hidden = state.walletRows.length >= state.walletTotal;
+  } catch (err) {
+    list.innerHTML = emptyState('error', 'Gagal memuat riwayat', err.message);
   }
+}
 
-  btnOpen.addEventListener('click', openModal);
-  if (btnClose) btnClose.addEventListener('click', closeModal);
+function setupWalletDetail() {
+  $('btn-wallet-back').addEventListener('click', showWalletList);
+  $('btn-wallet-edit').addEventListener('click', () => {
+    const acc = accountById(state.walletDetailId);
+    if (acc) openWalletForm(acc);
+  });
+  $('btn-wallet-load-more').addEventListener('click', () => loadWalletDetail(false));
+}
 
-  function renderWalletMgmtList() {
-    if (!listEl) return;
-    listEl.innerHTML = state.accounts.map(acc => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid var(--fin-border);">
-        <div>
-          <div style="font-weight:700;font-size:0.92rem;">${acc.name}</div>
-          <div style="font-size:0.75rem;color:var(--fin-text-muted);">${acc.type.toUpperCase()}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input type="number" id="wallet-balance-${acc.id}" value="${acc.balance}" style="width:110px;padding:6px 8px;border:1px solid var(--fin-border);border-radius:8px;font-size:0.86rem;font-weight:700;text-align:right;">
-          <button type="button" class="fin-nom-pill" onclick="saveWalletBalance('${acc.id}', '${acc.name}', '${acc.type}')">Simpan</button>
+// ---------------------------------------------------------------- analytics
+function renderAnalytics() {
+  const o = state.overview;
+  if (!o) return;
+  $('an-income').textContent = rp(o.totalIncome);
+  $('an-expense').textContent = rp(o.totalExpense);
+  const net = (o.totalIncome || 0) - (o.totalExpense || 0);
+  const netEl = $('an-net');
+  netEl.textContent = rp(net);
+  netEl.className = 'summary-val ' + (net >= 0 ? 'income' : 'expense');
+  renderDonut();
+  renderTrend();
+}
+
+function renderDonut() {
+  const cats = state.overview?.categoryBreakdown || [];
+  const wrap = $('donut-wrap');
+  const listEl = $('cat-breakdown-list');
+  if (!cats.length) {
+    wrap.innerHTML = emptyState('pie_chart', 'Belum ada pengeluaran bulan ini');
+    listEl.innerHTML = '';
+    return;
+  }
+  const total = cats.reduce((s, c) => s + c.amount, 0);
+  const touched = state.touchedSlice >= 0 && state.touchedSlice < cats.length ? state.touchedSlice : -1;
+  const inner = 62;
+  const size = 220;
+  const c = size / 2;
+  const gapRad = cats.length > 1 ? 0.035 : 0;
+
+  let angle = -Math.PI / 2;
+  let paths = '';
+  let labels = '';
+  cats.forEach((cat, i) => {
+    const vis = catVisual(cat.id, cat.name, 'expense');
+    const sweep = (cat.amount / total) * Math.PI * 2;
+    const outer = inner + (i === touched ? 46 : 36);
+    const a0 = angle + gapRad / 2;
+    const a1 = angle + sweep - gapRad / 2;
+    if (a1 > a0) {
+      paths += `<path d="${arcPath(c, c, inner, outer, a0, a1)}" fill="${vis.color}" data-slice="${i}"></path>`;
+      const pct = (cat.amount / total) * 100;
+      if (pct >= 6) {
+        const mid = (a0 + a1) / 2;
+        const r = (inner + outer) / 2;
+        labels += `<text class="donut-pct" x="${c + r * Math.cos(mid)}" y="${c + r * Math.sin(mid)}" text-anchor="middle" dominant-baseline="central">${Math.round(pct)}%</text>`;
+      }
+    }
+    angle += sweep;
+  });
+
+  const sel = touched >= 0 ? cats[touched] : null;
+  wrap.innerHTML = `
+    <div class="donut">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="Donut pengeluaran per kategori">${paths}${labels}</svg>
+      <div class="donut-center">
+        <div class="donut-center-label">${esc(sel ? sel.name : 'Total')}</div>
+        <div class="donut-center-val">${rp(sel ? sel.amount : total)}</div>
+      </div>
+    </div>`;
+  wrap.querySelectorAll('[data-slice]').forEach((p) => p.addEventListener('click', () => toggleSlice(Number(p.dataset.slice))));
+
+  listEl.innerHTML = cats.map((cat, i) => {
+    const vis = catVisual(cat.id, cat.name, 'expense');
+    const pct = total ? cat.amount / total : 0;
+    return `
+      <button type="button" class="cat-row" data-slice="${i}" style="${i === touched ? `background:${vis.color}1A` : ''}">
+        <span class="ms" style="color:${vis.color}">${vis.icon}</span>
+        <span class="cat-row-mid">
+          <div class="cat-row-name">${esc(cat.name)}</div>
+          <div class="cat-bar" style="background:${vis.color}26"><div style="width:${(pct * 100).toFixed(1)}%;background:${vis.color}"></div></div>
+        </span>
+        <span class="cat-row-right">
+          <div class="cat-row-amt">${rp(cat.amount)}</div>
+          <div class="cat-row-pct">${(pct * 100).toFixed(1).replace('.', ',')}%</div>
+        </span>
+      </button>`;
+  }).join('');
+  listEl.querySelectorAll('[data-slice]').forEach((b) => b.addEventListener('click', () => toggleSlice(Number(b.dataset.slice))));
+}
+
+function toggleSlice(i) {
+  state.touchedSlice = state.touchedSlice === i ? -1 : i;
+  renderDonut();
+}
+
+function arcPath(cx, cy, r0, r1, a0, a1) {
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  // Full circle needs two arcs
+  if (a1 - a0 >= Math.PI * 2 - 0.001) {
+    const m = a0 + Math.PI;
+    return arcPath(cx, cy, r0, r1, a0, m) + ' ' + arcPath(cx, cy, r0, r1, m, a1 - 0.0001);
+  }
+  const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  return `M ${p(r1, a0)} A ${r1} ${r1} 0 ${large} 1 ${p(r1, a1)} L ${p(r0, a1)} A ${r0} ${r0} 0 ${large} 0 ${p(r0, a0)} Z`;
+}
+
+function renderTrend() {
+  const data = state.overview?.monthlyTrend || [];
+  const el = $('trend-chart');
+  if (!data.length) {
+    el.innerHTML = '';
+    $('trend-avg').textContent = '';
+    return;
+  }
+  const max = Math.max(0, ...data.map((d) => d.expense));
+  const maxY = max === 0 ? 100000 : max * 1.25;
+  const avg = Math.round(data.reduce((s, d) => s + d.expense, 0) / data.length);
+  $('trend-avg').textContent = `Rata-rata ${rp(avg)} / bulan`;
+
+  const grid = [0, 1, 2, 3].map((i) => {
+    const v = (maxY / 4) * i;
+    const pct = (v / maxY) * 100;
+    return { pct, label: i === 0 ? '0' : compactFmt.format(v) };
+  });
+  const short = (key) => MONTHS[Number(key.split('-')[1]) - 1].slice(0, 3);
+
+  el.innerHTML = `
+    <div class="trend-y">${grid.map((g) => `<span style="bottom:${g.pct}%">${g.label}</span>`).join('')}</div>
+    <div class="trend-plot">
+      <div class="trend-area">
+        ${grid.map((g) => `<div class="trend-grid" style="bottom:${g.pct}%"></div>`).join('')}
+        <div class="trend-bars">
+          ${data.map((d) => `
+            <div class="trend-bar-col ${d.month === state.currentMonth ? 'sel' : ''}" data-month="${d.month}">
+              <div class="trend-bar" style="height:${Math.max(d.expense > 0 ? 1.5 : 0, (d.expense / maxY) * 100)}%"></div>
+              <span class="trend-tip" style="bottom:calc(${(d.expense / maxY) * 100}% + 6px)">${rp(d.expense)}</span>
+            </div>`).join('')}
         </div>
       </div>
-    `).join('');
-  }
+      <div class="trend-x">${data.map((d) => `<span class="${d.month === state.currentMonth ? 'sel' : ''}">${short(d.month)}</span>`).join('')}</div>
+    </div>`;
+  el.querySelectorAll('[data-month]').forEach((col) => col.addEventListener('click', () => {
+    if (col.dataset.month === state.currentMonth) return;
+    state.currentMonth = col.dataset.month;
+    state.touchedSlice = -1;
+    updateMonthLabels();
+    refreshDashboard();
+  }));
+}
 
-  window.saveWalletBalance = async function(id, name, type) {
-    const input = document.getElementById(`wallet-balance-${id}`);
-    const newBal = parseFloat(input.value) || 0;
-
+// ---------------------------------------------------------------- scan struk
+function setupScan() {
+  const input = $('scan-file-input');
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    const overlay = $('scan-overlay');
+    overlay.classList.add('active');
     try {
-      const res = await fetch('/api/finance/accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name, type, balance: newBal })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Saldo ${name} berhasil diperbarui!`);
-        await refreshDashboard();
-      } else {
-        alert(data.error);
-      }
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('/api/finance/shortcut/scan', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message || data.error || 'Struk tidak terbaca');
+      showToast(data.message || 'Struk berhasil dicatat');
+      await refreshDashboard();
     } catch (err) {
-      alert('Gagal update dompet: ' + err.message);
+      showToast(err.message, true);
+    } finally {
+      overlay.classList.remove('active');
     }
-  };
-
-  if (btnAdd) {
-    btnAdd.addEventListener('click', async () => {
-      const nameInput = document.getElementById('new-wallet-name');
-      const typeInput = document.getElementById('new-wallet-type');
-      const balInput = document.getElementById('new-wallet-balance');
-
-      const name = nameInput.value.trim();
-      const type = typeInput.value;
-      const balance = parseFloat(balInput.value) || 0;
-
-      if (!name) return alert('Nama dompet harus diisi.');
-
-      try {
-        const res = await fetch('/api/finance/accounts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, type, balance })
-        });
-        const data = await res.json();
-        if (data.success) {
-          nameInput.value = '';
-          balInput.value = '0';
-          showToast(`Dompet ${name} berhasil ditambahkan!`);
-          await refreshDashboard();
-          renderWalletMgmtList();
-        } else {
-          alert(data.error);
-        }
-      } catch (err) {
-        alert('Gagal: ' + err.message);
-      }
-    });
-  }
+  });
 }
 
-// 11. Export CSV Logic
-function setupExportButtons() {
-  const btnExport = document.getElementById('btn-export-csv');
-  const btnExportFilter = document.getElementById('btn-export-filter-csv');
-
-  function doExport() {
-    window.location.href = `/api/finance/export?month=${state.currentMonth}`;
-    showToast('Mengunduh laporan CSV...');
-  }
-
-  if (btnExport) btnExport.addEventListener('click', doExport);
-  if (btnExportFilter) btnExportFilter.addEventListener('click', doExport);
+// ---------------------------------------------------------------- settings
+function userName() {
+  return localStorage.getItem('patungin_user_name') || 'Dzaki';
 }
 
-// 12. Import Statement & Mutasi Rekening Logic
+function setupSettings() {
+  $('settings-name').textContent = userName();
+  $('btn-rename').addEventListener('click', async () => {
+    const v = await promptDialog({ title: 'Nama panggilan', value: userName() });
+    if (v) {
+      localStorage.setItem('patungin_user_name', v);
+      $('settings-name').textContent = v;
+      showToast(`Nama diubah menjadi ${v}`);
+    }
+  });
+  $('btn-export-csv').addEventListener('click', doExport);
+}
+
+function doExport() {
+  window.location.href = `/api/finance/export?month=${state.currentMonth}`;
+  showToast(`Mengunduh CSV ${monthLabel(state.currentMonth)}…`);
+}
+
+// ---------------------------------------------------------------- import mutasi
 function setupImportModal() {
-  const modal = document.getElementById('modal-import-statement');
-  const btnOpen = document.getElementById('btn-open-import');
-  const btnClose = document.getElementById('btn-close-import');
-  const tabText = document.getElementById('tab-import-text');
-  const tabFile = document.getElementById('tab-import-file');
-  const containerText = document.getElementById('import-text-container');
-  const containerFile = document.getElementById('import-file-container');
-  const btnParse = document.getElementById('btn-parse-statement');
-  const previewBox = document.getElementById('import-preview-box');
-  const previewList = document.getElementById('import-preview-list');
-  const previewCount = document.getElementById('import-preview-count');
-  const previewIn = document.getElementById('import-preview-in');
-  const previewOut = document.getElementById('import-preview-out');
-  const btnCommit = document.getElementById('btn-commit-import');
-  const accSelect = document.getElementById('import-target-account');
-
-  if (!modal || !btnOpen) return;
-
+  const tabText = $('tab-import-text');
+  const tabFile = $('tab-import-file');
+  const btnParse = $('btn-parse-statement');
+  const previewBox = $('import-preview-box');
+  const previewList = $('import-preview-list');
+  const btnCommit = $('btn-commit-import');
+  const accSelect = $('import-target-account');
   let activeTab = 'text';
-  let parsedTransactions = [];
+  let parsed = [];
 
-  function openModal() {
-    if (accSelect && state.accounts.length > 0) {
-      accSelect.innerHTML = state.accounts.map(a => `<option value="${a.id}">${a.name} (Rp ${formatRupiah(a.balance)})</option>`).join('');
-    }
-    previewBox.style.display = 'none';
-    parsedTransactions = [];
-    modal.classList.add('active');
-  }
-
-  function closeModal() {
-    modal.classList.remove('active');
-  }
-
-  btnOpen.addEventListener('click', openModal);
-  if (btnClose) btnClose.addEventListener('click', closeModal);
-
-  // Tab switching
-  tabText.addEventListener('click', () => {
-    activeTab = 'text';
-    tabText.style.background = 'var(--fin-primary-light)';
-    tabText.style.color = 'var(--fin-primary)';
-    tabText.style.borderColor = 'var(--fin-primary)';
-    tabFile.style.background = 'var(--fin-bg-subtle)';
-    tabFile.style.color = 'var(--fin-text-main)';
-    tabFile.style.borderColor = 'var(--fin-border)';
-    containerText.style.display = 'block';
-    containerFile.style.display = 'none';
+  $('btn-open-import').addEventListener('click', () => {
+    accSelect.innerHTML = state.accounts.map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${rp(a.balance)})</option>`).join('');
+    previewBox.hidden = true;
+    parsed = [];
+    openSheet('modal-import-statement');
   });
 
-  tabFile.addEventListener('click', () => {
-    activeTab = 'file';
-    tabFile.style.background = 'var(--fin-primary-light)';
-    tabFile.style.color = 'var(--fin-primary)';
-    tabFile.style.borderColor = 'var(--fin-primary)';
-    tabText.style.background = 'var(--fin-bg-subtle)';
-    tabText.style.color = 'var(--fin-text-main)';
-    tabText.style.borderColor = 'var(--fin-border)';
-    containerFile.style.display = 'block';
-    containerText.style.display = 'none';
-  });
+  const setTab = (tab) => {
+    activeTab = tab;
+    tabText.classList.toggle('active', tab === 'text');
+    tabFile.classList.toggle('active', tab === 'file');
+    $('import-text-container').hidden = tab !== 'text';
+    $('import-file-container').hidden = tab !== 'file';
+  };
+  tabText.addEventListener('click', () => setTab('text'));
+  tabFile.addEventListener('click', () => setTab('file'));
 
-  // Parse mutasi statement
   btnParse.addEventListener('click', async () => {
     const targetAccountId = accSelect.value;
     btnParse.disabled = true;
-    const oldText = btnParse.textContent;
-    btnParse.textContent = '⏳ Menganalisis Mutasi...';
-
+    const old = btnParse.innerHTML;
+    btnParse.innerHTML = '<span class="ms">hourglass_top</span>Menganalisis…';
     try {
-      let res;
+      let data;
       if (activeTab === 'text') {
-        const rawText = document.getElementById('import-raw-text').value.trim();
-        if (!rawText) throw new Error('Silakan tempel teks mutasi terlebih dahulu.');
-        res = await fetch('/api/finance/import/preview', {
+        const rawText = $('import-raw-text').value.trim();
+        if (!rawText) throw new Error('Tempel teks mutasi terlebih dahulu.');
+        data = await api('/api/finance/import/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rawText, targetAccountId })
         });
       } else {
-        const fileInput = document.getElementById('import-file-input');
-        if (!fileInput.files || fileInput.files.length === 0) {
-          throw new Error('Pilih file CSV mutasi terlebih dahulu.');
-        }
+        const f = $('import-file-input').files?.[0];
+        if (!f) throw new Error('Pilih file CSV mutasi terlebih dahulu.');
         const fd = new FormData();
-        fd.append('statementFile', fileInput.files[0]);
+        fd.append('statementFile', f);
         fd.append('targetAccountId', targetAccountId);
-        res = await fetch('/api/finance/import/preview', {
-          method: 'POST',
-          body: fd
-        });
+        data = await api('/api/finance/import/preview', { method: 'POST', body: fd });
       }
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-
-      parsedTransactions = data.transactions || [];
-      previewCount.textContent = parsedTransactions.length;
-      previewIn.textContent = `+Rp ${formatRupiah(data.totalIncome)}`;
-      previewOut.textContent = `-Rp ${formatRupiah(data.totalExpense)}`;
-
-      previewList.innerHTML = parsedTransactions.map((t, idx) => {
+      parsed = data.transactions || [];
+      $('import-preview-count').textContent = parsed.length;
+      $('import-preview-in').textContent = '+' + rp(data.totalIncome);
+      $('import-preview-out').textContent = '-' + rp(data.totalExpense).replace('-', '');
+      previewList.innerHTML = parsed.map((t, i) => {
         const isExp = t.type === 'expense';
-        const sign = isExp ? '-' : '+';
-        const clr = isExp ? 'var(--fin-expense)' : 'var(--fin-income)';
-
         return `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:6px;border:1px solid var(--fin-border);font-size:0.82rem;">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-              <input type="checkbox" id="chk-import-${idx}" checked style="cursor:pointer;">
-              <div style="min-width:0;">
-                <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.description || t.merchant}</div>
-                <div style="font-size:0.72rem;color:var(--fin-text-muted);">${t.date} • ${t.category}</div>
-              </div>
-            </div>
-            <div style="font-weight:800;color:${clr};flex-shrink:0;">
-              ${sign}Rp ${formatRupiah(t.amount)}
-            </div>
-          </div>
-        `;
+          <label class="preview-item">
+            <input type="checkbox" id="chk-import-${i}" checked>
+            <span class="tx-text">
+              <div class="tx-title">${esc(t.description || t.merchant)}</div>
+              <div class="tx-sub">${esc(t.date)} · ${esc(t.category)}</div>
+            </span>
+            <b class="${isExp ? 'expense' : 'income'}">${isExp ? '-' : '+'}${rp(t.amount)}</b>
+          </label>`;
       }).join('');
-
-      previewBox.style.display = 'block';
+      previewBox.hidden = false;
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, true);
     } finally {
       btnParse.disabled = false;
-      btnParse.textContent = oldText;
+      btnParse.innerHTML = old;
     }
   });
 
-  // Commit selected transactions
   btnCommit.addEventListener('click', async () => {
-    const selected = [];
-    parsedTransactions.forEach((t, idx) => {
-      const chk = document.getElementById(`chk-import-${idx}`);
-      if (chk && chk.checked) {
-        selected.push(t);
-      }
-    });
-
-    if (selected.length === 0) {
-      return alert('Pilih setidaknya 1 transaksi untuk disimpan.');
-    }
-
+    const selected = parsed.filter((_, i) => $(`chk-import-${i}`)?.checked);
+    if (!selected.length) return showToast('Pilih setidaknya 1 transaksi untuk disimpan.');
     btnCommit.disabled = true;
-    btnCommit.textContent = 'Menyimpan...';
-
     try {
-      const res = await fetch('/api/finance/import/commit', {
+      const data = await api('/api/finance/import/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transactions: selected,
-          targetAccountId: accSelect.value
-        })
+        body: JSON.stringify({ transactions: selected, targetAccountId: accSelect.value })
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-
-      closeModal();
-      showToast(`Berhasil menyimpan ${data.totalInserted} transaksi ke dompet ${data.account}!`);
+      closeSheet('modal-import-statement');
+      showToast(`${data.totalInserted} transaksi disimpan ke ${data.account}`);
       await refreshDashboard();
     } catch (err) {
-      alert('Gagal menyimpan: ' + err.message);
+      showToast('Gagal menyimpan: ' + err.message, true);
     } finally {
       btnCommit.disabled = false;
-      btnCommit.textContent = '💾 Simpan Transaksi Terpilih ke Dompet';
     }
   });
 }
 
-// 13. Google Spreadsheet Integration Logic
+// ---------------------------------------------------------------- google sheet
 function setupGoogleSheetModal() {
-  const modal = document.getElementById('modal-gsheet-config');
-  const btnOpen = document.getElementById('btn-open-gsheet');
-  const btnClose = document.getElementById('btn-close-gsheet');
-  const urlInput = document.getElementById('gsheet-url-input') || document.getElementById('gsheet-webhook-url');
-  const btnSave = document.getElementById('btn-save-gsheet-url');
-  const btnSyncAll = document.getElementById('btn-sync-all-gsheet');
-  const btnCopyScript = document.getElementById('btn-copy-apps-script');
-  const scriptTemplate = document.getElementById('gsheet-script-template');
+  const urlInput = $('gsheet-url-input');
+  const openWrap = $('gsheet-open-link-wrap');
+  const openLink = $('btn-open-gsheet-direct');
+  const showLink = (url) => {
+    if (!url) return;
+    openLink.href = url;
+    openWrap.hidden = false;
+  };
 
-  const openWrap = document.getElementById('gsheet-open-link-wrap');
-  const openLink = document.getElementById('btn-open-gsheet-direct');
-
-  function updateDirectLink(viewUrl) {
-    if (viewUrl && openWrap && openLink) {
-      openLink.href = viewUrl;
-      openWrap.style.display = 'block';
-    }
-  }
-
-  if (!modal || !btnOpen) return;
-
-  async function openModal() {
+  $('btn-open-gsheet').addEventListener('click', async () => {
+    openSheet('modal-gsheet-config');
     try {
-      const res = await fetch('/api/finance/google-sheet');
-      const data = await res.json();
-      if (data.success && data.url && urlInput) {
-        urlInput.value = data.url;
-      }
-      if (data.success && data.viewUrl) {
-        updateDirectLink(data.viewUrl);
-      }
-    } catch (_) {}
-    modal.classList.add('active');
-  }
+      const data = await api('/api/finance/google-sheet');
+      if (data.url) urlInput.value = data.url;
+      showLink(data.viewUrl);
+    } catch (_) { /* not configured yet */ }
+  });
 
-  function closeModal() {
-    modal.classList.remove('active');
-  }
+  $('btn-copy-apps-script').addEventListener('click', () => {
+    navigator.clipboard.writeText($('gsheet-script-template').value)
+      .then(() => showToast('Kode Apps Script disalin'))
+      .catch(() => showToast('Blok dan salin kode secara manual.', true));
+  });
 
-  btnOpen.addEventListener('click', openModal);
-  if (btnClose) btnClose.addEventListener('click', closeModal);
+  $('btn-save-gsheet-url').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await api('/api/finance/google-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput.value.trim() })
+      });
+      showToast('URL Google Sheet disimpan');
+    } catch (err) {
+      showToast('Gagal menyimpan: ' + err.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
-  // Copy apps script
-  if (btnCopyScript && scriptTemplate) {
-    btnCopyScript.addEventListener('click', () => {
-      scriptTemplate.select();
-      navigator.clipboard.writeText(scriptTemplate.value)
-        .then(() => showToast('Kode Apps Script berhasil disalin!'))
-        .catch(() => alert('Silakan blok dan salin teks script secara manual.'));
-    });
-  }
-
-  // Save webhook URL
-  if (btnSave) {
-    btnSave.addEventListener('click', async () => {
-      const url = urlInput.value.trim();
-      btnSave.disabled = true;
-      try {
-        const res = await fetch('/api/finance/google-sheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast('URL Google Sheet berhasil disimpan!');
-        } else {
-          alert(data.error);
-        }
-      } catch (err) {
-        alert('Gagal menyimpan: ' + err.message);
-      } finally {
-        btnSave.disabled = false;
-      }
-    });
-  }
-
-  // Sync all transactions to Google Sheet
-  if (btnSyncAll) {
-    btnSyncAll.addEventListener('click', async () => {
-      if (!urlInput.value.trim()) {
-        return alert('Simpan URL Google Sheet terlebih dahulu.');
-      }
-      btnSyncAll.disabled = true;
-      const oldText = btnSyncAll.textContent;
-      btnSyncAll.textContent = '⏳ Menyinkronkan ke Sheet...';
-
-      try {
-        const res = await fetch('/api/finance/google-sheet/sync-all', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          showToast(`Berhasil menyinkronkan ${data.count} transaksi ke Google Sheet!`);
-          if (data.spreadsheetUrl) {
-            updateDirectLink(data.spreadsheetUrl);
-          }
-        } else {
-          alert(data.error || 'Gagal sinkronisasi.');
-        }
-      } catch (err) {
-        alert('Gagal menghubungi server: ' + err.message);
-      } finally {
-        btnSyncAll.disabled = false;
-        btnSyncAll.textContent = oldText;
-      }
-    });
-  }
+  $('btn-sync-all-gsheet').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (!urlInput.value.trim()) return showToast('Simpan URL Google Sheet terlebih dahulu.');
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = 'Menyinkronkan…';
+    try {
+      const data = await api('/api/finance/google-sheet/sync-all', { method: 'POST' });
+      showToast(`${data.count} transaksi disinkronkan ke Google Sheet`);
+      showLink(data.spreadsheetUrl);
+    } catch (err) {
+      showToast('Gagal sinkronisasi: ' + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  });
 }
 
-// 14. iOS Shortcuts / Android Widget Logic
+// ---------------------------------------------------------------- shortcuts
 function setupShortcutsModal() {
-  const modal = document.getElementById('modal-shortcuts-config');
-  const btnOpen = document.getElementById('btn-open-shortcuts');
-  const btnClose = document.getElementById('btn-close-shortcuts');
-  const urlInput = document.getElementById('shortcut-webhook-url');
-  const btnCopy = document.getElementById('btn-copy-shortcut-url');
-  const testInput = document.getElementById('shortcut-test-input');
-  const btnTest = document.getElementById('btn-test-shortcut');
-  const resultBox = document.getElementById('shortcut-test-result');
+  const urlInput = $('shortcut-endpoint-url');
+  const testInput = $('shortcut-test-input');
+  const btnTest = $('btn-test-shortcut');
+  const resultBox = $('shortcut-test-result');
 
-  if (!modal || !btnOpen) return;
-
-  async function openModal() {
+  $('btn-open-shortcuts').addEventListener('click', async () => {
+    let ep = `${window.location.origin}/api/finance/shortcut`;
     try {
-      const res = await fetch('/api/finance/shortcut/info');
+      const data = await api('/api/finance/shortcut/info');
+      if (data.endpoint && !(data.endpoint.includes('localhost') && window.location.hostname !== 'localhost')) ep = data.endpoint;
+    } catch (_) { /* fall back to this origin */ }
+    urlInput.value = ep;
+    resultBox.hidden = true;
+    openSheet('modal-shortcuts-info');
+  });
+
+  $('btn-copy-shortcut-url').addEventListener('click', () => {
+    navigator.clipboard.writeText(urlInput.value)
+      .then(() => showToast('URL pintasan disalin'))
+      .catch(() => showToast('Salin URL secara manual: ' + urlInput.value, true));
+  });
+
+  const runTest = async () => {
+    const text = testInput.value.trim();
+    if (!text) return showToast('Masukkan contoh teks transaksi dulu.');
+    btnTest.disabled = true;
+    resultBox.hidden = true;
+    try {
+      const res = await fetch('/api/finance/shortcut', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
       const data = await res.json();
-      if (data.success && data.endpoint) {
-        let ep = data.endpoint;
-        if (ep.includes('localhost') && window.location.hostname !== 'localhost') {
-          ep = `${window.location.origin}/api/finance/shortcut`;
-        }
-        urlInput.value = ep;
-      } else {
-        urlInput.value = `${window.location.origin}/api/finance/shortcut`;
+      resultBox.hidden = false;
+      resultBox.innerHTML = `<div class="test-result-title ${data.success ? 'income' : 'expense'}">${esc(data.title || (data.success ? 'Berhasil' : 'Gagal'))}</div><div>${esc(data.message || data.error || '')}</div>`;
+      if (data.success) {
+        testInput.value = '';
+        await refreshDashboard();
       }
-    } catch (_) {
-      urlInput.value = `${window.location.origin}/api/finance/shortcut`;
+    } catch (err) {
+      resultBox.hidden = false;
+      resultBox.innerHTML = `<div class="test-result-title expense">Error server</div><div>${esc(err.message)}</div>`;
+    } finally {
+      btnTest.disabled = false;
     }
-    if (resultBox) resultBox.style.display = 'none';
-    modal.classList.add('active');
-  }
-
-  function closeModal() {
-    modal.classList.remove('active');
-  }
-
-  btnOpen.addEventListener('click', openModal);
-  if (btnClose) btnClose.addEventListener('click', closeModal);
-
-  // Copy Webhook URL
-  if (btnCopy && urlInput) {
-    btnCopy.addEventListener('click', () => {
-      urlInput.select();
-      navigator.clipboard.writeText(urlInput.value)
-        .then(() => showToast('Webhook URL Pintasan berhasil disalin!'))
-        .catch(() => alert('Silakan salin URL secara manual: ' + urlInput.value));
-    });
-  }
-
-  // Live Tester
-  if (btnTest && testInput && resultBox) {
-    btnTest.addEventListener('click', async () => {
-      const query = testInput.value.trim();
-      if (!query) return alert('Masukkan contoh teks transaksi terlebih dahulu.');
-
-      btnTest.disabled = true;
-      const oldText = btnTest.textContent;
-      btnTest.textContent = '⏳ Menguji...';
-      resultBox.style.display = 'none';
-
-      try {
-        const res = await fetch('/api/finance/shortcut', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: query })
-        });
-        const data = await res.json();
-
-        resultBox.style.display = 'block';
-        if (data.success) {
-          resultBox.innerHTML = `
-            <div style="font-weight:700;color:var(--fin-income);margin-bottom:4px;">${data.title}</div>
-            <div style="color:var(--fin-text-main);">${data.message}</div>
-          `;
-          showToast('Pintasan sukses dieksekusi!');
-          await refreshDashboard();
-        } else {
-          resultBox.innerHTML = `
-            <div style="font-weight:700;color:var(--fin-expense);margin-bottom:4px;">${data.title || 'Gagal'}</div>
-            <div style="color:var(--fin-text-muted);">${data.message || data.error}</div>
-          `;
-        }
-      } catch (err) {
-        resultBox.style.display = 'block';
-        resultBox.innerHTML = `
-          <div style="font-weight:700;color:var(--fin-expense);margin-bottom:4px;">⚠️ Error Server</div>
-          <div style="color:var(--fin-text-muted);">${err.message}</div>
-        `;
-      } finally {
-        btnTest.disabled = false;
-        btnTest.textContent = oldText;
-      }
-    });
-
-    testInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        btnTest.click();
-      }
-    });
-  }
+  };
+  btnTest.addEventListener('click', runTest);
+  testInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runTest(); });
 }
-
-

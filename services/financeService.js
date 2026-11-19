@@ -974,6 +974,28 @@ export function getFinanceOverview(monthStr = null) {
 
   const dailyTrend = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
 
+  // Six months ending at the selected month (oldest first), for the analytics bar chart.
+  const [selYear, selMonth] = currentMonth.split('-').map(Number);
+  const trendMonths = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(selYear, selMonth - 1 - i, 1);
+    trendMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const trendRows = db.prepare(`
+    SELECT strftime('%Y-%m', transaction_date, 'localtime') AS month,
+           SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense,
+           SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income
+    FROM transactions
+    WHERE strftime('%Y-%m', transaction_date, 'localtime') BETWEEN ? AND ?
+    GROUP BY month
+  `).all(trendMonths[0], trendMonths[5]);
+  const trendMap = Object.fromEntries(trendRows.map(r => [r.month, r]));
+  const monthlyTrend = trendMonths.map(m => ({
+    month: m,
+    expense: Number(trendMap[m]?.expense) || 0,
+    income: Number(trendMap[m]?.income) || 0
+  }));
+
   return {
     month: currentMonth,
     totalBalance,
@@ -985,6 +1007,7 @@ export function getFinanceOverview(monthStr = null) {
     accounts,
     categoryBreakdown,
     dailyTrend,
+    monthlyTrend,
     recentTransactions: rows.slice(0, 15)
   };
 }

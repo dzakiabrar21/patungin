@@ -3,11 +3,15 @@
  * PWA offline caching & fast performance
  */
 
-const CACHE_NAME = 'patungin-v1.2';
+const CACHE_NAME = 'patungin-v2.0';
 const STATIC_ASSETS = [
   '/finance',
-  '/css/finance.css',
-  '/js/finance.js',
+  '/css/finance.css?v=2',
+  '/js/finance.js?v=2',
+  '/assets/fonts/PlusJakartaSans-Regular.ttf',
+  '/assets/fonts/PlusJakartaSans-SemiBold.ttf',
+  '/assets/fonts/PlusJakartaSans-Bold.ttf',
+  '/assets/fonts/PlusJakartaSans-ExtraBold.ttf',
   '/manifest.json',
   '/icons/icon-180.png',
   '/icons/icon-192.png',

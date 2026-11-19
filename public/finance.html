@@ -2,591 +2,476 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>PatungIn Finance — Catatan Keuangan & Dompet Pintar</title>
-  <meta name="description" content="Dashboard buku kas dan tracker keuangan pribadi dengan analisis visual, pencatatan cepat AI, dan sinkronisasi saldo dompet real-time.">
-  <meta name="theme-color" content="#007F88">
+  <meta name="description" content="Pelacak keuangan pribadi: saldo semua dompet, catat cepat, scan struk, dan analitik per kategori.">
+  <meta name="theme-color" content="#F4F8F9">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="PatungIn">
 
-  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
-
-  <!-- Apple Touch Icons (Home Screen) -->
   <link rel="apple-touch-icon" href="/icons/icon-180.png">
   <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
   <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
-
-  <!-- Favicon Icons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
   <link rel="shortcut icon" href="/icons/icon-32.png">
 
+  <!-- Material Symbols Rounded: same icon family as the Stash app (Icons.*_rounded) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/finance.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=block">
+  <link rel="stylesheet" href="css/finance.css?v=2">
 </head>
 <body class="finance-body">
 
-  <!-- ==========================================
-       Header Navigation (Sticky 72px)
-       ========================================== -->
-  <header class="fin-header-wrapper">
-    <div class="fin-header-inner">
-      <a href="/finance" class="fin-brand" title="Beranda PatungIn Finance">
-        <div class="fin-logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="5" width="20" height="14" rx="3"></rect>
-            <line x1="2" y1="10" x2="22" y2="10"></line>
-          </svg>
-        </div>
-        <div class="fin-brand-text">
-          <h1>Patung<span>In</span></h1>
-          <span class="fin-brand-tag">Finance Tracker</span>
-        </div>
-      </a>
+<div class="app-shell">
 
-      <!-- Desktop Nav Actions (hidden on mobile) -->
-      <div class="fin-nav-actions">
-        <a href="/" class="fin-btn-nav" title="Buka Pembagian Split Bill">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Split Bill
-        </a>
-        <button type="button" id="btn-open-import" class="fin-btn-nav" title="Import Mutasi Rekening / CSV">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Import
-        </button>
-        <button type="button" id="btn-export-csv" class="fin-btn-nav" title="Ekspor Transaksi ke Excel/CSV">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Ekspor
-        </button>
-        <button type="button" id="btn-open-gsheet" class="fin-btn-nav" title="Koneksi Google Spreadsheet & Checksheet">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          Sheet
-        </button>
-        <button type="button" id="btn-open-shortcuts" class="fin-btn-nav" title="Pintasan iPhone / Android (Action Button & Siri)">
-          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          Pintasan
-        </button>
-        <button type="button" id="btn-open-wallets" class="fin-btn-nav" title="Kelola Saldo Dompet">
-          <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-          Dompet
-        </button>
-        <button type="button" id="btn-open-add-tx" class="fin-btn-header-cta" title="Tambah Transaksi Manual">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Catat
-        </button>
-      </div>
-
-      <!-- Mobile Top Bar CTA (shown only on mobile <= 768px) -->
-      <div class="fin-mobile-cta">
-        <button type="button" id="btn-open-add-tx-mobile" class="fin-btn-header-cta" title="Tambah Transaksi Manual">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Catat
-        </button>
-      </div>
-    </div>
-
-    <!-- Mobile Sub-Navigation Bar (Horizontal Pills per Figma Spec) -->
-    <nav class="fin-header-subnav" aria-label="Menu Fitur Cepat">
-      <div class="fin-subnav-scroll">
-        <a href="/" class="fin-subnav-pill" title="Split Bill">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-          <span>Split Bill</span>
-        </a>
-        <button type="button" id="btn-subnav-import" class="fin-subnav-pill" title="Import Mutasi Rekening">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Import</span>
-        </button>
-        <button type="button" id="btn-subnav-export" class="fin-subnav-pill" title="Ekspor CSV">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span>Ekspor</span>
-        </button>
-        <button type="button" id="btn-subnav-gsheet" class="fin-subnav-pill" title="Google Sheet">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          <span>Sheet</span>
-        </button>
-        <button type="button" id="btn-subnav-shortcuts" class="fin-subnav-pill" title="Pintasan iPhone / Android">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span>Pintasan</span>
-        </button>
-        <button type="button" id="btn-subnav-wallets" class="fin-subnav-pill" title="Kelola Dompet">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-          <span>Dompet</span>
-        </button>
-      </div>
+  <!-- ================= Sidebar (desktop) ================= -->
+  <aside class="side-nav" aria-label="Navigasi utama">
+    <a href="#beranda" class="brand">
+      <span class="brand-mark"><span class="ms">account_balance_wallet</span></span>
+      <span class="brand-name">PatungIn</span>
+    </a>
+    <button type="button" class="btn-filled btn-block side-cta" data-action="add">
+      <span class="ms">add</span> Catat transaksi
+    </button>
+    <nav class="side-links">
+      <a href="#beranda" class="nav-item" data-nav="beranda"><span class="ms">home</span><span>Beranda</span></a>
+      <a href="#dompet" class="nav-item" data-nav="dompet"><span class="ms">account_balance_wallet</span><span>Dompet</span></a>
+      <a href="#analitik" class="nav-item" data-nav="analitik"><span class="ms">pie_chart</span><span>Analitik</span></a>
+      <a href="#pengaturan" class="nav-item" data-nav="pengaturan"><span class="ms">settings</span><span>Pengaturan</span></a>
     </nav>
-  </header>
+    <a href="/" class="side-foot">
+      <span class="ms">receipt_long</span><span>Split Bill PatungIn</span>
+    </a>
+  </aside>
 
-  <!-- ==========================================
-       Main Dashboard Content
-       ========================================== -->
-  <main class="fin-main-content">
+  <main class="app-main">
 
-    <!-- Greeting & Financial Health Row -->
-    <section class="fin-greeting-strip">
-      <div class="fin-greeting-info">
-        <div class="fin-micro-label">Ringkasan keuangan</div>
-        <h2 id="greeting-heading" class="fin-greeting-title" title="Klik untuk mengubah nama panggilan">Selamat siang, Dzaki</h2>
-        <div class="fin-greeting-sub">Semua keuanganmu terlihat sehat bulan ini.</div>
-      </div>
-      <div class="fin-status-pill">
-        <div class="fin-status-dot"></div>
-        <span>Kondisi finansial baik</span>
-      </div>
-    </section>
-
-    <!-- Month Period Selector Strip -->
-    <section class="fin-month-strip">
-      <div class="fin-month-selector">
-        <button type="button" id="btn-month-prev" class="fin-month-btn" aria-label="Bulan Sebelumnya">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-        <div class="fin-month-center">
-          <span class="fin-month-period-tag">Periode aktif</span>
-          <span id="month-display" class="fin-month-display">Oktober 2026</span>
+    <!-- ================= BERANDA ================= -->
+    <section class="view" data-view="beranda">
+      <header class="app-bar">
+        <h1 class="app-bar-title brand-title">PatungIn</h1>
+        <div class="app-bar-actions">
+          <button type="button" class="icon-btn primary" data-action="scan" title="Pindai struk" aria-label="Pindai struk"><span class="ms">document_scanner</span></button>
         </div>
-        <button type="button" id="btn-month-next" class="fin-month-btn" aria-label="Bulan Berikutnya">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </div>
-    </section>
+      </header>
 
-    <!-- Hero Liquidity Balance Card -->
-    <section class="fin-hero-card" aria-label="Total Saldo Likuid">
-      <div class="fin-hero-top">
-        <div>
-          <div class="fin-hero-tag">
-            <span class="fin-hero-dot"></span>
-            <span>Total saldo likuid</span>
-          </div>
-          <div class="fin-hero-balance" id="hero-total-balance">Rp 0</div>
-          <div class="fin-hero-wallets-count" id="hero-wallets-count">Tersebar di dompet aktif</div>
-        </div>
-        <button type="button" class="fin-hero-menu-btn" id="btn-hero-options" title="Kelola Saldo">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
-        </button>
-      </div>
-
-      <div class="fin-hero-stats">
-        <div class="fin-hero-stat-col">
-          <div class="fin-stat-head">
-            <div class="fin-stat-icon-box income">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+      <div class="home-grid">
+        <div class="home-col">
+          <!-- Hero balance card -->
+          <section class="hero-card" aria-label="Total saldo">
+            <div class="hero-label">Total saldo</div>
+            <div class="hero-amount" id="hero-total-balance">Rp 0</div>
+            <div class="hero-divider"></div>
+            <div class="hero-month">
+              <button type="button" class="hero-month-btn" id="btn-month-prev" aria-label="Bulan sebelumnya"><span class="ms">chevron_left</span></button>
+              <span id="month-display">-</span>
+              <button type="button" class="hero-month-btn" id="btn-month-next" aria-label="Bulan berikutnya"><span class="ms">chevron_right</span></button>
             </div>
-            <span class="fin-stat-title">Pemasukan</span>
-          </div>
-          <div class="fin-stat-val income" id="hero-total-income">+Rp 0</div>
-          <span class="fin-stat-sub">bulan ini</span>
-        </div>
-
-        <div class="fin-hero-stat-col">
-          <div class="fin-stat-head">
-            <div class="fin-stat-icon-box expense">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"></line><polyline points="17 7 17 17 7 17"></polyline></svg>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <span class="ms hero-in">south_west</span>
+                <div>
+                  <div class="hero-stat-label">Pemasukan</div>
+                  <div class="hero-stat-val" id="hero-total-income">Rp 0</div>
+                </div>
+              </div>
+              <div class="hero-stat">
+                <span class="ms hero-out">north_east</span>
+                <div>
+                  <div class="hero-stat-label">Pengeluaran</div>
+                  <div class="hero-stat-val" id="hero-total-expense">Rp 0</div>
+                </div>
+              </div>
             </div>
-            <span class="fin-stat-title">Pengeluaran</span>
-          </div>
-          <div class="fin-stat-val expense" id="hero-total-expense">-Rp 0</div>
-          <span class="fin-stat-sub" id="hero-expense-ratio">-</span>
-        </div>
+          </section>
 
-        <div class="fin-hero-stat-col">
-          <div class="fin-stat-head">
-            <div class="fin-stat-icon-box saving">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
-            </div>
-            <span class="fin-stat-title">Arus kas bersih</span>
-          </div>
-          <div class="fin-stat-val saving" id="hero-net-savings">Rp 0</div>
-          <span class="fin-stat-sub" id="hero-savings-ratio">-</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quick NLP Natural Text Input Box (Placed below Total Saldo Likuid Card) -->
-    <section class="fin-quick-box-section" aria-label="Pencatatan Cepat Berbasis Teks">
-      <form id="fin-quick-form" class="fin-quick-box">
-        <div class="fin-quick-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
-          </svg>
-        </div>
-        <div class="fin-quick-body">
-          <span class="fin-quick-label">Catat dengan kalimat biasa</span>
-          <input 
-            type="text" 
-            id="fin-quick-input" 
-            class="fin-quick-input" 
-            placeholder="Misal: makan siang padang 35k bca..." 
-            autocomplete="off"
-          >
-        </div>
-        <button type="submit" class="fin-quick-submit" id="btn-quick-submit">
-          <span>Catat</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </form>
-    </section>
-
-    <!-- Dompet & Rekening Section -->
-    <section class="fin-wallets-section">
-      <div class="fin-section-title-strip">
-        <div>
-          <h2>Dompet & rekening</h2>
-          <div class="fin-section-subtitle">Pilih dompet untuk memfilter transaksi</div>
-        </div>
-        <button type="button" class="fin-section-action-btn" id="btn-manage-wallets-link">
-          <span>Kelola dompet</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </div>
-
-      <div id="wallets-container" class="fin-wallets-grid">
-        <!-- Rendered by JS -->
-      </div>
-    </section>
-
-    <!-- Analytics Grid (Categories Breakdown & Daily Trend) -->
-    <section class="fin-analytics-grid">
-      
-      <!-- Category Breakdown Card -->
-      <div class="fin-card">
-        <div class="fin-card-header">
-          <div class="fin-card-title-group">
-            <div class="fin-micro-label">Analisis kategori</div>
-            <h3>Pengeluaran terbesar</h3>
-          </div>
-          <button type="button" class="fin-hero-menu-btn" style="color:#587077;background:transparent;border:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>
-          </button>
-        </div>
-        <div id="cat-breakdown-list" class="fin-cat-list">
-          <!-- Rendered by JS -->
-        </div>
-        <button type="button" class="fin-card-footer-btn" id="btn-see-all-cats">
-          <span>Lihat semua kategori</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </div>
-
-      <!-- Daily Trend Card -->
-      <div class="fin-card">
-        <div class="fin-card-header">
-          <div class="fin-card-title-group">
-            <div class="fin-micro-label">Aktivitas bulan ini</div>
-            <h3>Tren pengeluaran harian</h3>
-          </div>
-          <div style="text-align: right;">
-            <div style="color:#83959A;font-size:11.5px;font-weight:600;">Rata-rata</div>
-            <div style="color:#102A32;font-size:14px;font-weight:700;" id="daily-avg-val">Rp 0</div>
-          </div>
-        </div>
-
-        <div class="fin-daily-meta">
-          <div class="fin-daily-legend">
-            <span class="fin-legend-dot"></span>
-            <span>Pengeluaran harian</span>
-          </div>
-          <span class="fin-daily-peak" id="daily-peak-val">Hari tertinggi: -</span>
-        </div>
-
-        <div class="fin-daily-chart-wrap">
-          <div class="fin-daily-y-axis">
-            <span id="chart-y-max">600rb</span>
-            <span id="chart-y-mid">300rb</span>
-            <span>0</span>
-          </div>
-          <div id="daily-chart-container" class="fin-daily-bars-container">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Riwayat Transaksi Card -->
-    <section class="fin-tx-card">
-      <div class="fin-tx-header">
-        <div>
-          <div class="fin-micro-label">Aktivitas terbaru</div>
-          <h3 style="color:#102A32;font-size:17px;font-weight:600;">Riwayat transaksi</h3>
-        </div>
-        <button type="button" class="fin-btn-export-csv" id="btn-export-tx-table">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Ekspor CSV
-        </button>
-      </div>
-
-      <div class="fin-tx-filter-bar">
-        <div class="fin-filter-segmented">
-          <button type="button" class="fin-filter-pill active" data-type="all">Semua</button>
-          <button type="button" class="fin-filter-pill" data-type="expense">Pengeluaran</button>
-          <button type="button" class="fin-filter-pill" data-type="income">Pemasukan</button>
-          <button type="button" class="fin-filter-pill" data-type="transfer">Transfer</button>
-        </div>
-
-        <div class="fin-search-box">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input 
-            type="text" 
-            id="tx-search-input" 
-            class="fin-search-input" 
-            placeholder="Cari toko atau keterangan..."
-          >
-        </div>
-      </div>
-
-      <div id="transactions-list" class="fin-tx-list">
-        <!-- Rendered by JS -->
-      </div>
-
-      <button type="button" id="btn-load-more" class="fin-load-more-btn">
-        Tampilkan lebih banyak
-      </button>
-    </section>
-
-  </main>
-
-  <!-- ==========================================
-       Modal: Catat Transaksi Baru (Screenshot 2 Spec)
-       ========================================== -->
-  <div id="modal-add-tx" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-tx-title">
-    <div class="fin-modal-card">
-      <div class="fin-modal-header">
-        <div class="fin-modal-title-group">
-          <div class="fin-micro-label">Transaksi baru</div>
-          <h3 id="modal-add-tx-title">Catat transaksi</h3>
-        </div>
-        <button type="button" id="btn-close-add-tx" class="fin-modal-close" aria-label="Tutup">&times;</button>
-      </div>
-
-      <form id="form-add-tx">
-        <div class="fin-modal-body">
-          
-          <!-- Segmented Type Selector -->
-          <div class="fin-modal-segmented">
-            <button type="button" class="fin-modal-tab active expense" data-val="expense">Pengeluaran</button>
-            <button type="button" class="fin-modal-tab" data-val="income">Pemasukan</button>
-            <button type="button" class="fin-modal-tab" data-val="transfer">Transfer</button>
-          </div>
-          <!-- Hidden input keeping JS compatibility -->
-          <input type="hidden" id="tx-modal-type" value="expense">
-
-          <!-- Big Nominal Input -->
-          <div class="fin-nominal-group">
-            <label for="tx-modal-amount" class="fin-nominal-label">Nominal</label>
-            <div class="fin-nominal-field">
-              <span class="fin-nominal-cur">Rp</span>
-              <input type="number" id="tx-modal-amount" class="fin-nominal-input" placeholder="0" min="1" required>
-            </div>
-            <div class="fin-quick-nominal-pills">
-              <button type="button" class="fin-nom-pill" data-val="10000">+10rb</button>
-              <button type="button" class="fin-nom-pill" data-val="25000">+25rb</button>
-              <button type="button" class="fin-nom-pill" data-val="50000">+50rb</button>
-              <button type="button" class="fin-nom-pill" data-val="100000">+100rb</button>
-              <button type="button" class="fin-nom-pill" data-val="500000">+500rb</button>
-            </div>
-          </div>
-
-          <!-- 2-Column: Wallet & Category -->
-          <div class="fin-form-grid-2">
-            <div class="fin-form-group">
-              <label for="tx-modal-account" class="fin-form-label">Dari dompet</label>
-              <select id="tx-modal-account" class="fin-form-select">
-                <!-- Rendered by JS -->
-              </select>
-            </div>
-
-            <div id="tx-modal-category-group" class="fin-form-group">
-              <label for="tx-modal-category" class="fin-form-label">Kategori</label>
-              <select id="tx-modal-category" class="fin-form-select">
-                <!-- Rendered by JS -->
-              </select>
-            </div>
-
-            <div id="tx-modal-to-account-group" class="fin-form-group" style="display: none;">
-              <label for="tx-modal-to-account" class="fin-form-label">Ke dompet tujuan</label>
-              <select id="tx-modal-to-account" class="fin-form-select">
-                <!-- Rendered by JS -->
-              </select>
-            </div>
-          </div>
-
-          <!-- 2-Column: Merchant & Date -->
-          <div class="fin-form-grid-2">
-            <div class="fin-form-group">
-              <label for="tx-modal-merchant" class="fin-form-label">Merchant</label>
-              <input type="text" id="tx-modal-merchant" class="fin-form-input" placeholder="Nama toko atau penerima">
-            </div>
-
-            <div class="fin-form-group">
-              <label for="tx-modal-date" class="fin-form-label">Tanggal</label>
-              <input type="date" id="tx-modal-date" class="fin-form-input">
-            </div>
-          </div>
-
-          <!-- Catatan Opsional -->
-          <div class="fin-form-group">
-            <label for="tx-modal-desc" class="fin-form-label">Catatan <span style="color:#91A2A7;font-weight:400;">Opsional</span></label>
-            <textarea id="tx-modal-desc" class="fin-form-input" rows="2" placeholder="Tambahkan detail transaksi..."></textarea>
-          </div>
-
-        </div>
-
-        <div class="fin-modal-footer">
-          <button type="button" id="btn-cancel-add-tx" class="fin-btn-cancel">Batal</button>
-          <button type="submit" class="fin-btn-submit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Simpan transaksi
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ==========================================
-       Modal: Kelola Saldo Dompet & Tambah Rekening
-       ========================================== -->
-  <div id="modal-wallet-mgmt" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wallet-title">
-    <div class="fin-modal-card">
-      <div class="fin-modal-header">
-        <div class="fin-modal-title-group">
-          <div class="fin-micro-label">Konfigurasi</div>
-          <h3 id="modal-wallet-title">Kelola dompet & rekening</h3>
-        </div>
-        <button type="button" id="btn-close-wallets" class="fin-modal-close" aria-label="Tutup">&times;</button>
-      </div>
-      <div class="fin-modal-body">
-        
-        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
-          Sesuaikan saldo awal dompet kamu kapan saja di sini agar catatan keuangan selalu akurat:
-        </p>
-
-        <div id="wallet-mgmt-list">
-          <!-- Rendered by JS -->
-        </div>
-
-        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--fin-border);">
-          <div class="fin-micro-label">+ Tambah Dompet Baru</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;margin-top:6px;">
-            <input type="text" id="new-wallet-name" class="fin-form-input" placeholder="Nama (e.g. Blu, Jago, Jenius)">
-            <select id="new-wallet-type" class="fin-form-select">
-              <option value="bank">Rekening Bank</option>
-              <option value="ewallet">E-Wallet</option>
-              <option value="cash">Uang Fisik / Cash</option>
-            </select>
-          </div>
-          <input type="number" id="new-wallet-balance" class="fin-form-input" placeholder="Saldo Awal (Rp)" style="margin-bottom:10px;">
-          <button type="button" id="btn-add-wallet-submit" class="fin-btn-submit" style="width:100%;justify-content:center;">
-            Tambah Dompet
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ==========================================
-       Modal: Import Mutasi Rekening / CSV
-       ========================================== -->
-  <div id="modal-import-statement" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
-    <div class="fin-modal-card" style="max-width: 600px;">
-      <div class="fin-modal-header">
-        <div class="fin-modal-title-group">
-          <div class="fin-micro-label">Data import</div>
-          <h3 id="modal-import-title">Import mutasi rekening</h3>
-        </div>
-        <button type="button" id="btn-close-import" class="fin-modal-close" aria-label="Tutup">&times;</button>
-      </div>
-      <div class="fin-modal-body">
-        
-        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-          <button type="button" id="tab-import-text" class="fin-nom-pill" style="padding: 6px 14px; background: var(--fin-primary-light); color: var(--fin-primary); border-color: var(--fin-primary);">Tempel Teks Mutasi</button>
-          <button type="button" id="tab-import-file" class="fin-nom-pill" style="padding: 6px 14px;">Upload File CSV</button>
-        </div>
-
-        <div class="fin-form-group">
-          <label for="import-target-account" class="fin-form-label">Rekening / Dompet Tujuan</label>
-          <select id="import-target-account" class="fin-form-select">
-            <!-- Rendered by JS -->
-          </select>
-        </div>
-
-        <!-- Input Area: Text Paste -->
-        <div id="import-text-container" class="fin-form-group">
-          <label for="import-raw-text" class="fin-form-label">Teks Mutasi Bank (Salin dari m-BCA / Livin / GoPay / Shopee)</label>
-          <textarea id="import-raw-text" class="fin-form-input" rows="5" placeholder="Contoh:&#10;01/10/2026 QRIS Kopi Kenangan Rp 35.000 DB&#10;02/10/2026 Gaji Masuk PT ABC Rp 8.000.000 CR"></textarea>
-        </div>
-
-        <!-- Input Area: File Upload -->
-        <div id="import-file-container" class="fin-form-group" style="display: none;">
-          <label for="import-file-input" class="fin-form-label">Pilih File CSV Mutasi</label>
-          <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="fin-form-input">
-        </div>
-
-        <button type="button" id="btn-parse-statement" class="fin-btn-submit" style="width: 100%; justify-content:center; margin-bottom: 12px;">
-          🔍 Analisis & Pratinjau Mutasi
-        </button>
-
-        <!-- Preview Results Container -->
-        <div id="import-preview-box" style="display: none; border-top: 1px dashed var(--fin-border); padding-top: 14px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-            <div style="font-size: 13px; font-weight: 700;">
-              Hasil: <span id="import-preview-count" style="color: var(--fin-primary);">0</span> transaksi
-            </div>
-            <div style="font-size: 12.5px;">
-              <span id="import-preview-in" style="color: var(--fin-income); font-weight: 700;">+Rp 0</span> | 
-              <span id="import-preview-out" style="color: var(--fin-expense); font-weight: 700;">-Rp 0</span>
-            </div>
-          </div>
-
-          <div id="import-preview-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--fin-border); border-radius: 8px; padding: 6px; background: var(--fin-bg-page); display: flex; flex-direction: column; gap: 6px;">
-            <!-- Rendered by JS -->
-          </div>
-
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;">
-            <button type="button" id="btn-commit-import" class="fin-btn-submit" style="width: 100%; justify-content:center;">
-              💾 Simpan Transaksi ke Dompet
+          <!-- Quick actions -->
+          <div class="quick-actions">
+            <button type="button" class="stash-card quick-action" data-action="add">
+              <span class="qa-icon"><span class="ms">edit_note</span></span><span>Catat</span>
+            </button>
+            <button type="button" class="stash-card quick-action" data-action="scan">
+              <span class="qa-icon"><span class="ms">document_scanner</span></span><span>Scan struk</span>
+            </button>
+            <button type="button" class="stash-card quick-action" data-action="transfer">
+              <span class="qa-icon"><span class="ms">swap_horiz</span></span><span>Transfer</span>
             </button>
           </div>
+
+          <!-- Quick text input (AI) -->
+          <form id="fin-quick-form" class="stash-card quick-input" autocomplete="off">
+            <span class="ms quick-input-icon">auto_awesome</span>
+            <input type="text" id="fin-quick-input" placeholder="Catat cepat: makan siang 35rb bca" aria-label="Catat dengan kalimat biasa">
+            <button type="submit" class="grad-circle" id="btn-quick-submit" aria-label="Catat"><span class="ms">arrow_upward</span></button>
+          </form>
+
+          <!-- Wallet chips -->
+          <div id="wallets-container" class="wallet-strip" aria-label="Dompet"></div>
         </div>
 
+        <div class="home-col">
+          <div class="section-head">
+            <h2>Transaksi terbaru</h2>
+            <button type="button" class="link-btn" data-action="export">Ekspor<span class="ms">chevron_right</span></button>
+          </div>
+
+          <div class="tx-tools">
+            <label class="search-field">
+              <span class="ms">search</span>
+              <input type="text" id="tx-search-input" placeholder="Cari toko atau catatan">
+            </label>
+            <div class="chip-row" id="tx-type-filter">
+              <button type="button" class="chip active" data-type="all">Semua</button>
+              <button type="button" class="chip" data-type="expense">Pengeluaran</button>
+              <button type="button" class="chip" data-type="income">Pemasukan</button>
+              <button type="button" class="chip" data-type="transfer">Transfer</button>
+            </div>
+            <div id="active-wallet-filter"></div>
+          </div>
+
+          <div class="stash-card tx-card">
+            <div id="transactions-list"></div>
+            <button type="button" id="btn-load-more" class="load-more" hidden>Tampilkan lebih banyak</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DOMPET ================= -->
+    <section class="view" data-view="dompet" hidden>
+      <div id="wallets-list-view">
+        <header class="app-bar">
+          <h1 class="app-bar-title">Dompet</h1>
+          <div class="app-bar-actions">
+            <button type="button" class="icon-btn" data-action="transfer" title="Transfer antar dompet" aria-label="Transfer antar dompet"><span class="ms">swap_horiz</span></button>
+            <button type="button" class="icon-btn" data-action="add-wallet" title="Tambah dompet" aria-label="Tambah dompet"><span class="ms">add_card</span></button>
+          </div>
+        </header>
+        <div class="page-pad narrow">
+          <div class="muted-label">Total saldo</div>
+          <div class="big-amount" id="wallets-total">Rp 0</div>
+          <div id="wallets-full-list" class="wallet-list"></div>
+          <button type="button" class="btn-outlined btn-block" data-action="add-wallet"><span class="ms">add</span>Tambah dompet</button>
+        </div>
+      </div>
+
+      <div id="wallet-detail-view" hidden>
+        <header class="app-bar">
+          <button type="button" class="icon-btn" id="btn-wallet-back" aria-label="Kembali"><span class="ms">arrow_back</span></button>
+          <h1 class="app-bar-title" id="wallet-detail-name">Dompet</h1>
+          <div class="app-bar-actions">
+            <button type="button" class="icon-btn" id="btn-wallet-edit" title="Ubah" aria-label="Ubah dompet"><span class="ms">edit</span></button>
+          </div>
+        </header>
+        <div class="page-pad narrow">
+          <div class="stash-card wallet-detail-card">
+            <div id="wallet-detail-avatar"></div>
+            <div class="wallet-detail-info">
+              <div class="muted-small">Saldo saat ini</div>
+              <div class="wallet-detail-balance" id="wallet-detail-balance">Rp 0</div>
+              <div class="muted-small" id="wallet-detail-kind"></div>
+            </div>
+          </div>
+          <h2 class="section-title">Riwayat</h2>
+          <div class="stash-card tx-card">
+            <div id="wallet-detail-list"></div>
+            <button type="button" id="btn-wallet-load-more" class="load-more" hidden>Tampilkan lebih banyak</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ANALITIK ================= -->
+    <section class="view" data-view="analitik" hidden>
+      <header class="app-bar">
+        <h1 class="app-bar-title">Analitik</h1>
+      </header>
+      <div class="page-pad narrow">
+        <div class="month-row">
+          <button type="button" class="icon-btn" id="btn-an-prev" aria-label="Bulan sebelumnya"><span class="ms">chevron_left</span></button>
+          <span id="an-month-display">-</span>
+          <button type="button" class="icon-btn" id="btn-an-next" aria-label="Bulan berikutnya"><span class="ms">chevron_right</span></button>
+        </div>
+
+        <div class="summary-row">
+          <div class="stash-card summary-tile"><div class="summary-label">Pemasukan</div><div class="summary-val income" id="an-income">Rp 0</div></div>
+          <div class="stash-card summary-tile"><div class="summary-label">Pengeluaran</div><div class="summary-val expense" id="an-expense">Rp 0</div></div>
+          <div class="stash-card summary-tile"><div class="summary-label">Selisih</div><div class="summary-val" id="an-net">Rp 0</div></div>
+        </div>
+
+        <div class="analytics-grid">
+          <section class="stash-card section-card">
+            <h2 class="card-title">Pengeluaran per kategori</h2>
+            <div id="donut-wrap"></div>
+            <div id="cat-breakdown-list" class="cat-list"></div>
+          </section>
+
+          <section class="stash-card section-card">
+            <h2 class="card-title">Tren pengeluaran 6 bulan</h2>
+            <div class="muted-small" id="trend-avg">Rata-rata Rp 0 / bulan</div>
+            <div id="trend-chart" class="trend-chart"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PENGATURAN ================= -->
+    <section class="view" data-view="pengaturan" hidden>
+      <header class="app-bar">
+        <h1 class="app-bar-title">Pengaturan</h1>
+      </header>
+      <div class="page-pad narrow settings">
+        <div class="settings-group-label">Profil</div>
+        <div class="stash-card list-card">
+          <button type="button" class="list-tile" id="btn-rename">
+            <span class="ms tile-icon">person</span>
+            <span class="tile-text"><span class="tile-title">Nama panggilan</span><span class="tile-sub" id="settings-name">-</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+        </div>
+
+        <div class="settings-group-label">Data</div>
+        <div class="stash-card list-card">
+          <button type="button" class="list-tile" data-action="wallets-manage">
+            <span class="ms tile-icon">account_balance_wallet</span>
+            <span class="tile-text"><span class="tile-title">Kelola dompet</span><span class="tile-sub">Ubah nama, jenis, dan saldo dompet</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+          <button type="button" class="list-tile" id="btn-open-import">
+            <span class="ms tile-icon">upload_file</span>
+            <span class="tile-text"><span class="tile-title">Import mutasi rekening</span><span class="tile-sub">Tempel teks mutasi atau unggah CSV bank</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+          <button type="button" class="list-tile" id="btn-export-csv">
+            <span class="ms tile-icon">file_download</span>
+            <span class="tile-text"><span class="tile-title">Ekspor ke CSV</span><span class="tile-sub">Transaksi bulan aktif, bisa dibuka di Excel / Google Sheets</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+          <button type="button" class="list-tile" id="btn-open-gsheet">
+            <span class="ms tile-icon">table_chart</span>
+            <span class="tile-text"><span class="tile-title">Google Spreadsheet</span><span class="tile-sub">Sinkronkan transaksi otomatis ke Sheet pribadi</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+        </div>
+
+        <div class="settings-group-label">Integrasi</div>
+        <div class="stash-card list-card">
+          <button type="button" class="list-tile" id="btn-open-shortcuts">
+            <span class="ms tile-icon">bolt</span>
+            <span class="tile-text"><span class="tile-title">Pintasan iPhone & Siri</span><span class="tile-sub">Catat lewat Action Button, Back Tap, atau Siri</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </button>
+          <a href="/" class="list-tile">
+            <span class="ms tile-icon">receipt_long</span>
+            <span class="tile-text"><span class="tile-title">Split Bill</span><span class="tile-sub">Bagi tagihan bareng teman lewat PatungIn</span></span>
+            <span class="ms tile-trail">chevron_right</span>
+          </a>
+        </div>
+
+        <div class="stash-card list-card">
+          <div class="list-tile static">
+            <span class="ms tile-icon">savings</span>
+            <span class="tile-text"><span class="tile-title">PatungIn Finance</span><span class="tile-sub">Pelacak keuangan pribadi · tampilan Stash</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FAB (mobile, Beranda & Dompet) -->
+  <button type="button" id="fin-fab-add" class="fab grad-circle" data-action="add" aria-label="Catat transaksi" title="Catat transaksi"><span class="ms">add</span></button>
+
+  <!-- Bottom navigation (mobile) -->
+  <nav class="bottom-nav" aria-label="Navigasi utama">
+    <a href="#beranda" class="nav-item" data-nav="beranda"><span class="nav-ind"><span class="ms">home</span></span><span>Beranda</span></a>
+    <a href="#dompet" class="nav-item" data-nav="dompet"><span class="nav-ind"><span class="ms">account_balance_wallet</span></span><span>Dompet</span></a>
+    <a href="#analitik" class="nav-item" data-nav="analitik"><span class="nav-ind"><span class="ms">pie_chart</span></span><span>Analitik</span></a>
+    <a href="#pengaturan" class="nav-item" data-nav="pengaturan"><span class="nav-ind"><span class="ms">settings</span></span><span>Pengaturan</span></a>
+  </nav>
+</div>
+
+<!-- Hidden picker for receipt scanning -->
+<input type="file" id="scan-file-input" accept="image/*" capture="environment" hidden>
+
+<!-- ================= Sheet: Catat transaksi ================= -->
+<div id="modal-add-tx" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-tx-title">
+  <div class="sheet add-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <button type="button" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+      <h3 id="modal-add-tx-title">Catat transaksi</h3>
+      <button type="button" class="icon-btn primary" id="btn-add-scan" data-action="scan" title="Pindai struk" aria-label="Pindai struk"><span class="ms">document_scanner</span></button>
+    </div>
+
+    <form id="form-add-tx" class="add-form">
+      <div class="type-tabs" id="tx-type-tabs">
+        <button type="button" class="type-tab active" data-val="expense">Pengeluaran</button>
+        <button type="button" class="type-tab" data-val="income">Pemasukan</button>
+        <button type="button" class="type-tab" data-val="transfer">Transfer</button>
+      </div>
+
+      <div class="add-scroll">
+        <div class="amount-display" id="amount-display"><span class="amount-cur">Rp</span><span id="amount-text">0</span></div>
+        <div class="amount-preview" id="amount-preview"></div>
+
+        <div class="chip-wrap">
+          <button type="button" class="chip action" id="chip-wallet"><span class="ms">account_balance</span><span id="chip-wallet-label">Pilih dompet</span></button>
+          <button type="button" class="chip action" id="chip-to-wallet" hidden><span class="ms">arrow_forward</span><span id="chip-to-wallet-label">Ke: Pilih</span></button>
+          <label class="chip action date-chip"><span class="ms">calendar_today</span><span id="chip-date-label">Hari ini</span>
+            <input type="date" id="tx-modal-date">
+          </label>
+        </div>
+
+        <div class="chip-wrap category-chips" id="category-chips"></div>
+
+        <label class="field with-icon" id="merchant-field">
+          <span class="ms">storefront</span>
+          <input type="text" id="tx-modal-merchant" placeholder="Toko / merchant (opsional)">
+        </label>
+        <label class="field with-icon">
+          <span class="ms">notes</span>
+          <input type="text" id="tx-modal-desc" placeholder="Catatan (opsional)">
+        </label>
+      </div>
+
+      <div class="numpad" id="numpad">
+        <button type="button" class="key accent" data-key="C">C</button>
+        <button type="button" class="key accent" data-key="÷">÷</button>
+        <button type="button" class="key accent" data-key="×">×</button>
+        <button type="button" class="key accent" data-key="back" aria-label="Hapus"><span class="ms">backspace</span></button>
+        <button type="button" class="key" data-key="7">7</button>
+        <button type="button" class="key" data-key="8">8</button>
+        <button type="button" class="key" data-key="9">9</button>
+        <button type="button" class="key accent" data-key="−">−</button>
+        <button type="button" class="key" data-key="4">4</button>
+        <button type="button" class="key" data-key="5">5</button>
+        <button type="button" class="key" data-key="6">6</button>
+        <button type="button" class="key accent" data-key="+">+</button>
+        <button type="button" class="key" data-key="1">1</button>
+        <button type="button" class="key" data-key="2">2</button>
+        <button type="button" class="key" data-key="3">3</button>
+        <button type="submit" class="key submit" aria-label="Simpan transaksi"><span class="ms">check</span></button>
+        <button type="button" class="key" data-key="000">000</button>
+        <button type="button" class="key" data-key="0">0</button>
+        <button type="button" class="key accent" data-key="=">=</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= Sheet: wallet picker ================= -->
+<div id="modal-wallet-picker" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="wallet-picker-title">
+  <div class="sheet small">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="wallet-picker-title">Dompet</h3>
+      <button type="button" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <div class="sheet-body" id="wallet-picker-list"></div>
+  </div>
+</div>
+
+<!-- ================= Sheet: wallet form ================= -->
+<div id="modal-wallet-form" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="wallet-form-title">
+  <div class="sheet small">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="wallet-form-title">Tambah dompet</h3>
+      <button type="button" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <form class="sheet-body form-stack" id="form-wallet">
+      <input type="hidden" id="wallet-form-id">
+      <div class="chip-wrap" id="wallet-presets"></div>
+      <label class="field"><input type="text" id="new-wallet-name" placeholder="Nama dompet" required></label>
+      <div class="type-tabs neutral" id="wallet-kind-tabs">
+        <button type="button" class="type-tab active" data-val="bank">Bank</button>
+        <button type="button" class="type-tab" data-val="ewallet">E-Wallet</button>
+        <button type="button" class="type-tab" data-val="cash">Tunai</button>
+        <button type="button" class="type-tab" data-val="investment">Investasi</button>
+      </div>
+      <label class="field with-prefix"><span>Rp</span><input type="number" inputmode="numeric" id="new-wallet-balance" placeholder="Saldo saat ini"></label>
+      <button type="submit" class="btn-filled btn-block" id="btn-add-wallet-submit">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= Sheet: transaction detail ================= -->
+<div id="modal-tx-detail" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="tx-detail-title">
+  <div class="sheet small">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="tx-detail-title">Detail transaksi</h3>
+      <button type="button" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <div class="sheet-body" id="tx-detail-body"></div>
+  </div>
+</div>
+
+<!-- ================= Sheet: Import mutasi ================= -->
+<div id="modal-import-statement" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="modal-import-title">Import mutasi rekening</h3>
+      <button type="button" id="btn-close-import" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <div class="sheet-body form-stack">
+      <div class="type-tabs neutral">
+        <button type="button" id="tab-import-text" class="type-tab active">Tempel teks</button>
+        <button type="button" id="tab-import-file" class="type-tab">Upload CSV</button>
+      </div>
+
+      <label class="field-label" for="import-target-account">Dompet tujuan</label>
+      <select id="import-target-account" class="field-select"></select>
+
+      <div id="import-text-container">
+        <label class="field-label" for="import-raw-text">Teks mutasi (salin dari m-BCA / Livin / GoPay / Shopee)</label>
+        <textarea id="import-raw-text" class="field-area" rows="5" placeholder="Contoh:&#10;01/10/2026 QRIS Kopi Kenangan Rp 35.000 DB&#10;02/10/2026 Gaji Masuk PT ABC Rp 8.000.000 CR"></textarea>
+      </div>
+
+      <div id="import-file-container" hidden>
+        <label class="field-label" for="import-file-input">File CSV mutasi</label>
+        <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="field-file">
+      </div>
+
+      <button type="button" id="btn-parse-statement" class="btn-filled btn-block"><span class="ms">manage_search</span>Analisis & pratinjau</button>
+
+      <div id="import-preview-box" hidden>
+        <div class="preview-head">
+          <div><b id="import-preview-count">0</b> transaksi</div>
+          <div><span id="import-preview-in" class="income">+Rp 0</span> · <span id="import-preview-out" class="expense">-Rp 0</span></div>
+        </div>
+        <div id="import-preview-list" class="preview-list"></div>
+        <button type="button" id="btn-commit-import" class="btn-filled btn-block"><span class="ms">save</span>Simpan ke dompet</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ==========================================
-       Modal: Google Spreadsheet
-       ========================================== -->
-  <div id="modal-gsheet-config" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-gsheet-title">
-    <div class="fin-modal-card" style="max-width: 600px;">
-      <div class="fin-modal-header">
-        <div class="fin-modal-title-group">
-          <div class="fin-micro-label">Cloud Sync</div>
-          <h3 id="modal-gsheet-title">Koneksi Google Spreadsheet</h3>
-        </div>
-        <button type="button" id="btn-close-gsheet" class="fin-modal-close" aria-label="Tutup">&times;</button>
-      </div>
-      <div class="fin-modal-body">
-        
-        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
-          Sinkronkan transaksi secara otomatis ke Google Spreadsheet pribadi kamu secara real-time:
-        </p>
-
-        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--fin-border);font-size:12.5px;">
-          <div style="font-weight:800;color:var(--fin-text-main);margin-bottom:6px;">Cara Pasang (Apps Script):</div>
-          <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fin-text-main);">
-            <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive.</li>
-            <li>Buka menu <b>Ekstensi > Apps Script</b>.</li>
-            <li>Tempel kode script berikut lalu Deploy sebagai Web App (Akses: Anyone):</li>
-          </ol>
-          <div style="margin-top:8px;">
-            <textarea id="gsheet-script-template" readonly rows="5" style="width:100%;font-family:monospace;font-size:11.5px;padding:8px;border-radius:8px;border:1px solid var(--fin-border);background:#ffffff;resize:none;">function doPost(e) {
+<!-- ================= Sheet: Google Spreadsheet ================= -->
+<div id="modal-gsheet-config" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-gsheet-title">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="modal-gsheet-title">Google Spreadsheet</h3>
+      <button type="button" id="btn-close-gsheet" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <div class="sheet-body form-stack">
+      <p class="muted-text">Sinkronkan transaksi otomatis ke Google Spreadsheet pribadi kamu.</p>
+      <div class="info-box">
+        <div class="info-title">Cara pasang (Apps Script)</div>
+        <ol>
+          <li>Buat file <b>Google Spreadsheet</b> baru di Google Drive.</li>
+          <li>Buka menu <b>Ekstensi &gt; Apps Script</b>.</li>
+          <li>Tempel kode berikut lalu Deploy sebagai Web App (Akses: Anyone).</li>
+        </ol>
+        <textarea id="gsheet-script-template" class="code-area" readonly rows="5">function doPost(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("DATA TRANSAKSI");
@@ -683,90 +568,92 @@ function createDashboardTab(ss) {
   } catch (chartErr) { console.warn("Chart warning:", chartErr); }
   ss.setActiveSheet(dash);
 }</textarea>
-            <button type="button" id="btn-copy-apps-script" class="fin-nom-pill" style="margin-top:6px;width:100%;text-align:center;">
-              📋 Salin Kode Script Google Sheets
-            </button>
-          </div>
-        </div>
+        <button type="button" id="btn-copy-apps-script" class="btn-outlined btn-block"><span class="ms">content_copy</span>Salin kode script</button>
+      </div>
 
-        <div class="fin-form-group">
-          <label for="gsheet-url-input" class="fin-form-label">URL Web App Google Apps Script</label>
-          <input type="url" id="gsheet-url-input" class="fin-form-input" placeholder="https://script.google.com/macros/s/.../exec">
-        </div>
+      <label class="field-label" for="gsheet-url-input">URL Web App Google Apps Script</label>
+      <label class="field"><input type="url" id="gsheet-url-input" placeholder="https://script.google.com/macros/s/.../exec"></label>
 
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <button type="button" id="btn-save-gsheet-url" class="fin-btn-submit" style="flex:1;justify-content:center;">
-            Simpan URL
-          </button>
-          <button type="button" id="btn-sync-all-gsheet" class="fin-btn-cancel" style="flex:1;text-align:center;">
-            Sinkronkan Semua Transaksi
-          </button>
-        </div>
+      <div class="btn-row">
+        <button type="button" id="btn-save-gsheet-url" class="btn-filled">Simpan URL</button>
+        <button type="button" id="btn-sync-all-gsheet" class="btn-outlined">Sinkronkan semua</button>
+      </div>
 
-        <div id="gsheet-open-link-wrap" style="display:none;margin-top:14px;padding-top:12px;border-top:1px dashed var(--fin-border);">
-          <a id="btn-open-gsheet-direct" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:var(--fin-primary-light);border:1px solid var(--fin-primary);border-radius:10px;color:var(--fin-primary);font-weight:700;font-size:13px;text-decoration:none;transition:all 0.2s;">
-            <span>📊 Buka Google Spreadsheet Langsung ↗</span>
-          </a>
-        </div>
-
+      <div id="gsheet-open-link-wrap" hidden>
+        <a id="btn-open-gsheet-direct" href="#" target="_blank" rel="noopener" class="btn-tonal btn-block"><span class="ms">open_in_new</span>Buka Google Spreadsheet</a>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ==========================================
-       Modal: Pintasan iPhone & Siri
-       ========================================== -->
-  <div id="modal-shortcuts-info" class="fin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
-    <div class="fin-modal-card" style="max-width: 580px;">
-      <div class="fin-modal-header">
-        <div class="fin-modal-title-group">
-          <div class="fin-micro-label">Apple Shortcuts</div>
-          <h3 id="modal-shortcuts-title">Pintasan iPhone & Siri</h3>
-        </div>
-        <button type="button" id="btn-close-shortcuts" class="fin-modal-close" aria-label="Tutup">&times;</button>
+<!-- ================= Sheet: Pintasan ================= -->
+<div id="modal-shortcuts-info" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-bar">
+      <h3 id="modal-shortcuts-title">Pintasan iPhone & Siri</h3>
+      <button type="button" id="btn-close-shortcuts" class="icon-btn" data-close aria-label="Tutup"><span class="ms">close</span></button>
+    </div>
+    <div class="sheet-body form-stack">
+      <p class="muted-text">Catat pengeluaran lewat <b>Action Button</b>, <b>Back Tap</b>, atau <b>Hey Siri</b> tanpa membuka aplikasi.</p>
+      <label class="field-label" for="shortcut-endpoint-url">Endpoint catat cepat (POST JSON)</label>
+      <div class="btn-row">
+        <label class="field grow"><input type="text" id="shortcut-endpoint-url" readonly></label>
+        <button type="button" id="btn-copy-shortcut-url" class="btn-outlined">Salin</button>
       </div>
-      <div class="fin-modal-body">
-        
-        <p style="font-size:13px;color:var(--fin-text-muted);margin-bottom:14px;">
-          Catat pengeluaran lewat <b>Action Button</b>, <b>Back Tap (Ketuk Punggung)</b>, atau <b>Hey Siri</b> tanpa perlu membuka aplikasi:
-        </p>
-
-        <div class="fin-form-group">
-          <label class="fin-form-label">Endpoint URL Catat Cepat (POST JSON)</label>
-          <div style="display:flex;gap:6px;">
-            <input type="text" id="shortcut-endpoint-url" readonly class="fin-form-input" style="background:#F7FAFA;">
-            <button type="button" id="btn-copy-shortcut-url" class="fin-nom-pill" style="white-space:nowrap;">Salin</button>
-          </div>
-        </div>
-
-        <div style="background:var(--fin-bg-subtle);border-radius:10px;padding:14px;margin-top:14px;border:1px solid var(--fin-border);font-size:12.5px;color:var(--fin-text-main);">
-          <div style="font-weight:800;margin-bottom:6px;">Format Request JSON:</div>
-          <code style="display:block;background:#ffffff;padding:10px;border-radius:8px;border:1px solid var(--fin-border);font-family:monospace;font-size:12px;">
-            {<br>
-            &nbsp;&nbsp;"text": "makan siang padang 35k bca"<br>
-            }
-          </code>
-        </div>
-
+      <div class="info-box">
+        <div class="info-title">Format request JSON</div>
+        <pre class="code-area">{
+  "text": "makan siang padang 35k bca"
+}</pre>
       </div>
+
+      <label class="field-label" for="shortcut-test-input">Coba langsung</label>
+      <div class="btn-row">
+        <label class="field grow"><input type="text" id="shortcut-test-input" placeholder="kopi 18rb gopay"></label>
+        <button type="button" id="btn-test-shortcut" class="btn-filled">Uji</button>
+      </div>
+      <div id="shortcut-test-result" class="info-box" hidden></div>
     </div>
   </div>
+</div>
 
-  <!-- Floating Action Button (FAB) Mobile per Figma Spec -->
-  <button type="button" id="fin-fab-add" class="fin-fab-btn" aria-label="Tambah Transaksi Cepat" title="Catat Transaksi">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
-  </button>
-
-  <!-- Toast Notification -->
-  <div id="fin-toast" class="fin-toast" role="status" aria-live="polite">
-    <span>✅</span>
-    <span id="fin-toast-text">Berhasil disimpan</span>
+<!-- ================= Dialog: confirm ================= -->
+<div id="modal-confirm" class="dialog-backdrop" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="dialog">
+    <h3 id="confirm-title">Hapus?</h3>
+    <p id="confirm-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn-text" id="confirm-cancel">Batal</button>
+      <button type="button" class="btn-filled danger" id="confirm-ok">Hapus</button>
+    </div>
   </div>
+</div>
 
-  <!-- Scripts -->
-  <script src="js/finance.js"></script>
+<!-- ================= Dialog: prompt ================= -->
+<div id="modal-prompt" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
+  <form class="dialog" id="prompt-form">
+    <h3 id="prompt-title">Nama panggilan</h3>
+    <label class="field"><input type="text" id="prompt-input" required></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn-text" id="prompt-cancel">Batal</button>
+      <button type="submit" class="btn-filled">Simpan</button>
+    </div>
+  </form>
+</div>
+
+<!-- Scan progress overlay -->
+<div id="scan-overlay" class="dialog-backdrop" aria-live="polite">
+  <div class="dialog scan-dialog">
+    <div class="spinner"></div>
+    <div class="scan-title">Membaca struk…</div>
+    <div class="muted-small">Gemini AI sedang mengisi nominal, toko, dan kategori.</div>
+  </div>
+</div>
+
+<!-- Snackbar -->
+<div id="fin-toast" class="snackbar" role="status" aria-live="polite"></div>
+
+<script src="js/finance.js?v=2"></script>
 </body>
 </html>
